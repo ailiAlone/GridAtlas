@@ -72,8 +72,8 @@ const SURFACE_SHORT: Dictionary = {1: "草", 2: "沙", 3: "荒", 4: "雪", 5: "�
 # ---------- 潮汐（深浅交界与"沙地↔浅水"岸线的来回摆动） ----------
 # TODO（以后）：沙地↔浅水 与 浅↔深水 目前共用下面两个参数，之后需要拆成两组独立参数。
 
-@export var tide_frequency: float = 1.0  # 潮汐频率倍率（1 = 默认速度）
-@export var tide_amplitude: float = 1.0  # 潮汐幅度倍率（1 = 默认幅度，0 = 完全静止）
+@export var tide_frequency: float = 1.85  # 潮汐频率倍率（1 = 默认速度）
+@export var tide_amplitude: float = 1.15  # 潮汐幅度倍率（1 = 默认幅度，0 = 完全静止）
 
 # ---------- 浮雕光照（光固定左上） ----------
 

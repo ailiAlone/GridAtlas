@@ -334,12 +334,12 @@ layout_mode = 2
 size_flags_horizontal = 3
 max_value = 3.0
 step = 0.05
-value = 1.0
+value = 1.85
 
 [node name="Value" type="Label" parent="PanelTide/VBoxContainer/Rows/tide_frequency"]
 custom_minimum_size = Vector2(42, 0)
 layout_mode = 2
-text = "1.0"
+text = "1.85"
 horizontal_alignment = 2
 
 [node name="tide_amplitude" type="HBoxContainer" parent="PanelTide/VBoxContainer/Rows"]
@@ -356,12 +356,12 @@ layout_mode = 2
 size_flags_horizontal = 3
 max_value = 2.5
 step = 0.05
-value = 1.0
+value = 1.15
 
 [node name="Value" type="Label" parent="PanelTide/VBoxContainer/Rows/tide_amplitude"]
 custom_minimum_size = Vector2(42, 0)
 layout_mode = 2
-text = "1.0"
+text = "1.15"
 horizontal_alignment = 2
 
 [node name="PanelRoad" type="PanelContainer" parent="." unique_id=119235181]

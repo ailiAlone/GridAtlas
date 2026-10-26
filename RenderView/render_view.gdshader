@@ -259,21 +259,17 @@ void fragment() {
 	vec2 ip = floor(cf);
 	vec2 fp = cf - ip;
 	vec2 iq = fp * fp * (3.0 - 2.0 * fp);
-	float i00 = land_of(cell_data(ip));
-	float i10 = land_of(cell_data(ip + vec2(1.0, 0.0)));
-	float i01 = land_of(cell_data(ip + vec2(0.0, 1.0)));
-	float i11 = land_of(cell_data(ip + vec2(1.0, 1.0)));
-	float base_id = land_of(cell_data(floor(cf + vec2(0.5))));
-	float other_id = base_id;
-	float bestw = 0.0;
-	float w00 = (1.0 - iq.x) * (1.0 - iq.y);
-	float w10 = iq.x * (1.0 - iq.y);
-	float w01 = (1.0 - iq.x) * iq.y;
-	float w11 = iq.x * iq.y;
-	if (abs(i00 - base_id) > 0.01 && w00 > bestw) { other_id = i00; bestw = w00; }
-	if (abs(i10 - base_id) > 0.01 && w10 > bestw) { other_id = i10; bestw = w10; }
-	if (abs(i01 - base_id) > 0.01 && w01 > bestw) { other_id = i01; bestw = w01; }
-	if (abs(i11 - base_id) > 0.01 && w11 > bestw) { other_id = i11; bestw = w11; }
+	// 3×3 邻域内的最小/最大材质编号作为过渡两端：这两个值在边界两侧一致，
+	// 不会因为"最近格"切换而让边界贴到格子边缘（那正是阶梯的来源）。
+	float lo_id = 9.0;
+	float hi_id = 0.0;
+	for (int dy = -1; dy <= 1; dy++) {
+		for (int dx = -1; dx <= 1; dx++) {
+			float idn = land_of(cell_data(ip + vec2(float(dx), float(dy))));
+			lo_id = min(lo_id, idn);
+			hi_id = max(hi_id, idn);
+		}
+	}
 
 	float bio = fbm(cf * 0.16 + vec2(11.3, 5.7));
 	float bio2 = fbm(cf * 0.11 + vec2(2.1, 9.4));
@@ -281,19 +277,24 @@ void fragment() {
 		1.0 + (bio2 - 0.5) * u_biome * 0.7,
 		1.0 - (bio - 0.5) * u_biome * 0.8);
 
-	// 平滑场 Lf 只用来算"在两种材质之间走到哪一步"，边界形状因此是曲线；
-	// 叠一点高频噪声让边界参差（对应面板上的"边界打散幅度"）；Lf 已在上方陆地场处算好
-	float t = 0.0;
-	if (abs(other_id - base_id) > 0.01) {
-		t = clamp((Lf - base_id) / (other_id - base_id), 0.0, 1.0);
-	}
-	float aff = abs(other_id - base_id) > 0.01 ? pair_affinity(base_id, other_id) : 0.0;
-	float bh = mix(max(u_band_hard, 0.04), max(u_band_soft, u_band_hard), aff) * 0.5;
-	float mixw = smoothstep(0.5 - bh, 0.5 + bh, t);
-	vec3 col = mix(table_color(int(base_id)) * tint, table_color(int(other_id)) * tint, mixw);
-	float crease = 1.0 - smoothstep(0.0, max(u_crease_width, 0.02), abs(t - 0.5));
-	col *= 1.0 - crease * u_crease_dark * (1.0 - aff * 0.7) * (1.0 - water_cover);
-	float pattern_id = mixw > 0.5 ? other_id : base_id;
+	// 平滑场 Lf 决定"在两种材质之间走到哪一步"，边界因此是曲线
+	float span = max(hi_id - lo_id, 0.001);
+	float t = clamp((Lf - lo_id) / span, 0.0, 1.0);
+	float aff = pair_affinity(lo_id, hi_id);
+	// 陆地之间是【离散交融】：噪声把边界打散成互相咬合的斑块，过渡带本身很窄
+	float wob = (vnoise(cf * 0.27 + vec2(4.7, 1.3)) - 0.5) * 1.10
+		+ (vnoise(cf * 0.78 + vec2(9.1, 6.2)) - 0.5) * 1.25;
+	float tk = t + wob * (0.50 + 1.00 * aff);
+	float bh = mix(max(u_band_hard, 0.03), max(u_band_soft, u_band_hard), aff) * 0.12;
+	// 靠水的一侧恢复宽过渡：沙滩外缘是"沙↔水下草地"，用硬边会把格子阶梯暴露出来
+	float coastal = smoothstep(0.02, 0.18, wfield);
+	float bh_eff = mix(bh, 0.40, coastal);
+	float mixw = smoothstep(0.5 - bh_eff, 0.5 + bh_eff, tk);
+	vec3 col = mix(table_color(int(lo_id)) * tint, table_color(int(hi_id)) * tint, mixw);
+	// 陆地之间不画折痕：边界打散后折痕会变成一根根针状暗线
+	float crease = 0.0;
+	col *= 1.0 - crease * u_crease_dark * (1.0 - water_cover);
+	float pattern_id = mixw > 0.5 ? hi_id : lo_id;
 
 	// ---- 2) 分材质结构图案 + 微凹凸光照 ----
 	vec2 pf = cf * u_texture_frequency;
