@@ -67,7 +67,7 @@ const SURFACE_SHORT: Dictionary = {1: "草", 2: "沙", 3: "荒", 4: "雪", 5: "�
 @export var edge_jitter: float = 1.6    # 小尺度边界抖动
 @export var coast_warp: float = 0.8     # 大尺度边界扭曲（把格子阶梯变成自然曲线）
 @export var crease_width: float = 0.14  # 材质交界的折痕宽度
-@export var crease_dark: float = 0.30   # 折痕压暗强度
+@export var crease_dark: float = 0.14   # 折痕压暗强度
 
 # ---------- 浮雕光照（光固定左上） ----------
 

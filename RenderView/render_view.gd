@@ -55,15 +55,22 @@ func _ready() -> void:
 
 
 ## 截图模式（仅命令行带 --shot 时生效，正常使用完全不受影响）：
-## 冻结水面时间保证可比，等渲染稳定后把窗口存成 PNG 并退出。
+## 可用 --shot-t=<秒> 指定冻结的水面时间，便于对比不同时刻的波形。
 func _capture_and_quit() -> void:
 	set_process(false)
+	var shot_time: float = 0.0
+	for arg: String in OS.get_cmdline_args():
+		if arg.begins_with("--shot-t="):
+			shot_time = arg.trim_prefix("--shot-t=").to_float()
+	time_sec = shot_time
+	if surfacematerial != null:
+		surfacematerial.set_shader_parameter("u_time", shot_time)
 	for i in 8:
 		await get_tree().process_frame
 	var img: Image = get_viewport().get_texture().get_image()
 	var dir: String = OS.get_environment("TEMP").replace("\\", "/") + "/gridatlas_shots"
 	DirAccess.make_dir_recursive_absolute(dir)
-	var path: String = dir + "/shot.png"
+	var path: String = dir + "/shot_%.2f.png" % shot_time
 	var err: Error = img.save_png(path)
 	if err == OK:
 		print("[截图] " + path)
