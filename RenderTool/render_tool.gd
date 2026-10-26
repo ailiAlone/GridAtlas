@@ -32,6 +32,29 @@ func _on_oblique_toggled(on: bool) -> void:
 	print("[视图] %s" % ("斜角视图" if on else "俯视"))
 
 
+# ---------- 对外接口 ----------
+
+## 换一份配置（打开地图时载入同名的 .look.tres）：同步所有控件后广播一次
+func set_settings(value: RenderSettings) -> void:
+	if value == null:
+		return
+	settings = value
+	seedbox.set_value_no_signal(settings.noise_seed)
+	for section: Node in get_children():
+		var rows: Node = section.get_node_or_null("VBoxContainer/Rows")
+		if rows == null:
+			continue
+		for row: Node in rows.get_children():
+			if not (row is HBoxContainer):
+				continue
+			var slider: HSlider = row.get_node("Slider") as HSlider
+			var valuelabel: Label = row.get_node("Value") as Label
+			var prop: StringName = StringName(row.name)
+			slider.set_value_no_signal(float(settings.get(prop)))
+			valuelabel.text = _fmt(slider.value)
+	settings_changed.emit()
+
+
 # ---------- 绑定 ----------
 
 ## 遍历各节的 Rows：行节点名就是 RenderSettings 属性名

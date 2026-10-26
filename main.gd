@@ -21,6 +21,11 @@ var render_mode: bool = false  # false=编辑模式，true=渲染模式
 var grids: Array = []      # 两个编辑视图（大可编辑、小只读镜像）
 var renders: Array = []    # 两个渲染实例（大成品、小预览）
 
+# 撤销/重做：整图快照。64×64 时一份约 80KB，60 步上限约 5MB。
+const HISTORY_MAX: int = 60
+var undo_stack: Array[MapData] = []
+var redo_stack: Array[MapData] = []
+
 
 func _ready() -> void:
 	grids = [grid_view, grid_mini]
@@ -38,11 +43,14 @@ func _ready() -> void:
 	tools.rect_mode_changed.connect(grid_view.set_rect_mode)
 	tools.map_resized.connect(_on_map_resized)
 	tools.map_loaded.connect(_on_map_loaded)
+	tools.map_saved.connect(_on_map_saved)
+	tools.edit_checkpoint.connect(_push_history)
 	# 高程视图是显示模式，大小编辑视图一起切
 	tools.elevation_view_changed.connect(grid_view.set_elevation_mode)
 	tools.elevation_view_changed.connect(grid_mini.set_elevation_mode)
 	grid_view.area_painted.connect(_on_area_painted)
 	grid_view.cell_hovered.connect(_on_cell_hovered)
+	grid_view.stroke_started.connect(_push_history)
 	rtool.settings_changed.connect(_on_render_settings_changed)
 	rtool.material_params_requested.connect(_on_material_params_requested)
 	rtool.oblique_changed.connect(_on_oblique_changed)
@@ -144,7 +152,7 @@ func _on_cell_hovered(cell: Vector2i) -> void:
 # ---------- 地图与配置事件 ----------
 
 ## 尺寸变化：同一个 MapData 对象原地 resize，重建渲染纹理、刷新编辑视图
-func _on_map_resized() -> void:
+func _on_map_resized(_size: Vector2i) -> void:
 	for view: RenderView in renders:
 		view.set_map(map)
 	for view: GridView in grids:
@@ -157,11 +165,14 @@ func _on_map_loaded(data: MapData) -> void:
 		print("[地图] 高程已迁移到 0.25 级精度")
 		tools.mark_dirty()
 	map = data
+	undo_stack.clear()
+	redo_stack.clear()
 	tools.set_map(map)
 	for view: GridView in grids:
 		view.set_map(map)
 	for view: RenderView in renders:
 		view.set_map(map)
+	_load_look(tools.current_path)
 
 
 ## 渲染配置面板任何改动：即时注入两个渲染实例
@@ -174,6 +185,117 @@ func _on_render_settings_changed() -> void:
 func _on_oblique_changed(on: bool) -> void:
 	for view: RenderView in renders:
 		view.set_oblique(on)
+
+
+# ---------- 渲染配置持久化（与地图同名的 .look.tres 边车） ----------
+
+## 边车路径：与地图同目录同名，后缀换成 .look.tres（first.tres -> first.look.tres）
+func _look_path(map_path: String) -> String:
+	if map_path.is_empty():
+		return ""
+	return map_path.get_basename() + ".look.tres"
+
+
+## 保存地图后顺手保存当前渲染配置
+func _on_map_saved(path: String) -> void:
+	var look_path: String = _look_path(path)
+	if look_path.is_empty():
+		return
+	var err: Error = ResourceSaver.save(rtool.settings, look_path)
+	if err == OK:
+		print("[渲染] 配置已保存: %s" % look_path)
+	else:
+		push_warning("渲染配置保存失败(%s): %s" % [error_string(err), look_path])
+
+
+## 打开地图时，若存在同名边车就载入；没有则保持当前外观
+func _load_look(map_path: String) -> void:
+	var look_path: String = _look_path(map_path)
+	if look_path.is_empty() or not ResourceLoader.exists(look_path):
+		return
+	var loaded: RenderSettings = load(look_path) as RenderSettings
+	if loaded == null:
+		push_warning("渲染配置不是有效资源: " + look_path)
+		return
+	rtool.set_settings(loaded)
+	print("[渲染] 已载入配置: %s" % look_path)
+
+
+# ---------- 撤销 / 重做 ----------
+
+## 压入一份"改动前"的整图快照（落笔开始、改尺寸之前调用）
+func _push_history() -> void:
+	if map == null:
+		return
+	undo_stack.append(_snapshot_map())
+	if undo_stack.size() > HISTORY_MAX:
+		undo_stack.pop_front()
+	redo_stack.clear()
+
+
+func _snapshot_map() -> MapData:
+	var snap: MapData = MapData.new()
+	snap.grid_size = map.grid_size
+	snap.elev_unit = map.elev_unit
+	snap.land = map.land.duplicate()
+	snap.water = map.water.duplicate()
+	snap.flow = map.flow.duplicate()
+	snap.road = map.road.duplicate()
+	snap.elevation = map.elevation.duplicate()
+	return snap
+
+
+## 把快照写回同一个 MapData 对象（视图都持有它的引用，不能换对象）
+func _restore_map(snap: MapData) -> void:
+	map.grid_size = snap.grid_size
+	map.elev_unit = snap.elev_unit
+	map.land = snap.land.duplicate()
+	map.water = snap.water.duplicate()
+	map.flow = snap.flow.duplicate()
+	map.road = snap.road.duplicate()
+	map.elevation = snap.elevation.duplicate()
+	tools.set_map(map)
+	for view: GridView in grids:
+		view.set_map(map)
+	for view: RenderView in renders:
+		view.set_map(map)
+	_refresh_views()
+	tools.mark_dirty()
+
+
+func _undo() -> void:
+	if undo_stack.is_empty():
+		return
+	redo_stack.append(_snapshot_map())
+	var snap: MapData = undo_stack.pop_back()
+	_restore_map(snap)
+	print("[编辑] 撤销（还可撤销 %d 步）" % undo_stack.size())
+
+
+func _redo() -> void:
+	if redo_stack.is_empty():
+		return
+	undo_stack.append(_snapshot_map())
+	var snap: MapData = redo_stack.pop_back()
+	_restore_map(snap)
+	print("[编辑] 重做（还可重做 %d 步）" % redo_stack.size())
+
+
+func _unhandled_key_input(event: InputEvent) -> void:
+	if not (event is InputEventKey) or not event.pressed or event.echo:
+		return
+	var key: InputEventKey = event as InputEventKey
+	if not key.ctrl_pressed:
+		return
+	if key.keycode == KEY_Z:
+		if key.shift_pressed:
+			_redo()
+		else:
+			_undo()
+		get_viewport().set_input_as_handled()
+	elif key.keycode == KEY_Y:
+		_redo()
+		get_viewport().set_input_as_handled()
 
 
 ## 点“材质参数”：打开大面板里渲染实例的材质浮窗（颜色/过渡矩阵），并把它的改动接回重渲

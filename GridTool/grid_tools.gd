@@ -12,6 +12,8 @@ extends VBoxContainer
 signal brush_changed(layer: StringName, value: int)
 signal map_resized(size: Vector2i)
 signal map_loaded(data: MapData)
+signal map_saved(path: String)      # 保存成功后上报路径（渲染配置随之写边车文件）
+signal edit_checkpoint              # 即将发生不可逆改动（如改尺寸）：main 在这里压撤销快照
 signal elevation_view_changed(on: bool)
 signal brush_size_changed(size: int)
 signal rect_mode_changed(on: bool)
@@ -295,6 +297,7 @@ func open_map(path: String) -> void:
 func resize_map(size: Vector2i) -> void:
 	if map == null or size == map.grid_size:
 		return
+	edit_checkpoint.emit()
 	map.resize(size)
 	mark_dirty()
 	map_resized.emit(size)
@@ -311,6 +314,7 @@ func _do_save(path: String) -> void:
 		_update_save_button()
 		_update_file_label()
 		print("[文件] 已保存: %s" % path)
+		map_saved.emit(path)
 	else:
 		push_error("保存失败(%s): %s" % [error_string(err), path])
 

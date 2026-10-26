@@ -9,6 +9,8 @@ extends Control
 
 signal area_painted(area: Rect2i, erase: bool)  # 涂画/矩形填充统一上报：左上角格子 + 格子数尺寸
 signal cell_hovered(cell: Vector2i)  # 移出网格时上报 (-1, -1)
+signal stroke_started  # 一次落笔开始（main 在此压撤销快照）
+signal stroke_ended    # 一次落笔结束（松开按键）
 
 
 const EMPTY_COLOR: Color = Color(0.16, 0.16, 0.16, 1)
@@ -32,6 +34,7 @@ var big_panel: bool = true   # 大面板模式（COVER 可编辑）；false=小�
 
 var _dragging: bool = false
 var _erasing: bool = false
+var _stroke_active: bool = false
 var _last_cell: Vector2i = Vector2i(-1, -1)
 var _hover_cell: Vector2i = Vector2i(-1, -1)
 var _rect_dragging: bool = false
@@ -82,6 +85,7 @@ func set_panel_mode(big: bool) -> void:
 	big_panel = big
 	set_anchors_preset(Control.PRESET_TOP_LEFT)  # 小面板手动控制 position/size，不能挂拉伸锚点；容器场景不受影响
 	_dragging = false
+	_stroke_active = false
 	_last_cell = Vector2i(-1, -1)
 	_hover_cell = Vector2i(-1, -1)
 	mouse_filter = MOUSE_FILTER_PASS if big else MOUSE_FILTER_IGNORE
@@ -255,6 +259,11 @@ func _gui_input(event: InputEvent) -> void:
 	if map == null:
 		return
 	if event is InputEventMouseButton and event.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
+		if event.pressed:
+			# 只在地图内的按下才算一次落笔；快照在真正修改之前交给 main
+			_stroke_active = map.in_bounds(pixel_to_cell(get_local_mouse_position()))
+			if _stroke_active:
+				stroke_started.emit()
 		if rect_mode:
 			_handle_rect_button(event)
 		elif event.pressed:
@@ -264,6 +273,9 @@ func _gui_input(event: InputEvent) -> void:
 			_paint_under_mouse()
 		else:
 			_dragging = false
+		if not event.pressed and _stroke_active:
+			_stroke_active = false
+			stroke_ended.emit()
 		accept_event()  # 消费按钮，避免 ScrollContainer 当成拖拽滚动
 	elif event is InputEventMouseMotion:
 		var cell: Vector2i = pixel_to_cell(get_local_mouse_position())
