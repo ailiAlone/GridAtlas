@@ -1,0 +1,125 @@
+[gd_scene format=3 uid="uid://vtukrdbwmpd0"]
+
+[ext_resource type="PackedScene" uid="uid://duqxx0801a83k" path="res://GridTool/grid_tools.tscn" id="2_uu6xs"]
+[ext_resource type="Script" uid="uid://bg63e3d0c11ss" path="res://main.gd" id="3_main"]
+[ext_resource type="PackedScene" uid="uid://bt54rkajpdso1" path="res://GridView/grid_view.tscn" id="4_gview"]
+[ext_resource type="Script" uid="uid://by2m6gv4x8hf3" path="res://GridView/minimap.gd" id="5_minimap"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_glv2v"]
+bg_color = Color(1, 1, 1, 0.14117648)
+
+[node name="Main" type="Control" unique_id=1225227347]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("3_main")
+metadata/_edit_lock_ = true
+
+[node name="HBoxContainer" type="HBoxContainer" parent="." unique_id=1611090057]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+metadata/_edit_lock_ = true
+
+[node name="VBoxContainer" type="VBoxContainer" parent="HBoxContainer" unique_id=1660017475]
+layout_mode = 2
+size_flags_horizontal = 3
+metadata/_edit_lock_ = true
+
+[node name="Panel" type="Panel" parent="HBoxContainer/VBoxContainer" unique_id=447031656]
+custom_minimum_size = Vector2(240, 240)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_glv2v")
+
+[node name="Minimap" type="Control" parent="HBoxContainer/VBoxContainer/Panel" unique_id=2119356998]
+clip_children = 2
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("5_minimap")
+
+[node name="Button" type="Button" parent="HBoxContainer/VBoxContainer/Panel" unique_id=930836916]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -36.0
+offset_top = -31.0
+offset_right = 36.0
+grow_horizontal = 2
+grow_vertical = 0
+text = "切换编辑"
+
+[node name="Panel2" type="Panel" parent="HBoxContainer/VBoxContainer" unique_id=484675213]
+layout_mode = 2
+size_flags_vertical = 3
+metadata/_edit_lock_ = true
+
+[node name="ScrollContainer" type="ScrollContainer" parent="HBoxContainer/VBoxContainer/Panel2" unique_id=1690773195]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+metadata/_edit_lock_ = true
+
+[node name="GridTools" parent="HBoxContainer/VBoxContainer/Panel2/ScrollContainer" unique_id=493391614 instance=ExtResource("2_uu6xs")]
+layout_mode = 2
+
+[node name="VBoxContainer2" type="VBoxContainer" parent="HBoxContainer" unique_id=379687713]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 4.0
+mouse_filter = 2
+metadata/_edit_lock_ = true
+
+[node name="Panel" type="Panel" parent="HBoxContainer/VBoxContainer2" unique_id=452600714]
+clip_contents = true
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 28.0
+metadata/_edit_lock_ = true
+
+[node name="ScrollContainer" type="ScrollContainer" parent="HBoxContainer/VBoxContainer2/Panel" unique_id=1032660110]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="GridView" parent="HBoxContainer/VBoxContainer2/Panel/ScrollContainer" unique_id=1982929602 instance=ExtResource("4_gview")]
+layout_mode = 2
+
+[node name="Panel2" type="Panel" parent="HBoxContainer/VBoxContainer2" unique_id=114504322]
+layout_mode = 2
+size_flags_vertical = 3
+metadata/_edit_lock_ = true
+
+[node name="HBoxContainer" type="HBoxContainer" parent="HBoxContainer/VBoxContainer2/Panel2" unique_id=603574560]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Label" type="Label" parent="HBoxContainer/VBoxContainer2/Panel2/HBoxContainer" unique_id=482572023]
+layout_mode = 2
+size_flags_horizontal = 10
+text = "当前坐标(-,-)"
