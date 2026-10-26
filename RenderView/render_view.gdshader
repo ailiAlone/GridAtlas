@@ -5,6 +5,8 @@ shader_type canvas_item;
 //  0) 连续水深场：把水域数据当标量做平滑插值，岸线/浅深分界由【等值线】决定，
 //     所以边界会斜穿格子、自然弯曲 —— 这是消除"方格阶梯"的根本手段。
 //  1) 陆地类型仍是离散格（分类数据无法插值），只在陆陆交界处做按亲和度的窄过渡。
+//     例外是沼泽↔草地：它不是"两种地的分界"，而是"越来越湿"，所以用一张连续沼泽场
+//     驱动底色与水洼密度（见 2b），边界因此既不是格子阶梯，也不是一条渐变线。
 //  2) 分材质结构图案：硬边碎块/团簇，频率压在 0.3~2 周期/格。
 //  3) 微凹凸光照 + 高程浮雕：固定光源（左上），让表面有立体感。
 //  4) 低频生物群系色差：避免大片纯色。
@@ -126,6 +128,39 @@ float land_blur(vec2 p) {
 	float s = land_at(p) * 0.40;
 	s += (land_at(p + vec2(r, 0.0)) + land_at(p - vec2(r, 0.0))
 		+ land_at(p + vec2(0.0, r)) + land_at(p - vec2(0.0, r))) * 0.15;
+	return s;
+}
+
+// 沼泽指示：该格是不是沼泽（1/0）
+float swamp_ind(vec2 p) {
+	float l = land_of(cell_data(floor(p)));
+	return (l > 4.5 && l < 5.5) ? 1.0 : 0.0;
+}
+
+// 沼泽指示的双线性采样：整格跳变会变成"按格子描边"，必须先插值再扩散
+float swamp_at(vec2 p) {
+	vec2 ip = floor(p);
+	vec2 fp = p - ip;
+	vec2 iq = fp * fp * (3.0 - 2.0 * fp);
+	float a = swamp_ind(ip);
+	float b = swamp_ind(ip + vec2(1.0, 0.0));
+	float c = swamp_ind(ip + vec2(0.0, 1.0));
+	float d = swamp_ind(ip + vec2(1.0, 1.0));
+	return mix(mix(a, b, iq.x), mix(c, d, iq.x), iq.y);
+}
+
+// 沼泽影响场：半径约 2 格。不是"距离场"，但足够连续 —— 底色的插值和水洼密度的交叉淡入
+// 都靠它跨过格子边界，所以分界处不会留下格子形状的台阶。
+float swamp_field(vec2 p) {
+	float s = swamp_at(p) * 0.30;
+	s += (swamp_at(p + vec2(0.9, 0.0)) + swamp_at(p - vec2(0.9, 0.0))
+		+ swamp_at(p + vec2(0.0, 0.9)) + swamp_at(p - vec2(0.0, 0.9))) * 0.05;
+	s += (swamp_at(p + vec2(0.64, 0.64)) + swamp_at(p + vec2(-0.64, 0.64))
+		+ swamp_at(p + vec2(0.64, -0.64)) + swamp_at(p + vec2(-0.64, -0.64))) * 0.05;
+	s += (swamp_at(p + vec2(1.9, 0.0)) + swamp_at(p - vec2(1.9, 0.0))
+		+ swamp_at(p + vec2(0.0, 1.9)) + swamp_at(p - vec2(0.0, 1.9))) * 0.03;
+	s += (swamp_at(p + vec2(1.34, 1.34)) + swamp_at(p + vec2(-1.34, 1.34))
+		+ swamp_at(p + vec2(1.34, -1.34)) + swamp_at(p + vec2(-1.34, -1.34))) * 0.03;
 	return s;
 }
 
@@ -288,19 +323,38 @@ void fragment() {
 		t = clamp((Lf - base_id) / (other_id - base_id), 0.0, 1.0);
 	}
 	float aff = abs(other_id - base_id) > 0.01 ? pair_affinity(base_id, other_id) : 0.0;
+	// 草↔沼不走"硬边咬合"：沼泽是渐湿的地，不是另一种颜色插进来的地。见 2c。
+	float sg = 0.0;
+	if (abs(base_id - 1.0) < 0.01 && abs(other_id - 5.0) < 0.01) sg = 1.0;
+	if (abs(base_id - 5.0) < 0.01 && abs(other_id - 1.0) < 0.01) sg = 1.0;
 	float bh = mix(max(u_band_hard, 0.03), max(u_band_soft, u_band_hard), aff) * 0.12;
 	float wob = (fbm(cf * 0.70 + vec2(4.7, 1.3)) - 0.5) * 0.85
 		+ (vnoise(cf * 1.70 + vec2(9.1, 6.2)) - 0.5) * 0.40;
 	float tk = t + wob * (0.30 + 0.70 * aff);
 	float mixw = smoothstep(0.5 - bh, 0.5 + bh, tk);
+	// 草↔沼：底色不再按格混合（那会在格子边界留下方形台阶），
+	// 过渡完全交给 2c 的湿气场；这里只保留"这一格是谁"。
+	mixw = mix(mixw, step(4.5, base_id), sg);
 	vec3 col = mix(table_color(int(base_id)) * tint, table_color(int(other_id)) * tint, mixw);
 	float crease = 1.0 - smoothstep(0.0, max(u_crease_width, 0.02), abs(tk - 0.5));
-	col *= 1.0 - crease * u_crease_dark * 1.0 * (1.0 - aff * 0.7) * (1.0 - water_cover);
+	col *= 1.0 - crease * u_crease_dark * 1.0 * (1.0 - aff * 0.7) * (1.0 - water_cover) * (1.0 - sg);
 	float pattern_id = mixw > 0.5 ? other_id : base_id;
+
+	// 沼泽连续场：底色、水洼密度、材质纹理的混合都由它跨过格子边界驱动
+	float swf = swamp_field(cf + (vec2(vnoise(cf * 0.33 + vec2(2.7, 5.5)),
+		vnoise(cf * 0.33 + vec2(7.9, 1.1))) - 0.5) * 1.6);
+	float swfn = swf + (fbm(cf * 0.55 + vec2(3.2, 8.4)) - 0.5) * 0.30
+		+ (vnoise(cf * 1.45 + vec2(6.6, 2.2)) - 0.5) * 0.10;
+	float marsh = smoothstep(0.24, 0.56, swfn);
+	float swamp_zone = (base_id < 1.5 || (base_id > 4.5 && base_id < 5.5)) ? 1.0 : 0.0;
 
 	// ---- 2) 分材质结构图案 + 微凹凸光照 ----
 	vec2 pf = cf * u_texture_frequency;
 	float p0 = material_pattern(pf, pattern_id);
+	// 过渡带里两种纹理按场混合，否则草丛的纵向纹理与水洼的纹理会在格子边界上突然换手
+	if (marsh > 0.004 && swamp_zone > 0.5 && marsh < 0.996) {
+		p0 = mix(material_pattern(pf, 1.0), material_pattern(pf, 5.0), marsh);
+	}
 	float pdx = material_pattern(pf + vec2(0.40, 0.0), pattern_id);
 	float pdy = material_pattern(pf + vec2(0.0, 0.40), pattern_id);
 	col *= 1.0 + (p0 - 1.0) * u_texture_strength;
@@ -308,12 +362,44 @@ void fragment() {
 	float bump = 1.0 - (grad.x + grad.y) * u_bump * 0.35;
 	col *= mix(1.0, clamp(bump, 0.90, 1.10), 1.0 - water_cover);
 
-	// ---- 2b) 沼泽：水洼按水面着色（暗青底 + 缓慢涟漪 + 亮斑），岸缘湿泥压暗 ----
-	if (pattern_id > 4.5 && pattern_id < 5.5 && water_cover < 0.5) {
+	// ---- 2b) 沼泽湿地：瓣状咬合 + 瓣外湿地，全部由一张连续沼泽场驱动 ----
+	// 分界不再是"格子归属"的切换：底色由噪声等值线被场推动后决定（大瓣互相伸入），
+	// 水洼密度在瓣内外连续过渡，瓣缘还有草丘与湿斑 —— 所以既没有格子台阶，也不是一条渐变线。
+	if (marsh > 0.002 && swamp_zone > 0.5 && water_cover < 0.5) {
+		// 底色：大尺度离散咬合 —— 噪声等值线被连续沼泽场推动，形成互相伸入的瓣。
+		// 瓣的尺度是 2~4 格，所以既不是格子台阶，也不是一条柔和的渐变线。
+		// 亲和度（草↔沼）决定瓣互相伸入的深度。
+		float lobe_k = 0.60 + 0.45 * pair_affinity(1.0, 5.0);
+		float lobe = fbm(cf * 0.38 + vec2(3.9, 8.2)) + (swfn - 0.5) * 1.35 * lobe_k
+			+ (vnoise(cf * 1.15 + vec2(6.3, 3.4)) - 0.5) * 0.22;   // 细一级的参差
+		float sw = smoothstep(0.47, 0.53, lobe);
+		col = mix(table_color(1), table_color(5), sw) * tint;
+		// 瓣边缘一圈湿泥：草地一侧轻微压暗，说明"这里更湿"，但不破坏离散感
+		float wet_rim = 1.0 - smoothstep(0.02, 0.13, abs(lobe - 0.5));
+		col *= 1.0 - wet_rim * 0.16;
+		// 苔草团：草地一侧的亮黄绿小簇，把瓣边缘打散
+		float hum_n = fbm(cf * 0.80 + vec2(9.1, 2.2));
+		float hum = smoothstep(0.55, 0.63, hum_n) * (1.0 - sw) * smoothstep(0.10, 0.45, marsh);
+		col = mix(col, vec3(0.52, 0.60, 0.28) * tint, hum * 0.38);
+		// 反向：沼泽一侧靠边的草丘（草地色的小块伸进沼泽），两个方向都在咬合
+		float edge_in = (1.0 - smoothstep(0.56, 0.66, lobe)) * sw;
+		float tuft = smoothstep(0.56, 0.64, fbm(cf * 0.95 + vec2(7.7, 1.9))) * edge_in;
+		col = mix(col, table_color(1) * 0.90 * tint, tuft * 0.60);
+		// 瓣外一圈：草地离沼泽最近的这一带先"湿"下去（噪声调制，避免变成整齐晕圈），
+		// 再散落几处小水洼 —— 边界之外也有水有暗，剪影感就没了
+		float outside = (1.0 - sw) * smoothstep(0.10, 0.46, lobe);
+		float damp_patch = smoothstep(0.50, 0.58, fbm(cf * 1.10 + vec2(14.2, 3.6)));
+		col = mix(col, col * vec3(0.72, 0.80, 0.55), outside * damp_patch * 0.85);
 		vec2 sp = cf * u_texture_frequency;
 		float pool_n = fbm(sp * 0.40 + vec2(5.1, 2.7));
 		float pool_fine = vnoise(sp * 1.30 + vec2(8.3, 4.1));
-		float pool = smoothstep(0.48, 0.54, pool_n + (pool_fine - 0.5) * 0.16);
+		float pn = pool_n + (pool_fine - 0.5) * 0.16;
+		// 阈值连续：草地侧 0.86→0.48（越进瓣越多），瓣内保持沼泽的密度
+		float pthr = mix(0.86, 0.48, sw);
+		float pool = smoothstep(pthr, pthr + 0.03, pn);
+		// 瓣外散布的小水洼：同一张场的高阈值切片，自然形成互不相连的小坑
+		float puddle = smoothstep(0.70, 0.74, pn) * outside;
+		pool = max(pool, puddle * 0.9);
 		// 水洼：暗青底，涟漪缓慢推过（相位被噪声打散，避免出现规则条纹）
 		float rip = 0.5 + 0.5 * sin(dot(cf, vec2(0.9, 0.4)) * 3.6 - u_time * 0.8
 			+ pool_n * 10.0 + pool_fine * 4.5);
@@ -326,10 +412,19 @@ void fragment() {
 		// 水洼里稀疏冒出的植被小岛
 		float isl = smoothstep(0.70, 0.77, vnoise(sp * 1.8 + vec2(11.0, 3.0)));
 		poolcol = mix(poolcol, table_color(5) * 1.35 * tint, isl * 0.8);
-		// 岸缘：湿泥一圈压暗，让水洼"陷"进去
-		float rim = smoothstep(0.40, 0.48, pool_n) * (1.0 - pool);
-		col = mix(col, col * 0.70, rim * 0.85);
+		// 池缘：湿泥一圈压暗，让水洼"陷"进去
+		float rim = smoothstep(pthr - 0.10, pthr, pn) * (1.0 - pool);
+		rim = max(rim, smoothstep(0.66, 0.74, pn) * outside * (1.0 - puddle));
+		col = mix(col, col * 0.68, rim * 0.85);
 		col = mix(col, poolcol, pool);
+		// 芦苇：成片的纵向草穗，只出现在瓣缘附近的草地一侧；用低频噪声控制"成片/没有"，
+		// 避免绕场一圈均匀的描边
+		float reed_n = vnoise(vec2(cf.x * 2.4, cf.y * 0.40) + vec2(4.4, 1.2)) * 0.70
+			+ vnoise(vec2(cf.x * 6.5, cf.y * 1.10) + vec2(1.7, 8.8)) * 0.30;
+		float reed_patch = smoothstep(0.30, 0.62, vnoise(cf * 0.42 + vec2(12.7, 5.1)));
+		float reed = smoothstep(0.64, 0.72, reed_n) * reed_patch
+			* (1.0 - sw) * smoothstep(0.12, 0.45, marsh) * (1.0 - pool);
+		col = mix(col, vec3(0.50, 0.56, 0.26) * tint, reed * 0.50);
 	}
 
 	// ---- 4) 水面：浅水透出海底（沙/泥/草色），深水不透明；深浅之间逐渐加深 ----

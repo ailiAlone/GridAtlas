@@ -45,11 +45,16 @@ func _ready() -> void:
 	apply_settings(RenderSettings.new())
 	if map == null and get_tree().current_scene == self:
 		# 仅独立运行 render_view.tscn 时自动加载预览图；被 Main 实例化时等 main 注入
-		var preview: MapData = load(PREVIEW_MAP_PATH) as MapData
+		# --shot-map=res://... 可临时换一张图做对比截图（只影响独立运行）
+		var path: String = PREVIEW_MAP_PATH
+		for arg: String in OS.get_cmdline_args():
+			if arg.begins_with("--shot-map="):
+				path = arg.trim_prefix("--shot-map=")
+		var preview: MapData = load(path) as MapData
 		if preview != null:
 			set_map(preview)
 		else:
-			push_warning("找不到预览地图: " + PREVIEW_MAP_PATH)
+			push_warning("找不到预览地图: " + path)
 	resized.connect(queue_redraw)
 	if "--shot" in OS.get_cmdline_args():
 		_capture_and_quit()
