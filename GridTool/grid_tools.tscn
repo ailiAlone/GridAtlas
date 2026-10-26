@@ -502,15 +502,13 @@ text = "高程视图"
 [node name="HFlowContainer" type="HFlowContainer" parent="PanelContainer3/VBoxContainer" unique_id=1398242136]
 layout_mode = 2
 
-[node name="Button1" type="Button" parent="PanelContainer3/VBoxContainer/HFlowContainer" unique_id=1005337368]
-custom_minimum_size = Vector2(32, 32)
+[node name="ElevationSpin" type="SpinBox" parent="PanelContainer3/VBoxContainer/HFlowContainer" unique_id=1398242137]
 layout_mode = 2
-text = "1"
-
-[node name="ButtonPlus" type="Button" parent="PanelContainer3/VBoxContainer/HFlowContainer" unique_id=266182534]
-custom_minimum_size = Vector2(32, 32)
-layout_mode = 2
-text = "+"
+custom_minimum_size = Vector2(110, 32)
+min_value = 0.25
+max_value = 16.0
+step = 0.25
+value = 1.0
 
 [node name="PanelContainerBrush" type="PanelContainer" parent="."]
 layout_mode = 2

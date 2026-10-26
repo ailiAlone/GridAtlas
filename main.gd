@@ -45,6 +45,7 @@ func _ready() -> void:
 	grid_view.cell_hovered.connect(_on_cell_hovered)
 	rtool.settings_changed.connect(_on_render_settings_changed)
 	rtool.material_params_requested.connect(_on_material_params_requested)
+	rtool.oblique_changed.connect(_on_oblique_changed)
 	swapbutton.pressed.connect(_on_swap_pressed)
 	smallpanel.resized.connect(_refresh_views)
 	bigscroll.resized.connect(_refresh_views)
@@ -85,12 +86,11 @@ func _on_area_painted(area: Rect2i, erase: bool) -> void:
 	var layer: StringName = tools.brush_layer
 	# 陆地/高程没有 NONE：擦除=恢复默认（草地/1）；水域/道路/流向擦除=0（NONE）
 	var value: int = tools.brush_value
+	var height: float = 1.0 if erase else tools.brush_height
 	if erase:
 		if layer == &"land":
 			value = GridDefs.Land.GRASS
-		elif layer == &"elevation":
-			value = 1
-		else:
+		elif layer != &"elevation":
 			value = 0
 	for y in range(area.position.y, area.end.y):
 		for x in range(area.position.x, area.end.x):
@@ -115,16 +115,23 @@ func _on_area_painted(area: Rect2i, erase: bool) -> void:
 			elif layer == &"flow":
 				map.set_flow(cell, value)
 			elif layer == &"elevation":
-				map.set_elevation(cell, value)
+				map.set_height(cell, height)
 	tools.mark_dirty()
 	for view: GridView in grids:
 		view.queue_redraw()
 	for view: RenderView in renders:
 		view.sync_area(area)
 	if erase:
-		print("[绘制] (%d,%d) %d×%d 擦除 %s -> %s" % [area.position.x, area.position.y, area.size.x, area.size.y, GridDefs.LAYER_NAMES.get(layer, layer), tools.value_name(layer, value)])
+		print("[绘制] (%d,%d) %d×%d 擦除 %s -> %s" % [area.position.x, area.position.y, area.size.x, area.size.y, GridDefs.LAYER_NAMES.get(layer, layer), _brush_text(layer, value)])
 	else:
-		print("[绘制] (%d,%d) %d×%d %s = %s" % [area.position.x, area.position.y, area.size.x, area.size.y, GridDefs.LAYER_NAMES.get(layer, layer), tools.value_name(layer, tools.brush_value)])
+		print("[绘制] (%d,%d) %d×%d %s = %s" % [area.position.x, area.position.y, area.size.x, area.size.y, GridDefs.LAYER_NAMES.get(layer, layer), _brush_text(layer, tools.brush_value)])
+
+
+## 绘制日志用的笔刷值文本（高程是浮点，其余是枚举名）
+func _brush_text(layer: StringName, value: int) -> String:
+	if layer == &"elevation":
+		return tools.height_text(tools.brush_height)
+	return tools.value_name(layer, value)
 
 
 func _on_cell_hovered(cell: Vector2i) -> void:
@@ -146,6 +153,9 @@ func _on_map_resized() -> void:
 
 ## 打开地图：MapData 被整体替换，回灌给所有使用方
 func _on_map_loaded(data: MapData) -> void:
+	if data.ensure_precision():
+		print("[地图] 高程已迁移到 0.25 级精度")
+		tools.mark_dirty()
 	map = data
 	tools.set_map(map)
 	for view: GridView in grids:
@@ -158,6 +168,12 @@ func _on_map_loaded(data: MapData) -> void:
 func _on_render_settings_changed() -> void:
 	for view: RenderView in renders:
 		view.apply_settings(rtool.settings)
+
+
+## 斜角视图开关：两个渲染实例一起切（俯视 ↔ 正交斜看）
+func _on_oblique_changed(on: bool) -> void:
+	for view: RenderView in renders:
+		view.set_oblique(on)
 
 
 ## 点“材质参数”：打开大面板里渲染实例的材质浮窗（颜色/过渡矩阵），并把它的改动接回重渲

@@ -8,11 +8,13 @@ extends VBoxContainer
 
 signal settings_changed
 signal material_params_requested  # 点“材质参数”：由外部打开材质浮窗（颜色/过渡矩阵）
+signal oblique_changed(on: bool)  # 斜角视图开关（作用于两个渲染实例）
 
 var settings: RenderSettings
 
 @onready var seedbox:SpinBox = $"PanelTexture/VBoxContainer/HBoxContainer/SpinBox"
 @onready var materialbutton:Button = $"ButtonMaterial"
+@onready var obliquecheck:CheckButton = $"CheckOblique"
 
 
 func _ready() -> void:
@@ -20,8 +22,14 @@ func _ready() -> void:
 	seedbox.value = settings.noise_seed
 	seedbox.value_changed.connect(_on_seed_changed)
 	materialbutton.pressed.connect(_on_material_button)
+	obliquecheck.toggled.connect(_on_oblique_toggled)
 	_bind_sliders()
 	print("[渲染配置] 面板就绪（默认参数，种子 %d）" % settings.noise_seed)
+
+
+func _on_oblique_toggled(on: bool) -> void:
+	oblique_changed.emit(on)
+	print("[视图] %s" % ("斜角视图" if on else "俯视"))
 
 
 # ---------- 绑定 ----------

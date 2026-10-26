@@ -12,9 +12,12 @@ shader_type canvas_item;
 //  4) 低频生物群系色差：避免大片纯色。
 //  5) 交界折痕：一条窄暗线，读起来是物理接缝而不是颜色渐变。
 //  6) 细颗粒只做极低幅度抖动，绝不主导画面。
+//  7) 斜角视图：同一套地表着色函数，改为从正交斜视方向对高度场做射线步进，
+//     取第一次命中的地表再着色 —— 遮挡、坡面、边缘侧壁都是真的。
 
 uniform sampler2D u_data : filter_nearest, repeat_disable;     // R=陆地 G=水域 B=道路 A=流向
-uniform sampler2D u_elev : filter_linear, repeat_disable;      // R=高程（线性插值→平滑起伏）
+uniform sampler2D u_elev : filter_linear, repeat_disable;      // R=高程（原始单位，1 级 = 4 单位）
+uniform sampler2D u_elev_smooth : filter_linear, repeat_disable; // R=平滑高程（0..16 级）
 uniform sampler2D u_noise : filter_linear, repeat_enable;      // 白噪声，线性采样当值噪声
 uniform sampler2D u_colors : filter_nearest, repeat_disable;   // 13×1 颜色表
 uniform sampler2D u_affinity : filter_nearest, repeat_disable; // 8×8 亲和度矩阵
@@ -56,6 +59,14 @@ uniform float u_elev_bright = 0.045;
 uniform float u_elev_shadow = 0.16;
 uniform float u_elev_rim = 0.05;
 uniform float u_elev_shadow_width = 0.30;
+// ---- 斜角视图（正交、从南向北俯看） ----
+uniform float u_oblique = 0.0;          // 0 = 俯视，1 = 斜角
+uniform float u_pitch = 0.93;           // 俯仰角（弧度），约 53°
+uniform float u_height_scale = 2.5;     // 每级高程 = 多少世界格高
+uniform float u_elev_max = 4.0;         // 全图最高高程（级），GDScript 侧更新
+uniform vec2 u_view_size = vec2(1024.0, 1024.0);
+uniform vec3 u_sky_top = vec3(0.40, 0.58, 0.75);
+uniform vec3 u_sky_bottom = vec3(0.79, 0.85, 0.88);
 
 // ===== 数据取格 =====
 
@@ -71,22 +82,20 @@ float cell_land(vec2 cell) {
 	return l;
 }
 
-// 平滑高程（线性插值）：用于起伏光照，避免一格一台阶
+// 高程（双线性，逐格原值）：只用于"同一高程"判定等需要格值的地方。
+// 光照与斜角几何用下面 elev_field（渲染端烘焙的平滑纹理）。
+const float ELEV_UNITS = 4.0;
+
 float elev_smooth(vec2 cf) {
-	return texture(u_elev, (cf - vec2(0.5)) / u_map_size).r * 255.0;
+	return texture(u_elev, (cf - vec2(0.5)) / u_map_size).r * 255.0 / ELEV_UNITS;
 }
 
-// 高程场的多环平滑：整数高程在 1 格内完成级差，直接读会变成一条条一像素宽的等高线；
-// 半径约 1.5 格的核把每级台阶摊到 3~4 格，坡度变化才是连续的，明暗才不会变成一条硬带。
+// 渲染端烘焙的平滑高程（5 点可分离核）：整数台阶被摊成缓坡，
+// 斜角的射线求交与地面的山体阴影共用同一张，几何与明暗因此一致。
+const float ELEV_SMOOTH_MAX = 16.0;
+
 float elev_field(vec2 p) {
-	float s = elev_smooth(p) * 0.30;
-	s += (elev_smooth(p + vec2(0.75, 0.0)) + elev_smooth(p - vec2(0.75, 0.0))
-		+ elev_smooth(p + vec2(0.0, 0.75)) + elev_smooth(p - vec2(0.0, 0.75))) * 0.11;
-	s += (elev_smooth(p + vec2(0.55, 0.55)) + elev_smooth(p + vec2(-0.55, 0.55))
-		+ elev_smooth(p + vec2(0.55, -0.55)) + elev_smooth(p + vec2(-0.55, -0.55))) * 0.05;
-	s += (elev_smooth(p + vec2(1.50, 0.0)) + elev_smooth(p - vec2(1.50, 0.0))
-		+ elev_smooth(p + vec2(0.0, 1.50)) + elev_smooth(p - vec2(0.0, 1.50))) * 0.035;
-	return s;
+	return texture(u_elev_smooth, (p - vec2(0.5)) / u_map_size).r * ELEV_SMOOTH_MAX;
 }
 
 float pair_affinity(float a, float b) {
@@ -271,8 +280,8 @@ float wave_train(vec2 p, vec2 dir, float freq, float speed, float t) {
 	return sin(phase);
 }
 
-void fragment() {
-	vec2 cf = UV * u_map_size;
+// 地表着色：cf 是格坐标（0..map_size）。俯视时直接由 UV 换算，斜角时由高度场步进得到。
+vec3 shade_surface(vec2 cf) {
 
 	// ---- 0) 连续水深场（宽核平滑）+ 等值线定岸：岸线因此是平滑曲线，不再是方格骨架 ----
 	float wfield = water_blur(cf);
@@ -531,5 +540,101 @@ void fragment() {
 	// ---- 8) 细颗粒：只做极低幅度抖动，防止色带 ----
 	col *= 1.0 + (vnoise(cf * 7.3 + vec2(0.5, 3.1)) - 0.5) * u_grain;
 
-	COLOR = vec4(col, 1.0);
+	return col;
+}
+
+
+// ===== 斜角视图：正交相机（从南向北俯看）对高度场做射线步进 =====
+// 世界系：x 向右（格），y 向下（格，南为 +y），z 向上（高）。屏幕 up = -y*sin + z*cos。
+// 对每个屏幕像素，从最高处沿视线向下走，第一次落到地表以下的点就是可见表面；
+// 因此遮挡关系是真实的，山坡也可以挡住后面的地面。
+
+// 地形高度（世界格）：基准级 1 记为 0，避免整张图浮在半空
+float terrain_z(vec2 cell) {
+	return max(elev_field(cell) - 1.0, 0.0) * u_height_scale;
+}
+
+vec3 oblique_color(vec2 uv) {
+	float pitch = clamp(u_pitch, 0.30, 1.45);
+	float sp = sin(pitch);
+	float cp = cos(pitch);
+	float W = u_map_size.x;
+	float H = u_map_size.y;
+	float zmax = max((u_elev_max - 1.0) * u_height_scale, 0.4);
+
+	// 视野：宽度取整张地图，高度按视口比例；含地形高度的总高度也尽量铺满
+	float aspect = max(u_view_size.x, 1.0) / max(u_view_size.y, 1.0);
+	float need_h = H * sp + zmax * cp;
+	float world_w = max(W, need_h * aspect) * 1.04;
+	float world_h = world_w / aspect;
+	float sx = (uv.x - 0.5) * world_w + W * 0.5;
+	float sy = (0.5 - uv.y) * world_h - (H * sp - zmax * cp) * 0.5;
+
+	float cot = cp / sp;              // 每上升 1 格高度，射线在 y 方向后退多少格
+	float base_y = -sy / sp;          // 该像素对应的 z=0 地面点
+	float step_z = max(zmax / 22.0, 0.05);
+	float z = zmax;
+	float prev_z = zmax + step_z;
+	bool hit = false;
+	bool wall = false;                // 命中地图边缘的侧壁
+	for (int i = 0; i < 24; i++) {
+		float y = base_y + z * cot;
+		if (sx >= 0.0 && sx < W) {
+			if (y >= 0.0 && y < H) {
+				if (z <= terrain_z(vec2(sx, y))) {
+					hit = true;
+					break;
+				}
+			} else if (y < 0.0) {
+				// 越过北边缘：如果低于该处地表，看到的是切面侧壁；否则整条射线都在空中
+				if (z <= terrain_z(vec2(sx, 0.0)) && z > 0.001) wall = true;
+				break;
+			}
+		} else if (y >= 0.0 && y < H) {
+			// 东西边缘同理
+			float ex = clamp(sx, 0.0, W - 0.001);
+			if (z <= terrain_z(vec2(ex, y)) && z > 0.001) wall = true;
+			break;
+		}
+		if (z <= 0.0) break;
+		prev_z = z;
+		z -= step_z;
+	}
+	if (wall) {
+		float ex = clamp(sx, 0.0, W - 0.001);
+		float ey = clamp(base_y + z * cot, 0.0, H - 0.001);
+		vec3 wcol = shade_surface(vec2(ex, ey)) * vec3(0.50, 0.47, 0.42);
+		float top = max(terrain_z(vec2(ex, ey)), 0.001);
+		wcol *= mix(0.62, 1.0, clamp(z / top, 0.0, 1.0));   // 越靠底越暗
+		float wfog = smoothstep(0.0, 1.0, clamp((H - ey) / H, 0.0, 1.0)) * 0.20;
+		return mix(wcol, u_sky_bottom, wfog);
+	}
+	float hy = 0.0;
+	if (hit) {
+		float lo = z;        // 已在地表以下
+		float hi = prev_z;   // 仍在地表以上
+		for (int k = 0; k < 4; k++) {
+			float mid = (lo + hi) * 0.5;
+			float my = base_y + mid * cot;
+			if (mid <= terrain_z(vec2(sx, clamp(my, 0.0, H - 0.001)))) lo = mid;
+			else hi = mid;
+		}
+		hy = base_y + lo * cot;
+	}
+
+	vec3 sky = mix(u_sky_bottom, u_sky_top, clamp(uv.y, 0.0, 1.0));
+	if (!hit || hy < 0.0 || hy >= H) return sky;
+	vec3 col = shade_surface(vec2(sx, hy));
+	// 远景薄雾：越靠北（画面深处）越淡，给纵深
+	float fog = smoothstep(0.0, 1.0, clamp((H - hy) / H, 0.0, 1.0)) * 0.20;
+	return mix(col, u_sky_bottom, fog);
+}
+
+
+void fragment() {
+	if (u_oblique > 0.5) {
+		COLOR = vec4(oblique_color(UV), 1.0);
+	} else {
+		COLOR = vec4(shade_surface(UV * u_map_size), 1.0);
+	}
 }

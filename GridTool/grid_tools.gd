@@ -23,9 +23,7 @@ signal rect_mode_changed(on: bool)
 @onready var roadscontainer:HFlowContainer = $"PanelContainer4/VBoxContainer/HFlowContainer"
 @onready var waterscontainer:HBoxContainer = $"PanelContainer2/VBoxContainer/HBoxContainer"
 @onready var directionscontainer:GridContainer = $"PanelContainer2/VBoxContainer/HBoxContainer/GridContainer"
-@onready var elevationcontainer:HFlowContainer = $"PanelContainer3/VBoxContainer/HFlowContainer"
-@onready var elevationsetbutton:Button = $"PanelContainer3/VBoxContainer/HFlowContainer/Button1"
-@onready var elevationplusbutton:Button = $"PanelContainer3/VBoxContainer/HFlowContainer/ButtonPlus"
+@onready var elevationspin:SpinBox = $"PanelContainer3/VBoxContainer/HFlowContainer/ElevationSpin"
 @onready var elevationviewbutton:Button = $"PanelContainer3/VBoxContainer/Label/Button"
 @onready var brushcontainer:HFlowContainer = $"PanelContainerBrush/VBoxContainer/HFlowContainer"
 @onready var brushplusbutton:Button = $"PanelContainerBrush/VBoxContainer/HFlowContainer/ButtonPlus"
@@ -73,12 +71,12 @@ const DIRECTION_BUTTONS: Dictionary = {
 var map: MapData  # 借用引用：由 main.gd 注入，不自己创建或替换
 var brush_layer: StringName = &"land"
 var brush_value: int = GridDefs.Land.GRASS
+var brush_height: float = 1.0  # 高程笔刷的值（级，0.25 步长）
 var brush_size: int = 1
 var brush_size_max: int = 3  # 当前可选的最大笔刷边长（与数字按钮数一致）
 var sizegroup: ButtonGroup = ButtonGroup.new()  # 笔刷大小互斥选择
 var current_path: String = ""
 var dirty: bool = false
-var elevation_max: int = 1  # 当前最高高程层级（与数字按钮数一致）
 var _saving_via_dialog: bool = false
 
 
@@ -87,8 +85,7 @@ func _ready() -> void:
 	_connect_group(roadscontainer, ROAD_BUTTONS, _on_road_button)
 	_connect_group(waterscontainer, WATER_BUTTONS, _on_water_button)
 	_connect_group(directionscontainer, DIRECTION_BUTTONS, _on_direction_button)
-	elevationsetbutton.pressed.connect(_on_elevation_set)
-	elevationplusbutton.pressed.connect(_on_elevation_plus)
+	elevationspin.value_changed.connect(_on_elevation_value)
 	elevationviewbutton.toggle_mode = true
 	elevationviewbutton.toggled.connect(_on_elevation_view_toggled)
 	_setup_size_buttons()
@@ -126,20 +123,14 @@ func _on_water_button(id: int) -> void:
 func _on_direction_button(dir: Vector2i) -> void:
 	select_direction(dir)
 
-func _on_elevation_set() -> void:
-	set_elevation(1)
-
-func _on_elevation_plus() -> void:
-	add_elevation_level()
+func _on_elevation_value(value: float) -> void:
+	set_elevation(value)
 
 ## 高程视图开关：按下时画布改用红绿归一化显示高度，按钮保持高亮、文字变为“普通视图”
 func _on_elevation_view_toggled(pressed: bool) -> void:
 	elevationviewbutton.text = "普通视图" if pressed else "高程视图"
 	elevation_view_changed.emit(pressed)
 	print("[视图] %s" % ("高程视图（红绿归一化）" if pressed else "普通视图"))
-
-func _on_elevation_level(value: int) -> void:
-	set_elevation(value)
 
 func _on_size_toggled(pressed: bool, size: int) -> void:
 	if pressed:
@@ -188,19 +179,19 @@ func select_water(id: int) -> void:
 func select_direction(dir: Vector2i) -> void:
 	_set_brush(&"flow", GridDefs.flow_from_vector(dir))
 
-func set_elevation(value: int) -> void:
-	_set_brush(&"elevation", value)
+func set_elevation(value: float) -> void:
+	brush_layer = &"elevation"
+	brush_height = snappedf(value, 0.25)
+	brush_changed.emit(&"elevation", 0)
+	print("[笔刷] 高程 -> %s" % height_text(brush_height))
 
-## 点击 + ：新增下一个高程层级按钮（1,2,3...），插入到 + 之前
-func add_elevation_level() -> void:
-	elevation_max += 1
-	var button: Button = Button.new()
-	button.text = str(elevation_max)
-	button.custom_minimum_size = Vector2(32, 32)
-	button.pressed.connect(_on_elevation_level.bind(elevation_max))
-	elevationcontainer.add_child(button)
-	elevationcontainer.move_child(button, elevationplusbutton.get_index())
-	print("[高程] 新增层级 %d" % elevation_max)
+
+## 高程显示文本：整数不带小数，其余保留两位
+func height_text(value: float) -> String:
+	if absf(value - roundf(value)) < 0.001:
+		return str(int(roundf(value)))
+	var text: String = "%.2f" % value
+	return text
 
 
 ## 初始化 1/2/3 尺寸按钮为互斥 toggle 组，默认选中 1

@@ -101,6 +101,10 @@ const SURFACE_SHORT: Dictionary = {1: "草", 2: "沙", 3: "荒", 4: "雪", 5: "�
 @export var elevation_rim: float = 0.05
 @export var elevation_shadow_width: float = 0.30
 
+# ---------- 斜角视图（正交俯看的高度场投影） ----------
+
+@export var height_scale: float = 2.5   # 每级高程对应的世界高度（格）；越大山越陡
+
 
 static func is_water(surface: int) -> bool:
 	return surface >= 7 and surface <= 8

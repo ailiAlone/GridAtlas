@@ -9,6 +9,10 @@ const NOISE_SIZE: int = 256
 const PREVIEW_MAP_PATH: String = "res://GridData/maps/first.tres"
 const SHADER_PATH: String = "res://RenderView/render_view.gdshader"
 const COLOR_COUNT: int = 13  # 0空 1..6陆 7..8水 9..11路 12泡沫
+## 平滑高程纹理的取值范围（级）。8 位纹理在这里换到最细的 0.0625 级。
+const ELEV_SMOOTH_MAX: float = 16.0
+## 可分离 5 点平滑核（1 4 6 4 1）/16
+const ELEV_BLUR: Array[float] = [1.0, 4.0, 6.0, 4.0, 1.0]
 ## RenderSettings 属性名 == uniform 名去掉 u_ 前缀
 const SCALAR_UNIFORMS: Array[StringName] = [
 	&"texture_strength", &"texture_frequency", &"grain", &"biome", &"bump",
@@ -19,6 +23,7 @@ const SCALAR_UNIFORMS: Array[StringName] = [
 	&"foam_width", &"foam_strength",
 	&"road_width", &"road_softness", &"road_texture",
 	&"elevation_bright", &"elevation_shadow", &"elevation_rim", &"elevation_shadow_width",
+	&"height_scale",
 ]
 
 var map: MapData
@@ -27,9 +32,11 @@ var time_sec: float = 0.0
 var big_panel: bool = false  # 大面板模式（COVER 撑满滚动区）；false=小面板/独立运行（CONTAIN 居中）
 
 var dataimage: Image    # RGBA8：R=陆地 G=水域 B=道路 A=流向
-var elevimage: Image    # R8：高程
+var elevimage: Image    # R8：高程（原始单位，1 级 = elev_unit 单位）
+var elevsmoothimage: Image  # R8：平滑高程（几何与光照共用）
 var datatexture: ImageTexture
 var elevtexture: ImageTexture
+var elevsmoothtexture: ImageTexture
 var colortexture: ImageTexture
 var affinitytexture: ImageTexture
 var noiseimage: Image
@@ -37,6 +44,8 @@ var noisetexture: ImageTexture
 
 var surfacematerial: ShaderMaterial
 var appliedseed: int = -1
+var oblique: bool = false       # 斜角视图（正交俯看 + 高度场步进）
+var height_max: float = 1.0     # 全图最高高程（级），供斜角射线范围使用
 
 
 func _ready() -> void:
@@ -55,7 +64,9 @@ func _ready() -> void:
 			set_map(preview)
 		else:
 			push_warning("找不到预览地图: " + path)
-	resized.connect(queue_redraw)
+	resized.connect(_on_resized)
+	if "--oblique" in OS.get_cmdline_args():
+		set_oblique(true)
 	if "--shot" in OS.get_cmdline_args():
 		_capture_and_quit()
 
@@ -96,6 +107,8 @@ func _process(delta: float) -> void:
 
 func set_map(data: MapData) -> void:
 	map = data
+	# 旧存档（整数高程）在这里也迁移一次，保证独立运行预览与主场景表现一致
+	map.ensure_precision()
 	_sync_textures()
 	print("[渲染] set_map %d×%d" % [map.grid_size.x, map.grid_size.y])
 
@@ -110,10 +123,31 @@ func apply_settings(s: RenderSettings) -> void:
 		_rebuild_noise()
 	for prop: StringName in SCALAR_UNIFORMS:
 		surfacematerial.set_shader_parameter("u_" + String(prop), s.get(prop))
+	surfacematerial.set_shader_parameter("u_elev_max", height_max)
+	_push_view_size()
 	# 把同一份配置推给材质参数浮窗（子节点，可能不存在）
 	var params: Node = get_node_or_null("MaterialParameters")
 	if params != null and params.has_method("set_settings"):
 		params.call("set_settings", s)
+	queue_redraw()
+
+
+## 尺寸变化：斜角投影按视口比例取景
+func _on_resized() -> void:
+	_push_view_size()
+	queue_redraw()
+
+
+func _push_view_size() -> void:
+	if surfacematerial != null:
+		surfacematerial.set_shader_parameter("u_view_size", size)
+
+
+## 斜角视图开关（俯视 ↔ 正交斜看）
+func set_oblique(on: bool) -> void:
+	oblique = on
+	if surfacematerial != null:
+		surfacematerial.set_shader_parameter("u_oblique", 1.0 if on else 0.0)
 	queue_redraw()
 
 
@@ -136,6 +170,9 @@ func sync_area(area: Rect2i) -> void:
 				_write_cell(x, y)
 	datatexture.update(dataimage)
 	elevtexture.update(elevimage)
+	_rebuild_elev_smooth()
+	elevsmoothtexture.update(elevsmoothimage)
+	_refresh_height_max()
 
 
 func get_content_size() -> Vector2:
@@ -159,6 +196,7 @@ func set_panel_mode(big: bool) -> void:
 	else:
 		custom_minimum_size = Vector2.ZERO
 		set_anchors_preset(Control.PRESET_FULL_RECT)
+	_push_view_size()
 	queue_redraw()
 
 
@@ -225,17 +263,62 @@ func _sync_textures() -> void:
 	if dataimage == null or dataimage.get_width() != w or dataimage.get_height() != h:
 		dataimage = Image.create(w, h, false, Image.FORMAT_RGBA8)
 		elevimage = Image.create(w, h, false, Image.FORMAT_R8)
+		elevsmoothimage = Image.create(w, h, false, Image.FORMAT_R8)
 		datatexture = ImageTexture.create_from_image(dataimage)
 		elevtexture = ImageTexture.create_from_image(elevimage)
+		elevsmoothtexture = ImageTexture.create_from_image(elevsmoothimage)
 		surfacematerial.set_shader_parameter("u_data", datatexture)
 		surfacematerial.set_shader_parameter("u_elev", elevtexture)
+		surfacematerial.set_shader_parameter("u_elev_smooth", elevsmoothtexture)
 		surfacematerial.set_shader_parameter("u_map_size", Vector2(map.grid_size))
 	for y in h:
 		for x in w:
 			_write_cell(x, y)
+	_rebuild_elev_smooth()
 	datatexture.update(dataimage)
 	elevtexture.update(elevimage)
+	elevsmoothtexture.update(elevsmoothimage)
+	_refresh_height_max()
+	_push_view_size()
 	queue_redraw()
+
+
+## 平滑高程纹理：可分离 5 点核，把整数台阶摊成缓坡。
+## 斜角的射线求交和地面的山体阴影都用它 —— 几何与明暗因此是同一张嘴脸。
+func _rebuild_elev_smooth() -> void:
+	if map == null or elevsmoothimage == null:
+		return
+	var w: int = map.grid_size.x
+	var h: int = map.grid_size.y
+	var unit: float = float(map.elev_unit)
+	var tmp: PackedFloat32Array = PackedFloat32Array()
+	tmp.resize(w * h)
+	for y in h:
+		var row: int = y * w
+		for x in w:
+			var acc: float = 0.0
+			for k in 5:
+				var xx: int = clampi(x + k - 2, 0, w - 1)
+				acc += float(map.elevation[row + xx]) * ELEV_BLUR[k]
+			tmp[row + x] = acc * 0.0625
+	for y in h:
+		var row: int = y * w
+		for x in w:
+			var acc: float = 0.0
+			for k in 5:
+				var yy: int = clampi(y + k - 2, 0, h - 1)
+				acc += tmp[yy * w + x] * ELEV_BLUR[k]
+			var level: float = acc * 0.0625 / unit
+			var encoded: float = clampf(level / ELEV_SMOOTH_MAX, 0.0, 1.0)
+			elevsmoothimage.set_pixel(x, y, Color(encoded, 0.0, 0.0, 1.0))
+
+
+## 斜角射线的范围要跟着地形最高点走（高程改动后调用）
+func _refresh_height_max() -> void:
+	if map == null or surfacematerial == null:
+		return
+	height_max = maxf(map.max_height(), 1.0)
+	surfacematerial.set_shader_parameter("u_elev_max", height_max)
 
 
 func _write_cell(x: int, y: int) -> void:

@@ -164,33 +164,37 @@ func _draw_cell(cell: Vector2i, rect: Rect2) -> void:
 	if water != GridDefs.Water.NONE and flow != GridDefs.Flow.NONE:
 		_draw_flow(flow, rect.get_center())
 
-	var elevation: int = map.get_elevation(cell)
-	if elevation > 1 and s >= 12.0:  # 1 是默认高程，不标注
+	var elevation: float = map.get_height(cell)
+	if elevation > 1.001 and s >= 12.0:  # 1 是默认高程，不标注
 		var font_size: int = clampi(int(s * 0.5), 8, 16)
-		draw_string(ThemeDB.fallback_font, rect.position + Vector2(2, s * 0.5 + font_size * 0.5), str(elevation),
+		draw_string(ThemeDB.fallback_font, rect.position + Vector2(2, s * 0.5 + font_size * 0.5), _height_text(elevation),
 			HORIZONTAL_ALIGNMENT_LEFT, s - 2, font_size, Color(0, 0, 0, 0.8))
+
+
+## 高程显示文本：整数不带小数，其余保留两位
+func _height_text(value: float) -> String:
+	if absf(value - roundf(value)) < 0.001:
+		return str(int(roundf(value)))
+	return "%.2f" % value
 
 
 ## 高程视图：按全图实际最高高程归一化，低=绿、高=红；0 只会出现在旧存档里，显示深灰
 func _draw_elevation() -> void:
 	var s: float = step()
-	var max_e: int = 0
-	for i in map.elevation.size():
-		if map.elevation[i] > max_e:
-			max_e = map.elevation[i]
+	var max_e: float = maxf(map.max_height(), 1.0)
 	for y in map.grid_size.y:
 		for x in map.grid_size.x:
 			var cell: Vector2i = Vector2i(x, y)
 			var rect: Rect2 = Rect2(Vector2(cell) * s, Vector2(s, s))
-			var e: int = map.get_elevation(cell)
-			if e > 0:
-				var t: float = float(e) / float(max_e)
+			var e: float = map.get_height(cell)
+			if e > 0.001:
+				var t: float = clampf(e / max_e, 0.0, 1.0)
 				draw_rect(rect, Color(t, 1.0 - t, 0.0))
 			else:
 				draw_rect(rect, EMPTY_COLOR)
-			if e > 1 and s >= 12.0:  # 1 是默认高程，不标注
+			if e > 1.001 and s >= 12.0:  # 1 是默认高程，不标注
 				var font_size: int = clampi(int(s * 0.5), 8, 16)
-				draw_string(ThemeDB.fallback_font, rect.position + Vector2(2, s * 0.5 + font_size * 0.5), str(e),
+				draw_string(ThemeDB.fallback_font, rect.position + Vector2(2, s * 0.5 + font_size * 0.5), _height_text(e),
 					HORIZONTAL_ALIGNMENT_LEFT, s - 2, font_size, Color(1, 1, 1, 0.9))
 
 
