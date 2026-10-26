@@ -33,6 +33,9 @@ uniform float u_edge_jitter = 1.6;
 uniform float u_coast_warp = 0.8;    // 岸线等值线的弯曲幅度（水深档）
 uniform float u_crease_width = 0.14;
 uniform float u_crease_dark = 0.30;
+// ---- 潮汐 ----
+uniform float u_tide_frequency = 1.0;   // 潮汐频率倍率
+uniform float u_tide_amplitude = 1.0;   // 潮汐幅度倍率
 // ---- 浮雕 ----
 uniform float u_relief = 1.2;
 // ---- 水面 ----
@@ -186,10 +189,10 @@ float material_pattern(vec2 p, float id) {
 		return 1.0 + 0.04 * (drift - 0.5) + 0.015 * (n2 - 0.5);
 	}
 	if (id < 5.5) {
-		// 沼泽：大块暗色水洼 + 苔藓亮边
-		float pool = smoothstep(0.46, 0.58, n1);
-		float rim = smoothstep(0.40, 0.46, n1) - pool;
-		return mix(1.04, 0.78, pool) + 0.05 * rim;
+		// 沼泽陆地部分：苔藓团簇（亮）与泥炭（暗）交错
+		float moss = smoothstep(0.46, 0.58, n1);
+		float peat = smoothstep(0.42, 0.52, n2);
+		return 0.84 + 0.13 * moss + 0.08 * peat;
 	}
 	if (id < 6.5) {
 		// 冰面：大块球面 + 细裂纹
@@ -223,10 +226,32 @@ void fragment() {
 	float coast_noise = (fbm(cf * 0.33 + vec2(2.3, 6.1)) - 0.5)
 		+ (vnoise(cf * 0.90 + vec2(7.7, 1.2)) - 0.5) * 0.5;
 	wfield += coast_noise * u_coast_warp * 0.35;
-	// 浅→深同样按亲和度决定过渡宽度（矩阵里"浅↔深"设 1.0 就是宽渐变）
-	float dw = mix(0.08, 0.45, pair_affinity(7.0, 8.0));
-	float water_cover = smoothstep(0.46, 0.54, wfield);
-	float deep_cover = smoothstep(1.5 - dw, 1.5 + dw, wfield);
+	// 浅→深：阈值加噪声扰动、跨度拉宽 —— 边界变成"逐渐变深 + 深浅斑块交错"，不再是一条等值线
+	float deep_wobble = (fbm(cf * 0.50 + vec2(3.1, 7.3)) - 0.5) * 0.55;
+	// 交界带来回偏移（潮汐感）：两组缓慢行波叠加，让深浅带整体缓慢地进退，眼睛锁不住固定边界
+	float tide = sin(u_time * 0.62 * u_tide_frequency + dot(cf, vec2(0.65, 0.35))) * (0.26 * u_tide_amplitude)
+		+ sin(u_time * 0.34 * u_tide_frequency - dot(cf, vec2(0.25, 0.85)) + 1.7) * (0.16 * u_tide_amplitude);
+	float dw = mix(0.10, 0.45, pair_affinity(7.0, 8.0));
+
+	// 陆地类型场（提前取用，岸线潮汐需要它判断"沙地在场"）
+	float Lf = land_blur(cf) + (vnoise(cf * 1.6 + vec2(4.4, 8.8)) - 0.5) * u_edge_jitter * 0.06;
+
+	// 沙地↔浅水且高程相同的岸段：岸线来回进退（潮汐）
+	// 三个连续遮罩相乘：沙地在场 × 浅水在场 × 高程无落差
+	float e0 = elev_smooth(cf);
+	float ex = elev_smooth(cf + vec2(0.60, 0.0));
+	float ey = elev_smooth(cf + vec2(0.0, 0.60));
+	float egrad = abs(ex - e0) + abs(ey - e0);
+	float same_elev = 1.0 - smoothstep(0.15, 0.55, egrad);
+	// 以"沙地"编号 2 为中心的窄带（不能用 smoothstep(下限,上限,Lf)：那样冰面/雪地/荒地都会命中）
+	float sand_side = exp(-pow((Lf - 2.0) / 0.55, 2.0));
+	float shallow_side = smoothstep(0.15, 0.45, wfield) * (1.0 - smoothstep(1.15, 1.55, wfield));
+	float shore_tide = sand_side * shallow_side * same_elev;
+	float shore_phase = sin(u_time * 0.52 * u_tide_frequency + dot(cf, vec2(0.80, 0.60))) * (0.25 * u_tide_amplitude)
+		+ sin(u_time * 0.29 * u_tide_frequency - dot(cf, vec2(0.30, 0.90)) + 2.1) * (0.15 * u_tide_amplitude);
+
+	float water_cover = smoothstep(0.46, 0.54, wfield + shore_tide * shore_phase);
+	float deep_cover = smoothstep(1.5 - dw, 1.5 + dw, wfield + deep_wobble + tide);
 	float waterness = max(water_cover, deep_cover);
 
 	// ---- 1) 陆地类型：平滑场只当插值参数，两端必须是【真实相邻的两种材质】，
@@ -257,8 +282,7 @@ void fragment() {
 		1.0 - (bio - 0.5) * u_biome * 0.8);
 
 	// 平滑场 Lf 只用来算"在两种材质之间走到哪一步"，边界形状因此是曲线；
-	// 叠一点高频噪声让边界参差（对应面板上的"边界打散幅度"）
-	float Lf = land_blur(cf) + (vnoise(cf * 1.6 + vec2(4.4, 8.8)) - 0.5) * u_edge_jitter * 0.06;
+	// 叠一点高频噪声让边界参差（对应面板上的"边界打散幅度"）；Lf 已在上方陆地场处算好
 	float t = 0.0;
 	if (abs(other_id - base_id) > 0.01) {
 		t = clamp((Lf - base_id) / (other_id - base_id), 0.0, 1.0);
@@ -281,12 +305,36 @@ void fragment() {
 	float bump = 1.0 - (grad.x + grad.y) * u_bump * 0.35;
 	col *= mix(1.0, clamp(bump, 0.90, 1.10), 1.0 - water_cover);
 
-	// ---- 4) 水面：由水深场合成浅/深两色，再做波纹与岸线泡沫 ----
-	vec3 shallow_c = table_color(7) * tint;
+	// ---- 2b) 沼泽：水洼按水面着色（暗青底 + 缓慢涟漪 + 亮斑），岸缘湿泥压暗 ----
+	if (pattern_id > 4.5 && pattern_id < 5.5 && water_cover < 0.5) {
+		vec2 sp = cf * u_texture_frequency;
+		float pool_n = fbm(sp * 0.40 + vec2(5.1, 2.7));
+		float pool_fine = vnoise(sp * 1.30 + vec2(8.3, 4.1));
+		float pool = smoothstep(0.48, 0.54, pool_n + (pool_fine - 0.5) * 0.16);
+		// 水洼：暗青底，涟漪缓慢推过（相位被噪声打散，避免出现规则条纹）
+		float rip = 0.5 + 0.5 * sin(dot(cf, vec2(0.9, 0.4)) * 3.6 - u_time * 0.8
+			+ pool_n * 10.0 + pool_fine * 4.5);
+		rip = rip * 0.65 + vnoise(sp * 1.9 + vec2(3.3, 6.7)) * 0.35;
+		vec3 poolcol = mix(vec3(0.12, 0.21, 0.19), vec3(0.24, 0.37, 0.33), rip * 0.55 + 0.22);
+		// 细窄反射亮纹：很窄的高光，沿另一个方向缓慢移动
+		float sheen = pow(max(0.0, sin(dot(cf, vec2(0.55, 0.83)) * 2.1 - u_time * 0.5 + pool_n * 6.0)), 34.0);
+		poolcol += vec3(0.11) * sheen;
+		poolcol *= tint;
+		// 水洼里稀疏冒出的植被小岛
+		float isl = smoothstep(0.70, 0.77, vnoise(sp * 1.8 + vec2(11.0, 3.0)));
+		poolcol = mix(poolcol, table_color(5) * 1.35 * tint, isl * 0.8);
+		// 岸缘：湿泥一圈压暗，让水洼"陷"进去
+		float rim = smoothstep(0.40, 0.48, pool_n) * (1.0 - pool);
+		col = mix(col, col * 0.70, rim * 0.85);
+		col = mix(col, poolcol, pool);
+	}
+
+	// ---- 4) 水面：浅水透出海底（沙/泥/草色），深水不透明；深浅之间逐渐加深 ----
+	vec3 shallow_c = mix(col, table_color(7) * tint, 0.88);
 	vec3 deep_c = table_color(8) * tint;
 	col = mix(col, shallow_c, water_cover);
 	col = mix(col, deep_c, deep_cover);
-	col *= 1.0 - 0.06 * clamp(wfield - 1.0, 0.0, 1.0);   // 越深越沉
+	col *= 1.0 - 0.02 * clamp(wfield - 1.0, 0.0, 1.0);   // 越深越沉（很轻微）
 
 	// ---- 5) 高程浮雕：平滑高程求坡度，光固定左上 ----
 	vec2 stp = vec2(max(u_elev_shadow_width, 0.05) * 0.9, 0.0);
@@ -312,7 +360,7 @@ void fragment() {
 		float w3 = wave_train(cf, normalize(md - sd * 0.5 + vec2(0.001, 0.001)), u_ripple_frequency * 0.55, u_ripple_speed * 3.8, t);
 		float group = 0.38 + 0.62 * vnoise(cf * 0.22 + md * 3.0 + vec2(0.0, t * 0.05));
 		float wave = (w1 * 0.55 + w2 * 0.30 + w3 * 0.15) * group;
-		float amp = u_ripple_strength * (0.85 + 0.75 * deep_cover);   // 深水浪更大
+		float amp = u_ripple_strength * (0.95 + 0.30 * deep_cover);   // 深水浪略大（差距不能大，否则交界处纹理突变）
 		vec3 water = col * (1.0 + wave * amp * 0.80);
 		// 波峰抬亮、波谷压暗（这是"浪"能被看出来的关键）
 		water += vec3(smoothstep(0.25, 1.0, wave)) * amp * 0.22;

@@ -14,6 +14,7 @@ const SCALAR_UNIFORMS: Array[StringName] = [
 	&"texture_strength", &"texture_frequency", &"grain", &"biome", &"bump",
 	&"band_hard", &"band_soft", &"edge_jitter", &"coast_warp",
 	&"crease_width", &"crease_dark", &"relief",
+	&"tide_frequency", &"tide_amplitude",
 	&"ripple_frequency", &"ripple_speed", &"ripple_strength", &"flow_speed",
 	&"foam_width", &"foam_strength",
 	&"road_width", &"road_softness", &"road_texture",

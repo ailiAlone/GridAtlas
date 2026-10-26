@@ -188,12 +188,12 @@ layout_mode = 2
 size_flags_horizontal = 3
 max_value = 8.0
 step = 0.1
-value = 3.1
+value = 0.9
 
 [node name="Value" type="Label" parent="PanelWater/VBoxContainer/Rows/ripple_frequency" unique_id=683476658]
 custom_minimum_size = Vector2(42, 0)
 layout_mode = 2
-text = "3.1"
+text = "0.9"
 horizontal_alignment = 2
 
 [node name="ripple_speed" type="HBoxContainer" parent="PanelWater/VBoxContainer/Rows" unique_id=1543022975]
@@ -210,12 +210,12 @@ layout_mode = 2
 size_flags_horizontal = 3
 max_value = 2.0
 step = 0.01
-value = 0.35
+value = 0.7
 
 [node name="Value" type="Label" parent="PanelWater/VBoxContainer/Rows/ripple_speed" unique_id=1992207712]
 custom_minimum_size = Vector2(42, 0)
 layout_mode = 2
-text = "0.35"
+text = "0.7"
 horizontal_alignment = 2
 
 [node name="ripple_strength" type="HBoxContainer" parent="PanelWater/VBoxContainer/Rows" unique_id=166053716]
@@ -232,12 +232,12 @@ layout_mode = 2
 size_flags_horizontal = 3
 max_value = 1.0
 step = 0.01
-value = 0.28
+value = 0.11
 
 [node name="Value" type="Label" parent="PanelWater/VBoxContainer/Rows/ripple_strength" unique_id=1225053052]
 custom_minimum_size = Vector2(42, 0)
 layout_mode = 2
-text = "0.28"
+text = "0.11"
 horizontal_alignment = 2
 
 [node name="flow_speed" type="HBoxContainer" parent="PanelWater/VBoxContainer/Rows" unique_id=572508428]
@@ -276,12 +276,12 @@ layout_mode = 2
 size_flags_horizontal = 3
 max_value = 1.0
 step = 0.01
-value = 0.5
+value = 0.89
 
 [node name="Value" type="Label" parent="PanelWater/VBoxContainer/Rows/foam_width" unique_id=1952064900]
 custom_minimum_size = Vector2(42, 0)
 layout_mode = 2
-text = "0.5"
+text = "0.89"
 horizontal_alignment = 2
 
 [node name="foam_strength" type="HBoxContainer" parent="PanelWater/VBoxContainer/Rows" unique_id=303259890]
@@ -298,12 +298,70 @@ layout_mode = 2
 size_flags_horizontal = 3
 max_value = 1.0
 step = 0.01
-value = 0.65
+value = 0.55
 
 [node name="Value" type="Label" parent="PanelWater/VBoxContainer/Rows/foam_strength" unique_id=465253712]
 custom_minimum_size = Vector2(42, 0)
 layout_mode = 2
-text = "0.65"
+text = "0.55"
+horizontal_alignment = 2
+
+[node name="PanelTide" type="PanelContainer" parent="."]
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="PanelTide"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="PanelTide/VBoxContainer"]
+layout_mode = 2
+text = "潮汐"
+horizontal_alignment = 1
+
+[node name="Rows" type="VBoxContainer" parent="PanelTide/VBoxContainer"]
+layout_mode = 2
+
+[node name="tide_frequency" type="HBoxContainer" parent="PanelTide/VBoxContainer/Rows"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="PanelTide/VBoxContainer/Rows/tide_frequency"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "潮汐频率"
+
+[node name="Slider" type="HSlider" parent="PanelTide/VBoxContainer/Rows/tide_frequency"]
+custom_minimum_size = Vector2(150, 20)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 3.0
+step = 0.05
+value = 1.0
+
+[node name="Value" type="Label" parent="PanelTide/VBoxContainer/Rows/tide_frequency"]
+custom_minimum_size = Vector2(42, 0)
+layout_mode = 2
+text = "1.0"
+horizontal_alignment = 2
+
+[node name="tide_amplitude" type="HBoxContainer" parent="PanelTide/VBoxContainer/Rows"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="PanelTide/VBoxContainer/Rows/tide_amplitude"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "潮汐幅度"
+
+[node name="Slider" type="HSlider" parent="PanelTide/VBoxContainer/Rows/tide_amplitude"]
+custom_minimum_size = Vector2(150, 20)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 2.5
+step = 0.05
+value = 1.0
+
+[node name="Value" type="Label" parent="PanelTide/VBoxContainer/Rows/tide_amplitude"]
+custom_minimum_size = Vector2(42, 0)
+layout_mode = 2
+text = "1.0"
 horizontal_alignment = 2
 
 [node name="PanelRoad" type="PanelContainer" parent="." unique_id=119235181]

@@ -26,7 +26,7 @@ const SURFACE_SHORT: Dictionary = {1: "草", 2: "沙", 3: "荒", 4: "雪", 5: "�
 }
 @export var water_colors: Dictionary = {
 	7: Color(0.43, 0.776, 0.91),
-	8: Color(0.17, 0.38, 0.6),
+	8: Color(0.26, 0.55, 0.76),   # 比浅水只暗一档：亮度差过大时任何宽渐变都会被看成一条边
 }
 @export var road_colors: Dictionary = {
 	9: Color(0.65, 0.486, 0.32),
@@ -69,18 +69,24 @@ const SURFACE_SHORT: Dictionary = {1: "草", 2: "沙", 3: "荒", 4: "雪", 5: "�
 @export var crease_width: float = 0.14  # 材质交界的折痕宽度
 @export var crease_dark: float = 0.14   # 折痕压暗强度
 
+# ---------- 潮汐（深浅交界与"沙地↔浅水"岸线的来回摆动） ----------
+# TODO（以后）：沙地↔浅水 与 浅↔深水 目前共用下面两个参数，之后需要拆成两组独立参数。
+
+@export var tide_frequency: float = 1.0  # 潮汐频率倍率（1 = 默认速度）
+@export var tide_amplitude: float = 1.0  # 潮汐幅度倍率（1 = 默认幅度，0 = 完全静止）
+
 # ---------- 浮雕光照（光固定左上） ----------
 
 @export var relief: float = 1.2         # 高程起伏带来的明暗强度
 
 # ---------- 水面 ----------
 
-@export var ripple_frequency: float = 3.1
-@export var ripple_speed: float = 0.35
-@export var ripple_strength: float = 0.28
+@export var ripple_frequency: float = 0.9
+@export var ripple_speed: float = 0.7
+@export var ripple_strength: float = 0.11
 @export var flow_speed: float = 0.5     # 流向驱动漂移（格/秒）
-@export var foam_width: float = 0.5
-@export var foam_strength: float = 0.65
+@export var foam_width: float = 0.89
+@export var foam_strength: float = 0.55
 
 # ---------- 道路 ----------
 
