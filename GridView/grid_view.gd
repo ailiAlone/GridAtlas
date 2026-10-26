@@ -28,6 +28,7 @@ var zoom: float = 1.0
 var elevation_mode: bool = false  # 高程视图：格子填色改为红绿归一化的高度，不显示地形
 var brush_size: int = 1  # 笔刷边长：1=1×1，2=2×2...（悬停格为左上角，向右下扩展）
 var rect_mode: bool = false  # 矩形填充模式：按下拖动框选，松开整块填充
+var big_panel: bool = true   # 大面板模式（COVER 可编辑）；false=小面板（CONTAIN 整图只读）
 
 var _dragging: bool = false
 var _erasing: bool = false
@@ -76,21 +77,42 @@ func set_rect_mode(on: bool) -> void:
 	queue_redraw()
 
 
+## 轮换入口：big=true 大面板（COVER + 滚动 + 可编辑），false 小面板（CONTAIN 整图只读）
+func set_panel_mode(big: bool) -> void:
+	big_panel = big
+	set_anchors_preset(Control.PRESET_TOP_LEFT)  # 小面板手动控制 position/size，不能挂拉伸锚点；容器场景不受影响
+	_dragging = false
+	_last_cell = Vector2i(-1, -1)
+	_hover_cell = Vector2i(-1, -1)
+	mouse_filter = MOUSE_FILTER_PASS if big else MOUSE_FILTER_IGNORE
+	refresh()
+
+
 func get_content_size() -> Vector2:
 	if map != null:
 		return Vector2(map.grid_size) * cell_size
 	return Vector2.ZERO
 
 
-## 按滚动区尺寸重算 COVER 缩放（不留空），并撑开尺寸产生滚动条
+## 大面板：COVER 按滚动区重算缩放并撑开尺寸产生滚动条；小面板：CONTAIN 整图缩放居中
 func refresh() -> void:
 	var content: Vector2 = get_content_size()
-	if content.x <= 0.0 or content.y <= 0.0 or scroll == null:
+	if content.x <= 0.0 or content.y <= 0.0:
 		return
-	var view: Vector2 = scroll.size
-	zoom = maxf(view.x / content.x, view.y / content.y)
-	custom_minimum_size = content * zoom
-	size = content * zoom
+	var view: Vector2
+	if big_panel:
+		if scroll == null:
+			return
+		view = scroll.size
+		zoom = maxf(view.x / content.x, view.y / content.y)
+		custom_minimum_size = content * zoom
+		size = content * zoom
+	elif get_parent() is Control:
+		view = (get_parent() as Control).size
+		zoom = minf(view.x / content.x, view.y / content.y)
+		var drawn: Vector2 = content * zoom
+		position = ((view - drawn) * 0.5).floor()
+		size = drawn
 	queue_redraw()
 
 

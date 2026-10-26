@@ -1,0 +1,489 @@
+[gd_scene format=3 uid="uid://dxiuobwm7qm4b"]
+
+[ext_resource type="Script" uid="uid://c82muhgjfn7cm" path="res://RenderTool/render_tool.gd" id="1_rendertool"]
+
+[node name="RenderTool" type="VBoxContainer" unique_id=2147364520]
+script = ExtResource("1_rendertool")
+
+[node name="ButtonMaterial" type="Button" parent="." unique_id=80709205]
+layout_mode = 2
+text = "材质参数"
+
+[node name="PanelTexture" type="PanelContainer" parent="." unique_id=1844980940]
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="PanelTexture" unique_id=1633748156]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="PanelTexture/VBoxContainer" unique_id=845064749]
+layout_mode = 2
+text = "质感与噪声"
+horizontal_alignment = 1
+
+[node name="HBoxContainer" type="HBoxContainer" parent="PanelTexture/VBoxContainer" unique_id=1360398464]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="PanelTexture/VBoxContainer/HBoxContainer" unique_id=258838315]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "噪声种子"
+
+[node name="SpinBox" type="SpinBox" parent="PanelTexture/VBoxContainer/HBoxContainer" unique_id=1625905343]
+layout_mode = 2
+max_value = 999999999.0
+value = 20261026.0
+
+[node name="Rows" type="VBoxContainer" parent="PanelTexture/VBoxContainer" unique_id=691248109]
+layout_mode = 2
+
+[node name="texture_strength" type="HBoxContainer" parent="PanelTexture/VBoxContainer/Rows" unique_id=1360912692]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="PanelTexture/VBoxContainer/Rows/texture_strength" unique_id=1390057072]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "质感强度"
+
+[node name="Slider" type="HSlider" parent="PanelTexture/VBoxContainer/Rows/texture_strength" unique_id=1530551041]
+custom_minimum_size = Vector2(150, 20)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 1.0
+step = 0.01
+value = 0.2
+
+[node name="Value" type="Label" parent="PanelTexture/VBoxContainer/Rows/texture_strength" unique_id=587978135]
+custom_minimum_size = Vector2(42, 0)
+layout_mode = 2
+text = "0.2"
+horizontal_alignment = 2
+
+[node name="texture_frequency" type="HBoxContainer" parent="PanelTexture/VBoxContainer/Rows" unique_id=319777344]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="PanelTexture/VBoxContainer/Rows/texture_frequency" unique_id=1024792501]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "质感频率"
+
+[node name="Slider" type="HSlider" parent="PanelTexture/VBoxContainer/Rows/texture_frequency" unique_id=1385148311]
+custom_minimum_size = Vector2(150, 20)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 4.0
+step = 0.05
+value = 0.9
+
+[node name="Value" type="Label" parent="PanelTexture/VBoxContainer/Rows/texture_frequency" unique_id=635887843]
+custom_minimum_size = Vector2(42, 0)
+layout_mode = 2
+text = "0.9"
+horizontal_alignment = 2
+
+[node name="PanelBlend" type="PanelContainer" parent="." unique_id=1682095340]
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="PanelBlend" unique_id=1823990867]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="PanelBlend/VBoxContainer" unique_id=2018476497]
+layout_mode = 2
+text = "过渡"
+horizontal_alignment = 1
+
+[node name="Rows" type="VBoxContainer" parent="PanelBlend/VBoxContainer" unique_id=639043838]
+layout_mode = 2
+
+[node name="band_hard" type="HBoxContainer" parent="PanelBlend/VBoxContainer/Rows" unique_id=559356187]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="PanelBlend/VBoxContainer/Rows/band_hard" unique_id=682147235]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "硬边带宽"
+
+[node name="Slider" type="HSlider" parent="PanelBlend/VBoxContainer/Rows/band_hard" unique_id=1882515331]
+custom_minimum_size = Vector2(150, 20)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 0.6
+step = 0.01
+value = 0.18
+
+[node name="Value" type="Label" parent="PanelBlend/VBoxContainer/Rows/band_hard" unique_id=2084916804]
+custom_minimum_size = Vector2(42, 0)
+layout_mode = 2
+text = "0.18"
+horizontal_alignment = 2
+
+[node name="band_soft" type="HBoxContainer" parent="PanelBlend/VBoxContainer/Rows" unique_id=605244235]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="PanelBlend/VBoxContainer/Rows/band_soft" unique_id=1224170990]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "软边带宽"
+
+[node name="Slider" type="HSlider" parent="PanelBlend/VBoxContainer/Rows/band_soft" unique_id=115127009]
+custom_minimum_size = Vector2(150, 20)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 1.0
+step = 0.01
+value = 0.85
+
+[node name="Value" type="Label" parent="PanelBlend/VBoxContainer/Rows/band_soft" unique_id=375618428]
+custom_minimum_size = Vector2(42, 0)
+layout_mode = 2
+text = "0.85"
+horizontal_alignment = 2
+
+[node name="edge_jitter" type="HBoxContainer" parent="PanelBlend/VBoxContainer/Rows" unique_id=1523817072]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="PanelBlend/VBoxContainer/Rows/edge_jitter" unique_id=1724998071]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "边界打散幅度"
+
+[node name="Slider" type="HSlider" parent="PanelBlend/VBoxContainer/Rows/edge_jitter" unique_id=1487743040]
+custom_minimum_size = Vector2(150, 20)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 3.0
+step = 0.05
+value = 1.6
+
+[node name="Value" type="Label" parent="PanelBlend/VBoxContainer/Rows/edge_jitter" unique_id=182622620]
+custom_minimum_size = Vector2(42, 0)
+layout_mode = 2
+text = "1.6"
+horizontal_alignment = 2
+
+[node name="PanelWater" type="PanelContainer" parent="." unique_id=1553497370]
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="PanelWater" unique_id=1551161416]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="PanelWater/VBoxContainer" unique_id=537532789]
+layout_mode = 2
+text = "水面"
+horizontal_alignment = 1
+
+[node name="Rows" type="VBoxContainer" parent="PanelWater/VBoxContainer" unique_id=168305262]
+layout_mode = 2
+
+[node name="ripple_frequency" type="HBoxContainer" parent="PanelWater/VBoxContainer/Rows" unique_id=554967895]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="PanelWater/VBoxContainer/Rows/ripple_frequency" unique_id=71805264]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "波纹频率"
+
+[node name="Slider" type="HSlider" parent="PanelWater/VBoxContainer/Rows/ripple_frequency" unique_id=306607411]
+custom_minimum_size = Vector2(150, 20)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 8.0
+step = 0.1
+value = 3.1
+
+[node name="Value" type="Label" parent="PanelWater/VBoxContainer/Rows/ripple_frequency" unique_id=683476658]
+custom_minimum_size = Vector2(42, 0)
+layout_mode = 2
+text = "3.1"
+horizontal_alignment = 2
+
+[node name="ripple_speed" type="HBoxContainer" parent="PanelWater/VBoxContainer/Rows" unique_id=1543022975]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="PanelWater/VBoxContainer/Rows/ripple_speed" unique_id=1956860883]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "波纹速度"
+
+[node name="Slider" type="HSlider" parent="PanelWater/VBoxContainer/Rows/ripple_speed" unique_id=407897195]
+custom_minimum_size = Vector2(150, 20)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 2.0
+step = 0.01
+value = 0.35
+
+[node name="Value" type="Label" parent="PanelWater/VBoxContainer/Rows/ripple_speed" unique_id=1992207712]
+custom_minimum_size = Vector2(42, 0)
+layout_mode = 2
+text = "0.35"
+horizontal_alignment = 2
+
+[node name="ripple_strength" type="HBoxContainer" parent="PanelWater/VBoxContainer/Rows" unique_id=166053716]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="PanelWater/VBoxContainer/Rows/ripple_strength" unique_id=1790343829]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "波纹强度"
+
+[node name="Slider" type="HSlider" parent="PanelWater/VBoxContainer/Rows/ripple_strength" unique_id=1946337847]
+custom_minimum_size = Vector2(150, 20)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 1.0
+step = 0.01
+value = 0.28
+
+[node name="Value" type="Label" parent="PanelWater/VBoxContainer/Rows/ripple_strength" unique_id=1225053052]
+custom_minimum_size = Vector2(42, 0)
+layout_mode = 2
+text = "0.28"
+horizontal_alignment = 2
+
+[node name="flow_speed" type="HBoxContainer" parent="PanelWater/VBoxContainer/Rows" unique_id=572508428]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="PanelWater/VBoxContainer/Rows/flow_speed" unique_id=1494829051]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "流速倍率"
+
+[node name="Slider" type="HSlider" parent="PanelWater/VBoxContainer/Rows/flow_speed" unique_id=2025769362]
+custom_minimum_size = Vector2(150, 20)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 3.0
+step = 0.05
+value = 0.5
+
+[node name="Value" type="Label" parent="PanelWater/VBoxContainer/Rows/flow_speed" unique_id=1719697441]
+custom_minimum_size = Vector2(42, 0)
+layout_mode = 2
+text = "0.5"
+horizontal_alignment = 2
+
+[node name="foam_width" type="HBoxContainer" parent="PanelWater/VBoxContainer/Rows" unique_id=2075869770]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="PanelWater/VBoxContainer/Rows/foam_width" unique_id=502262195]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "泡沫宽度"
+
+[node name="Slider" type="HSlider" parent="PanelWater/VBoxContainer/Rows/foam_width" unique_id=1205302985]
+custom_minimum_size = Vector2(150, 20)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 1.0
+step = 0.01
+value = 0.5
+
+[node name="Value" type="Label" parent="PanelWater/VBoxContainer/Rows/foam_width" unique_id=1952064900]
+custom_minimum_size = Vector2(42, 0)
+layout_mode = 2
+text = "0.5"
+horizontal_alignment = 2
+
+[node name="foam_strength" type="HBoxContainer" parent="PanelWater/VBoxContainer/Rows" unique_id=303259890]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="PanelWater/VBoxContainer/Rows/foam_strength" unique_id=451019007]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "泡沫强度"
+
+[node name="Slider" type="HSlider" parent="PanelWater/VBoxContainer/Rows/foam_strength" unique_id=518274601]
+custom_minimum_size = Vector2(150, 20)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 1.0
+step = 0.01
+value = 0.65
+
+[node name="Value" type="Label" parent="PanelWater/VBoxContainer/Rows/foam_strength" unique_id=465253712]
+custom_minimum_size = Vector2(42, 0)
+layout_mode = 2
+text = "0.65"
+horizontal_alignment = 2
+
+[node name="PanelRoad" type="PanelContainer" parent="." unique_id=119235181]
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="PanelRoad" unique_id=1064980998]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="PanelRoad/VBoxContainer" unique_id=1103806128]
+layout_mode = 2
+text = "道路"
+horizontal_alignment = 1
+
+[node name="Rows" type="VBoxContainer" parent="PanelRoad/VBoxContainer" unique_id=985187494]
+layout_mode = 2
+
+[node name="road_width" type="HBoxContainer" parent="PanelRoad/VBoxContainer/Rows" unique_id=1217213708]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="PanelRoad/VBoxContainer/Rows/road_width" unique_id=1650252365]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "路宽比"
+
+[node name="Slider" type="HSlider" parent="PanelRoad/VBoxContainer/Rows/road_width" unique_id=416532094]
+custom_minimum_size = Vector2(150, 20)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 0.5
+step = 0.01
+value = 0.3
+
+[node name="Value" type="Label" parent="PanelRoad/VBoxContainer/Rows/road_width" unique_id=1543675220]
+custom_minimum_size = Vector2(42, 0)
+layout_mode = 2
+text = "0.3"
+horizontal_alignment = 2
+
+[node name="road_softness" type="HBoxContainer" parent="PanelRoad/VBoxContainer/Rows" unique_id=1614195025]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="PanelRoad/VBoxContainer/Rows/road_softness" unique_id=2098838183]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "路缘柔度"
+
+[node name="Slider" type="HSlider" parent="PanelRoad/VBoxContainer/Rows/road_softness" unique_id=2049142980]
+custom_minimum_size = Vector2(150, 20)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 0.2
+step = 0.005
+value = 0.06
+
+[node name="Value" type="Label" parent="PanelRoad/VBoxContainer/Rows/road_softness" unique_id=1483053078]
+custom_minimum_size = Vector2(42, 0)
+layout_mode = 2
+text = "0.06"
+horizontal_alignment = 2
+
+[node name="road_texture" type="HBoxContainer" parent="PanelRoad/VBoxContainer/Rows" unique_id=656388433]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="PanelRoad/VBoxContainer/Rows/road_texture" unique_id=1977304275]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "路面质感"
+
+[node name="Slider" type="HSlider" parent="PanelRoad/VBoxContainer/Rows/road_texture" unique_id=513723301]
+custom_minimum_size = Vector2(150, 20)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 1.0
+step = 0.01
+value = 0.24
+
+[node name="Value" type="Label" parent="PanelRoad/VBoxContainer/Rows/road_texture" unique_id=1808005167]
+custom_minimum_size = Vector2(42, 0)
+layout_mode = 2
+text = "0.24"
+horizontal_alignment = 2
+
+[node name="PanelElev" type="PanelContainer" parent="." unique_id=669838653]
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="PanelElev" unique_id=1828397726]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="PanelElev/VBoxContainer" unique_id=1326792921]
+layout_mode = 2
+text = "高程光照"
+horizontal_alignment = 1
+
+[node name="Rows" type="VBoxContainer" parent="PanelElev/VBoxContainer" unique_id=441141495]
+layout_mode = 2
+
+[node name="elevation_bright" type="HBoxContainer" parent="PanelElev/VBoxContainer/Rows" unique_id=1792155047]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="PanelElev/VBoxContainer/Rows/elevation_bright" unique_id=1710806398]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "每级提亮"
+
+[node name="Slider" type="HSlider" parent="PanelElev/VBoxContainer/Rows/elevation_bright" unique_id=402620103]
+custom_minimum_size = Vector2(150, 20)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 0.2
+step = 0.005
+value = 0.045
+
+[node name="Value" type="Label" parent="PanelElev/VBoxContainer/Rows/elevation_bright" unique_id=872971391]
+custom_minimum_size = Vector2(42, 0)
+layout_mode = 2
+text = "0.04"
+horizontal_alignment = 2
+
+[node name="elevation_shadow" type="HBoxContainer" parent="PanelElev/VBoxContainer/Rows" unique_id=1481864871]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="PanelElev/VBoxContainer/Rows/elevation_shadow" unique_id=1777261590]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "阴影强度"
+
+[node name="Slider" type="HSlider" parent="PanelElev/VBoxContainer/Rows/elevation_shadow" unique_id=1128014015]
+custom_minimum_size = Vector2(150, 20)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 0.5
+step = 0.01
+value = 0.16
+
+[node name="Value" type="Label" parent="PanelElev/VBoxContainer/Rows/elevation_shadow" unique_id=148921056]
+custom_minimum_size = Vector2(42, 0)
+layout_mode = 2
+text = "0.16"
+horizontal_alignment = 2
+
+[node name="elevation_rim" type="HBoxContainer" parent="PanelElev/VBoxContainer/Rows" unique_id=977786085]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="PanelElev/VBoxContainer/Rows/elevation_rim" unique_id=1940480043]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "受光边亮度"
+
+[node name="Slider" type="HSlider" parent="PanelElev/VBoxContainer/Rows/elevation_rim" unique_id=887692446]
+custom_minimum_size = Vector2(150, 20)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 0.2
+step = 0.005
+value = 0.05
+
+[node name="Value" type="Label" parent="PanelElev/VBoxContainer/Rows/elevation_rim" unique_id=254578760]
+custom_minimum_size = Vector2(42, 0)
+layout_mode = 2
+text = "0.05"
+horizontal_alignment = 2
+
+[node name="elevation_shadow_width" type="HBoxContainer" parent="PanelElev/VBoxContainer/Rows" unique_id=806081120]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="PanelElev/VBoxContainer/Rows/elevation_shadow_width" unique_id=2062538677]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "阴影带宽度"
+
+[node name="Slider" type="HSlider" parent="PanelElev/VBoxContainer/Rows/elevation_shadow_width" unique_id=1770160930]
+custom_minimum_size = Vector2(150, 20)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 0.6
+step = 0.01
+value = 0.3
+
+[node name="Value" type="Label" parent="PanelElev/VBoxContainer/Rows/elevation_shadow_width" unique_id=1966627295]
+custom_minimum_size = Vector2(42, 0)
+layout_mode = 2
+text = "0.3"
+horizontal_alignment = 2

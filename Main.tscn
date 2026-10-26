@@ -3,7 +3,8 @@
 [ext_resource type="PackedScene" uid="uid://duqxx0801a83k" path="res://GridTool/grid_tools.tscn" id="2_uu6xs"]
 [ext_resource type="Script" uid="uid://bg63e3d0c11ss" path="res://main.gd" id="3_main"]
 [ext_resource type="PackedScene" uid="uid://bt54rkajpdso1" path="res://GridView/grid_view.tscn" id="4_gview"]
-[ext_resource type="Script" uid="uid://by2m6gv4x8hf3" path="res://GridView/minimap.gd" id="5_minimap"]
+[ext_resource type="PackedScene" uid="uid://c8dt3ujym2ce0" path="res://RenderView/render_view.tscn" id="6_rview"]
+[ext_resource type="PackedScene" uid="uid://dxiuobwm7qm4b" path="res://RenderTool/render_tool.tscn" id="7_rtool"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_glv2v"]
 bg_color = Color(1, 1, 1, 0.14117648)
@@ -39,16 +40,13 @@ custom_minimum_size = Vector2(240, 240)
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_glv2v")
 
-[node name="Minimap" type="Control" parent="HBoxContainer/VBoxContainer/Panel" unique_id=2119356998]
-clip_children = 2
+[node name="RenderViewMini" parent="HBoxContainer/VBoxContainer/Panel" unique_id=1964010287 instance=ExtResource("6_rview")]
 layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-script = ExtResource("5_minimap")
+
+[node name="GridViewMini" parent="HBoxContainer/VBoxContainer/Panel" unique_id=1548795333 instance=ExtResource("4_gview")]
+visible = false
+layout_mode = 1
+anchors_preset = 0
 
 [node name="Button" type="Button" parent="HBoxContainer/VBoxContainer/Panel" unique_id=930836916]
 layout_mode = 1
@@ -81,10 +79,15 @@ metadata/_edit_lock_ = true
 [node name="GridTools" parent="HBoxContainer/VBoxContainer/Panel2/ScrollContainer" unique_id=493391614 instance=ExtResource("2_uu6xs")]
 layout_mode = 2
 
+[node name="RenderTool" parent="HBoxContainer/VBoxContainer/Panel2/ScrollContainer" unique_id=1551521367 instance=ExtResource("7_rtool")]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+
 [node name="VBoxContainer2" type="VBoxContainer" parent="HBoxContainer" unique_id=379687713]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_stretch_ratio = 4.0
+size_flags_stretch_ratio = 3.5
 mouse_filter = 2
 metadata/_edit_lock_ = true
 
@@ -104,6 +107,10 @@ grow_horizontal = 2
 grow_vertical = 2
 
 [node name="GridView" parent="HBoxContainer/VBoxContainer2/Panel/ScrollContainer" unique_id=1982929602 instance=ExtResource("4_gview")]
+layout_mode = 2
+
+[node name="RenderView" parent="HBoxContainer/VBoxContainer2/Panel/ScrollContainer" unique_id=1497185976 instance=ExtResource("6_rview")]
+visible = false
 layout_mode = 2
 
 [node name="Panel2" type="Panel" parent="HBoxContainer/VBoxContainer2" unique_id=114504322]

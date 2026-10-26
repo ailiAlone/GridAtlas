@@ -1,30 +1,28 @@
 [gd_scene format=3 uid="uid://c8dt3ujym2ce0"]
 
-[sub_resource type="CanvasTexture" id="CanvasTexture_xc3i2"]
-specular_color = Color(0.44136548, 0.4413655, 0.4413655, 1)
+[ext_resource type="Script" uid="uid://cp0wf4f4mdew2" path="res://RenderView/render_view.gd" id="1_renderview"]
+[ext_resource type="PackedScene" uid="uid://1y80if473x7a" path="res://RenderTool/material_parameters.tscn" id="2_tsvhm"]
 
-[node name="Renderview" type="Node2D" unique_id=17930450]
-
-[node name="Sprite2D" type="Sprite2D" parent="." unique_id=244384173]
-texture = SubResource("CanvasTexture_xc3i2")
-
-[node name="ColorRect" type="ColorRect" parent="." unique_id=547368698]
-custom_minimum_size = Vector2(512, 512)
+[node name="RenderView" type="Control" unique_id=1527488671]
+layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 888.0
-offset_top = 87.0
-offset_right = 1400.0
-offset_bottom = 599.0
 grow_horizontal = 2
 grow_vertical = 2
+script = ExtResource("1_renderview")
 
-[node name="Label" type="Label" parent="." unique_id=1416139194]
-offset_left = 78.0
-offset_top = 66.0
-offset_right = 174.0
-offset_bottom = 133.0
-theme_override_colors/font_color = Color(0, 0, 0, 1)
-theme_override_font_sizes/font_size = 48
-text = "战斗"
+[node name="MaterialParameters" parent="." unique_id=691965688 instance=ExtResource("2_tsvhm")]
+visible = false
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -398.0
+offset_top = -607.0
+offset_right = 0.0
+offset_bottom = 0.0
+grow_horizontal = 0
+grow_vertical = 0

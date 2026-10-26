@@ -1,0 +1,951 @@
+[gd_scene format=3 uid="uid://1y80if473x7a"]
+
+[ext_resource type="Script" uid="uid://dxau8vu1fuqcm" path="res://RenderTool/material_parameters.gd" id="1_xa6b3"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_outline"]
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 1, 1, 1)
+
+[node name="MaterialParameters" type="PanelContainer" unique_id=1195592762]
+offset_right = 760.0
+offset_bottom = 620.0
+script = ExtResource("1_xa6b3")
+
+[node name="HBoxContainer" type="HBoxContainer" parent="." unique_id=264623472]
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="HBoxContainer" unique_id=585449196]
+layout_mode = 2
+
+[node name="PanelContainer" type="PanelContainer" parent="HBoxContainer/VBoxContainer" unique_id=227295310]
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="HBoxContainer/VBoxContainer/PanelContainer" unique_id=1463672998]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer" unique_id=2141180459]
+layout_mode = 2
+text = "材质颜色"
+
+[node name="HFlowContainer" type="HFlowContainer" parent="HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer" unique_id=1508145081]
+layout_mode = 2
+
+[node name="Grass" type="ColorRect" parent="HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer/HFlowContainer" unique_id=834260355]
+custom_minimum_size = Vector2(36, 30)
+layout_mode = 2
+color = Color(0.42, 0.745, 0.348, 1)
+
+[node name="Label" type="Label" parent="HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer/HFlowContainer/Grass" unique_id=446097232]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+text = "草地"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Outline" type="Panel" parent="HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer/HFlowContainer/Grass" unique_id=2138857984]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_outline")
+
+[node name="Sand" type="ColorRect" parent="HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer/HFlowContainer" unique_id=1061468250]
+custom_minimum_size = Vector2(36, 30)
+layout_mode = 2
+color = Color(0.91, 0.82, 0.54, 1)
+
+[node name="Label" type="Label" parent="HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer/HFlowContainer/Sand" unique_id=1670270929]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+text = "沙地"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Outline" type="Panel" parent="HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer/HFlowContainer/Sand" unique_id=1038285114]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_outline")
+
+[node name="Wasteland" type="ColorRect" parent="HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer/HFlowContainer" unique_id=1615457305]
+custom_minimum_size = Vector2(36, 30)
+layout_mode = 2
+color = Color(0.58, 0.5, 0.39, 1)
+
+[node name="Label" type="Label" parent="HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer/HFlowContainer/Wasteland" unique_id=439972228]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+text = "荒地"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Outline" type="Panel" parent="HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer/HFlowContainer/Wasteland" unique_id=901777276]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_outline")
+
+[node name="Snow" type="ColorRect" parent="HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer/HFlowContainer" unique_id=1422442615]
+custom_minimum_size = Vector2(36, 30)
+layout_mode = 2
+color = Color(0.93, 0.95, 0.97, 1)
+
+[node name="Label" type="Label" parent="HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer/HFlowContainer/Snow" unique_id=1919527]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+text = "雪地"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Outline" type="Panel" parent="HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer/HFlowContainer/Snow" unique_id=1313628100]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_outline")
+
+[node name="Swamp" type="ColorRect" parent="HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer/HFlowContainer" unique_id=202720789]
+custom_minimum_size = Vector2(36, 30)
+layout_mode = 2
+color = Color(0.33, 0.42, 0.25, 1)
+
+[node name="Label" type="Label" parent="HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer/HFlowContainer/Swamp" unique_id=440667625]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+text = "沼泽"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Outline" type="Panel" parent="HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer/HFlowContainer/Swamp" unique_id=1977046624]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_outline")
+
+[node name="Ice" type="ColorRect" parent="HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer/HFlowContainer" unique_id=1310914560]
+custom_minimum_size = Vector2(36, 30)
+layout_mode = 2
+color = Color(0.66, 0.847, 0.91, 1)
+
+[node name="Label" type="Label" parent="HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer/HFlowContainer/Ice" unique_id=253860237]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+text = "冰面"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Outline" type="Panel" parent="HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer/HFlowContainer/Ice" unique_id=510648838]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_outline")
+
+[node name="Shallow" type="ColorRect" parent="HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer/HFlowContainer" unique_id=794142486]
+custom_minimum_size = Vector2(36, 30)
+layout_mode = 2
+color = Color(0.43, 0.776, 0.91, 1)
+
+[node name="Label" type="Label" parent="HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer/HFlowContainer/Shallow" unique_id=994045411]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+text = "浅水"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Outline" type="Panel" parent="HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer/HFlowContainer/Shallow" unique_id=500065145]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_outline")
+
+[node name="Deep" type="ColorRect" parent="HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer/HFlowContainer" unique_id=377442689]
+custom_minimum_size = Vector2(36, 30)
+layout_mode = 2
+color = Color(0.17, 0.38, 0.6, 1)
+
+[node name="Label" type="Label" parent="HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer/HFlowContainer/Deep" unique_id=5351081]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+text = "深水"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Outline" type="Panel" parent="HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer/HFlowContainer/Deep" unique_id=1427303753]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_outline")
+
+[node name="Dirt" type="ColorRect" parent="HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer/HFlowContainer" unique_id=1486533848]
+custom_minimum_size = Vector2(36, 30)
+layout_mode = 2
+color = Color(0.65, 0.486, 0.32, 1)
+
+[node name="Label" type="Label" parent="HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer/HFlowContainer/Dirt" unique_id=311378040]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+text = "土路"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Outline" type="Panel" parent="HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer/HFlowContainer/Dirt" unique_id=1380021747]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_outline")
+
+[node name="Gravel" type="ColorRect" parent="HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer/HFlowContainer" unique_id=1766707277]
+custom_minimum_size = Vector2(36, 30)
+layout_mode = 2
+color = Color(0.65, 0.65, 0.65, 1)
+
+[node name="Label" type="Label" parent="HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer/HFlowContainer/Gravel" unique_id=880671220]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+text = "碎石"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Outline" type="Panel" parent="HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer/HFlowContainer/Gravel" unique_id=118991342]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_outline")
+
+[node name="StoneBrick" type="ColorRect" parent="HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer/HFlowContainer" unique_id=777017955]
+custom_minimum_size = Vector2(36, 30)
+layout_mode = 2
+color = Color(0.44, 0.486, 0.522, 1)
+
+[node name="Label" type="Label" parent="HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer/HFlowContainer/StoneBrick" unique_id=1012628579]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+text = "石砖"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Outline" type="Panel" parent="HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer/HFlowContainer/StoneBrick" unique_id=1622841736]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_outline")
+
+[node name="Foam" type="ColorRect" parent="HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer/HFlowContainer" unique_id=2028966733]
+custom_minimum_size = Vector2(36, 30)
+layout_mode = 2
+color = Color(0.93, 0.97, 1, 1)
+
+[node name="Label" type="Label" parent="HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer/HFlowContainer/Foam" unique_id=1025272077]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+text = "泡沫"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Outline" type="Panel" parent="HBoxContainer/VBoxContainer/PanelContainer/VBoxContainer/HFlowContainer/Foam" unique_id=857521603]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_outline")
+
+[node name="PanelContainer2" type="PanelContainer" parent="HBoxContainer/VBoxContainer" unique_id=1963190656]
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="HBoxContainer/VBoxContainer/PanelContainer2" unique_id=991891179]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer" unique_id=2007953804]
+layout_mode = 2
+text = "材质过渡矩阵"
+
+[node name="GridContainer" type="GridContainer" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer" unique_id=1737795791]
+layout_mode = 2
+columns = 9
+
+[node name="Corner" type="Label" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=1283192849]
+custom_minimum_size = Vector2(44, 0)
+layout_mode = 2
+
+[node name="T1" type="Label" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=895628083]
+custom_minimum_size = Vector2(44, 0)
+layout_mode = 2
+text = "草地"
+horizontal_alignment = 1
+
+[node name="T2" type="Label" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=1382962330]
+custom_minimum_size = Vector2(44, 0)
+layout_mode = 2
+text = "沙地"
+horizontal_alignment = 1
+
+[node name="T3" type="Label" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=1667650664]
+custom_minimum_size = Vector2(44, 0)
+layout_mode = 2
+text = "荒地"
+horizontal_alignment = 1
+
+[node name="T4" type="Label" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=21099319]
+custom_minimum_size = Vector2(44, 0)
+layout_mode = 2
+text = "雪地"
+horizontal_alignment = 1
+
+[node name="T5" type="Label" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=2090573154]
+custom_minimum_size = Vector2(44, 0)
+layout_mode = 2
+text = "沼泽"
+horizontal_alignment = 1
+
+[node name="T6" type="Label" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=1135808214]
+custom_minimum_size = Vector2(44, 0)
+layout_mode = 2
+text = "冰面"
+horizontal_alignment = 1
+
+[node name="T7" type="Label" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=805850351]
+custom_minimum_size = Vector2(44, 0)
+layout_mode = 2
+text = "浅水"
+horizontal_alignment = 1
+
+[node name="T8" type="Label" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=1173051569]
+custom_minimum_size = Vector2(44, 0)
+layout_mode = 2
+text = "深水"
+horizontal_alignment = 1
+
+[node name="L1" type="Label" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=257598492]
+custom_minimum_size = Vector2(44, 0)
+layout_mode = 2
+text = "草地"
+horizontal_alignment = 1
+
+[node name="A1_1" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=1671130259]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "1.00"
+editable = false
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A1_2" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=1486961776]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.35"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A1_3" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=832622094]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.35"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A1_4" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=1723577384]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.35"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A1_5" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=247576410]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.90"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A1_6" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=1965636672]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.35"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A1_7" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=589399269]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.10"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A1_8" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=623980049]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.10"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="L2" type="Label" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=1634465917]
+custom_minimum_size = Vector2(44, 0)
+layout_mode = 2
+text = "沙地"
+horizontal_alignment = 1
+
+[node name="A2_1" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=1699629416]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.35"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A2_2" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=155220546]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "1.00"
+editable = false
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A2_3" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=607828396]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.80"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A2_4" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=1663703930]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.35"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A2_5" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=1673973398]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.35"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A2_6" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=9472142]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.35"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A2_7" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=274205984]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.10"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A2_8" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=1125213995]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.10"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="L3" type="Label" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=691491926]
+custom_minimum_size = Vector2(44, 0)
+layout_mode = 2
+text = "荒地"
+horizontal_alignment = 1
+
+[node name="A3_1" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=508468757]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.35"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A3_2" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=1873211924]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.80"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A3_3" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=429506790]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "1.00"
+editable = false
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A3_4" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=2119385461]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.35"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A3_5" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=1154905354]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.35"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A3_6" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=1128721763]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.35"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A3_7" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=1370704572]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.10"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A3_8" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=817957896]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.10"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="L4" type="Label" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=112776118]
+custom_minimum_size = Vector2(44, 0)
+layout_mode = 2
+text = "雪地"
+horizontal_alignment = 1
+
+[node name="A4_1" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=83626139]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.35"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A4_2" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=1911638751]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.35"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A4_3" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=1957244812]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.35"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A4_4" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=117026194]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "1.00"
+editable = false
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A4_5" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=1663511818]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.35"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A4_6" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=83995021]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.70"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A4_7" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=1712777667]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.10"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A4_8" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=1795891438]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.10"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="L5" type="Label" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=1277728682]
+custom_minimum_size = Vector2(44, 0)
+layout_mode = 2
+text = "沼泽"
+horizontal_alignment = 1
+
+[node name="A5_1" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=1453761574]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.90"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A5_2" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=1605224723]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.35"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A5_3" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=1658466944]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.35"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A5_4" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=332626338]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.35"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A5_5" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=581720851]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "1.00"
+editable = false
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A5_6" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=1814152307]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.35"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A5_7" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=1993065439]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.50"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A5_8" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=347400550]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.50"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="L6" type="Label" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=1658678812]
+custom_minimum_size = Vector2(44, 0)
+layout_mode = 2
+text = "冰面"
+horizontal_alignment = 1
+
+[node name="A6_1" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=1859545570]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.35"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A6_2" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=1836251680]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.35"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A6_3" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=411440427]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.35"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A6_4" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=1055369311]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.70"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A6_5" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=70886073]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.35"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A6_6" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=1538295879]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "1.00"
+editable = false
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A6_7" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=288914380]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.10"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A6_8" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=188325165]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.10"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="L7" type="Label" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=1273441534]
+custom_minimum_size = Vector2(44, 0)
+layout_mode = 2
+text = "浅水"
+horizontal_alignment = 1
+
+[node name="A7_1" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=1294583365]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.10"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A7_2" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=2084304798]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.10"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A7_3" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=670134419]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.10"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A7_4" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=1091286462]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.10"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A7_5" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=1001287572]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.50"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A7_6" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=1094884919]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.10"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A7_7" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=443703607]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "1.00"
+editable = false
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A7_8" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=182211346]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "1.00"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="L8" type="Label" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=79250005]
+custom_minimum_size = Vector2(44, 0)
+layout_mode = 2
+text = "深水"
+horizontal_alignment = 1
+
+[node name="A8_1" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=90486152]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.10"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A8_2" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=1601094458]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.10"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A8_3" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=1885317688]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.10"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A8_4" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=2111772947]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.10"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A8_5" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=60272010]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.50"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A8_6" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=1607066618]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "0.10"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A8_7" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=1117766379]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "1.00"
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="A8_8" type="TextEdit" parent="HBoxContainer/VBoxContainer/PanelContainer2/VBoxContainer/GridContainer" unique_id=786807035]
+custom_minimum_size = Vector2(44, 26)
+layout_mode = 2
+text = "1.00"
+editable = false
+context_menu_enabled = false
+scroll_fit_content_height = true
+
+[node name="Button" type="Button" parent="HBoxContainer/VBoxContainer" unique_id=556416497]
+layout_mode = 2
+theme_override_font_sizes/font_size = 36
+text = "关闭"
+
+[node name="ColorPicker" type="ColorPicker" parent="HBoxContainer" unique_id=1607170463]
+custom_minimum_size = Vector2(298, 0)
+layout_mode = 2
+can_add_swatches = false
