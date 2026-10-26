@@ -76,6 +76,19 @@ float elev_smooth(vec2 cf) {
 	return texture(u_elev, (cf - vec2(0.5)) / u_map_size).r * 255.0;
 }
 
+// 高程场的多环平滑：整数高程在 1 格内完成级差，直接读会变成一条条一像素宽的等高线；
+// 半径约 1.5 格的核把每级台阶摊到 3~4 格，坡度变化才是连续的，明暗才不会变成一条硬带。
+float elev_field(vec2 p) {
+	float s = elev_smooth(p) * 0.30;
+	s += (elev_smooth(p + vec2(0.75, 0.0)) + elev_smooth(p - vec2(0.75, 0.0))
+		+ elev_smooth(p + vec2(0.0, 0.75)) + elev_smooth(p - vec2(0.0, 0.75))) * 0.11;
+	s += (elev_smooth(p + vec2(0.55, 0.55)) + elev_smooth(p + vec2(-0.55, 0.55))
+		+ elev_smooth(p + vec2(0.55, -0.55)) + elev_smooth(p + vec2(-0.55, -0.55))) * 0.05;
+	s += (elev_smooth(p + vec2(1.50, 0.0)) + elev_smooth(p - vec2(1.50, 0.0))
+		+ elev_smooth(p + vec2(0.0, 1.50)) + elev_smooth(p - vec2(0.0, 1.50))) * 0.035;
+	return s;
+}
+
 float pair_affinity(float a, float b) {
 	return texelFetch(u_affinity, ivec2(int(a) - 1, int(b) - 1), 0).r;
 }
@@ -193,6 +206,12 @@ float vnoise(vec2 p) {
 
 float fbm(vec2 p) {
 	return vnoise(p) * 0.5 + vnoise(p * 2.03 + vec2(0.33, 0.71)) * 0.3 + vnoise(p * 4.13 + vec2(0.71, 0.33)) * 0.2;
+}
+
+// 光照用高度：平滑高程 + 一层很轻的低频起伏（约 0.14 格）。
+// 起伏让平直的台阶轮廓自然弯曲，明暗带才不会读成两条云影。
+float elev_relief(vec2 p) {
+	return elev_field(p) + (fbm(p * 0.45 + vec2(7.3, 2.1)) - 0.5) * 0.14;
 }
 
 // ===== 分材质结构图案 =====
@@ -434,14 +453,25 @@ void fragment() {
 	col = mix(col, deep_c, deep_cover);
 	col *= 1.0 - 0.02 * clamp(wfield - 1.0, 0.0, 1.0);   // 越深越沉（很轻微）
 
-	// ---- 5) 高程浮雕：平滑高程求坡度，光固定左上 ----
-	vec2 stp = vec2(max(u_elev_shadow_width, 0.05) * 0.9, 0.0);
-	float h0 = elev_smooth(cf);
-	float hx = elev_smooth(cf + stp);
-	float hy = elev_smooth(cf + stp.yx);
-	float slope = ((h0 - hx) + (h0 - hy)) * 0.5;
-	float lit = 1.0 + slope * u_relief * u_elev_shadow * 3.0 + max(slope, 0.0) * u_elev_rim * 3.0;
-	col *= mix(1.0, clamp(lit, 0.35, 2.0), 1.0 - waterness);
+	// ---- 5) 高程浮雕：平滑高度场 → 法线 → 固定左上光 ----
+	// 平地的法线是竖直的，读数归一为 1；迎光坡变亮、背光坡变暗，由此读出坡向和体量。
+	float d = max(u_elev_shadow_width, 0.10) * 1.6;
+	float h0 = elev_relief(cf);
+	float hx = elev_relief(cf + vec2(d, 0.0));
+	float hy = elev_relief(cf + vec2(0.0, d));
+	vec2 g = vec2(hx - h0, hy - h0) / d;        // 梯度（高度/格）
+	float k = max(u_relief, 0.05) * 1.4;        // 垂直夸张
+	vec3 nrm = normalize(vec3(-g.x * k, -g.y * k, 1.0));
+	vec3 lgt = normalize(vec3(-0.62, -0.62, 0.48));   // 固定左上
+	float ndl = dot(nrm, lgt);
+	// 以平地（ndl = lgt.z）为零点做对称的明暗：迎光 +，背光 −，
+	// 不用 (ndl-1) 那种写法 —— 背光侧会一直压到黑，坡面就变成一条深沟。
+	float shade = clamp(ndl - lgt.z, -0.45, 0.55);
+	float lit = 1.0 + shade * (u_elev_shadow * 2.4);
+	lit += max(shade, 0.0) * u_elev_rim * 1.5;   // 迎光坡的窄高光
+	col *= mix(1.0, clamp(lit, 0.62, 1.42), 1.0 - waterness);
+	// 暗部略偏冷、亮部略偏暖：比单纯压暗更像受光，也不容易读成脏污
+	col *= mix(vec3(0.97, 0.995, 1.03), vec3(1.02, 1.0, 0.97), clamp(shade * 2.0 + 0.5, 0.0, 1.0));
 	col *= 1.0 + (h0 - 1.0) * u_elev_bright;
 
 	// ---- 6) 水面动效：定向波列（方向跟随流向）+ 波峰高光 + 岸线泡沫 ----

@@ -96,7 +96,7 @@ const SURFACE_SHORT: Dictionary = {1: "草", 2: "沙", 3: "荒", 4: "雪", 5: "�
 
 # ---------- 高程光照（光固定左上） ----------
 
-@export var elevation_bright: float = 0.045
+@export var elevation_bright: float = 0.09
 @export var elevation_shadow: float = 0.16
 @export var elevation_rim: float = 0.05
 @export var elevation_shadow_width: float = 0.30
