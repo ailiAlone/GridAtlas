@@ -18,6 +18,19 @@ const BAR: float = 10.0  # 游标条厚度（屏幕像素，不随缩放变化�
 const BAR_BG: Color = Color(1, 1, 1, 0.08)
 const BAR_MARK: Color = Color(1, 1, 1, 0.9)
 
+# ---------- 格子填色缓存 ----------
+# 逐格 draw_rect 在大图（128²+）上每笔要重录几万条绘制指令，是涂画卡顿的主因之一。
+# 改为把每格填色光栅化进一张 ImageTexture（每格 4×4 纹素），_draw 只画这一张纹理；
+# 笔刷落点只重画笔刷区域的纹素，再整图一次上传（create_from_data 是 C++ 侧拷贝，
+# 远快于逐纹素写）。流向箭头/高程数字数量稀疏，仍走矢量指令，用稀疏列表登记。
+const CACHE_RES: int = 4  # 每格纹素数：道路内缩块需要 ≥4 才画得出来
+
+var cachebytes: PackedByteArray = PackedByteArray()
+var cachetexture: ImageTexture
+var cache_elev_max: float = 1.0  # 高程视图的归一化上限（整图重铺时刷新）
+var _flow_cells: Array[Vector2i] = []   # 有水面+流向的格子（箭头叠加）
+var _label_cells: Array[Vector2i] = []  # 高程 > 1 需标数字的格子
+
 @export var cell_size: float = 16.0:
 	set(value):
 		cell_size = maxf(4.0, value)
@@ -54,6 +67,7 @@ func _ready() -> void:
 
 func set_map(data: MapData) -> void:
 	map = data
+	_rebuild_cache()
 	refresh()
 
 
@@ -65,6 +79,7 @@ func set_brush(layer: StringName, value: int) -> void:
 ## 切换 高程视图（true：红绿归一化显示高度）/ 普通视图（false：地形各图层）
 func set_elevation_mode(on: bool) -> void:
 	elevation_mode = on
+	_rebuild_cache()
 	queue_redraw()
 
 
@@ -136,43 +151,135 @@ func pixel_to_cell(point: Vector2) -> Vector2i:
 func _draw() -> void:
 	if map == null:
 		return
-	if elevation_mode:
-		_draw_elevation()
-	else:
-		var s: float = step()
-		for y in map.grid_size.y:
-			for x in map.grid_size.x:
-				var cell: Vector2i = Vector2i(x, y)
-				var rect: Rect2 = Rect2(Vector2(cell) * s, Vector2(s, s))
-				_draw_cell(cell, rect)
+	var s: float = step()
+	if cachetexture != null:
+		draw_texture_rect(cachetexture, Rect2(Vector2.ZERO, Vector2(map.grid_size) * s), false)
+	# 稀疏叠加：流向箭头（仅普通视图）+ 高程数字，只遍历登记过的格子
+	for cell: Vector2i in _flow_cells:
+		_draw_flow(map.get_flow(cell), (Vector2(cell) + Vector2(0.5, 0.5)) * s)
+	if s >= 12.0:
+		var font_size: int = clampi(int(s * 0.5), 8, 16)
+		var text_color: Color = Color(1, 1, 1, 0.9) if elevation_mode else Color(0, 0, 0, 0.8)
+		for cell: Vector2i in _label_cells:
+			var rect: Rect2 = Rect2(Vector2(cell) * s, Vector2(s, s))
+			draw_string(ThemeDB.fallback_font, rect.position + Vector2(2, s * 0.5 + font_size * 0.5),
+				_height_text(map.get_height(cell)), HORIZONTAL_ALIGNMENT_LEFT, s - 2, font_size, text_color)
 	_draw_grid_lines()
 	_draw_cursor_bars()
 	_draw_previews()
 
 
-func _draw_cell(cell: Vector2i, rect: Rect2) -> void:
-	var s: float = step()
-	draw_rect(rect, GridDefs.LAND_COLORS.get(map.get_land(cell), EMPTY_COLOR))
+# ---------- 格子填色缓存 ----------
 
-	var water: int = map.get_water(cell)
-	if water != GridDefs.Water.NONE:
-		var c: Color = GridDefs.WATER_COLORS.get(water, Color.WHITE)
-		c.a = 0.85
-		draw_rect(rect, c)
+## 笔刷落点：只重画区域内格子的纹素，整图一次上传；稀疏叠加列表同步增删
+func sync_cell_area(area: Rect2i) -> void:
+	if map == null or cachetexture == null:
+		return
+	var clipped: Rect2i = area.intersection(Rect2i(Vector2i.ZERO, map.grid_size))
+	if clipped.size.x <= 0 or clipped.size.y <= 0:
+		return
+	if elevation_mode:
+		# 高程配色按全图最大值归一化，改动后简单起见整图重铺（该模式用于观察，一般不在里面涂画）
+		_rebuild_cache()
+		queue_redraw()
+		return
+	_remove_sparse(_flow_cells, clipped)
+	_remove_sparse(_label_cells, clipped)
+	for y in range(clipped.position.y, clipped.end.y):
+		for x in range(clipped.position.x, clipped.end.x):
+			_rasterize_cell(Vector2i(x, y))
+	var tw: int = map.grid_size.x * CACHE_RES
+	var image: Image = Image.create_from_data(tw, map.grid_size.y * CACHE_RES, false, Image.FORMAT_RGBA8, cachebytes)
+	if cachetexture == null or cachetexture.get_width() != tw or cachetexture.get_height() != map.grid_size.y * CACHE_RES:
+		cachetexture = ImageTexture.create_from_image(image)
+		texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	else:
+		cachetexture.update(image)
+	queue_redraw()
 
-	var road: int = map.get_road(cell)
-	if road != GridDefs.Road.NONE:
-		draw_rect(rect.grow(-s * 0.2), GridDefs.ROAD_COLORS.get(road, Color.WHITE))
 
-	var flow: int = map.get_flow(cell)
-	if water != GridDefs.Water.NONE and flow != GridDefs.Flow.NONE:
-		_draw_flow(flow, rect.get_center())
+## 整图重铺缓存（换图/改尺寸/撤销恢复/切高程视图时）
+func _rebuild_cache() -> void:
+	if map == null:
+		return
+	var w: int = map.grid_size.x
+	var h: int = map.grid_size.y
+	var tw: int = w * CACHE_RES
+	cachebytes.resize(tw * h * CACHE_RES * 4)
+	cache_elev_max = maxf(map.max_height(), 1.0)
+	_flow_cells.clear()
+	_label_cells.clear()
+	for y in h:
+		for x in w:
+			_rasterize_cell(Vector2i(x, y))
+	var image: Image = Image.create_from_data(tw, h * CACHE_RES, false, Image.FORMAT_RGBA8, cachebytes)
+	if cachetexture == null or cachetexture.get_width() != tw or cachetexture.get_height() != h * CACHE_RES:
+		cachetexture = ImageTexture.create_from_image(image)
+		texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	else:
+		cachetexture.update(image)
 
-	var elevation: float = map.get_height(cell)
-	if elevation > 1.001 and s >= 12.0:  # 1 是默认高程，不标注
-		var font_size: int = clampi(int(s * 0.5), 8, 16)
-		draw_string(ThemeDB.fallback_font, rect.position + Vector2(2, s * 0.5 + font_size * 0.5), _height_text(elevation),
-			HORIZONTAL_ALIGNMENT_LEFT, s - 2, font_size, Color(0, 0, 0, 0.8))
+
+## 把一个格子的填色写进缓存字节流，并登记稀疏叠加（箭头/高程数字）
+func _rasterize_cell(cell: Vector2i) -> void:
+	var w: int = map.grid_size.x
+	var tw: int = w * CACHE_RES
+	var color: Color
+	var water: int = GridDefs.Water.NONE
+	var road: int = GridDefs.Road.NONE
+	if elevation_mode:
+		var e: float = map.get_height(cell)
+		if e > 0.001:
+			var t: float = clampf(e / cache_elev_max, 0.0, 1.0)
+			color = Color(t, 1.0 - t, 0.0)
+		else:
+			color = EMPTY_COLOR
+	else:
+		water = map.get_water(cell)
+		road = map.get_road(cell)
+		color = GridDefs.LAND_COLORS.get(map.get_land(cell), EMPTY_COLOR)
+		if water != GridDefs.Water.NONE:
+			var wc: Color = GridDefs.WATER_COLORS.get(water, Color.WHITE)
+			color = Color(color.r * 0.15 + wc.r * 0.85, color.g * 0.15 + wc.g * 0.85,
+				color.b * 0.15 + wc.b * 0.85, 1.0)
+	var base: int = (cell.y * CACHE_RES * tw + cell.x * CACHE_RES) * 4
+	var r8: int = color.r8
+	var g8: int = color.g8
+	var b8: int = color.b8
+	for ry in CACHE_RES:
+		var row: int = base + ry * tw * 4
+		for rx in CACHE_RES:
+			var p: int = row + rx * 4
+			cachebytes[p] = r8
+			cachebytes[p + 1] = g8
+			cachebytes[p + 2] = b8
+			cachebytes[p + 3] = 255
+	# 道路内缩块：不透明盖在填色上（纹素 4 时留 1 纹素边距）
+	if not elevation_mode and road != GridDefs.Road.NONE:
+		var rc: Color = GridDefs.ROAD_COLORS.get(road, Color.WHITE)
+		var rr8: int = rc.r8
+		var rg8: int = rc.g8
+		var rb8: int = rc.b8
+		for ry in range(1, CACHE_RES - 1):
+			var rrow: int = base + ry * tw * 4
+			for rx in range(1, CACHE_RES - 1):
+				var p: int = rrow + rx * 4
+				cachebytes[p] = rr8
+				cachebytes[p + 1] = rg8
+				cachebytes[p + 2] = rb8
+	# 稀疏叠加登记
+	if not elevation_mode and water != GridDefs.Water.NONE and map.get_flow(cell) != GridDefs.Flow.NONE:
+		_flow_cells.append(cell)
+	if map.get_height(cell) > 1.001:
+		_label_cells.append(cell)
+
+
+## 从稀疏列表中移除区域内的旧记录（区域重画后会重新登记）
+func _remove_sparse(list: Array[Vector2i], area: Rect2i) -> void:
+	for i in range(list.size() - 1, -1, -1):
+		var c: Vector2i = list[i]
+		if c.x >= area.position.x and c.x < area.end.x and c.y >= area.position.y and c.y < area.end.y:
+			list.remove_at(i)
 
 
 ## 高程显示文本：整数不带小数，其余保留两位
@@ -180,26 +287,6 @@ func _height_text(value: float) -> String:
 	if absf(value - roundf(value)) < 0.001:
 		return str(int(roundf(value)))
 	return "%.2f" % value
-
-
-## 高程视图：按全图实际最高高程归一化，低=绿、高=红；0 只会出现在旧存档里，显示深灰
-func _draw_elevation() -> void:
-	var s: float = step()
-	var max_e: float = maxf(map.max_height(), 1.0)
-	for y in map.grid_size.y:
-		for x in map.grid_size.x:
-			var cell: Vector2i = Vector2i(x, y)
-			var rect: Rect2 = Rect2(Vector2(cell) * s, Vector2(s, s))
-			var e: float = map.get_height(cell)
-			if e > 0.001:
-				var t: float = clampf(e / max_e, 0.0, 1.0)
-				draw_rect(rect, Color(t, 1.0 - t, 0.0))
-			else:
-				draw_rect(rect, EMPTY_COLOR)
-			if e > 1.001 and s >= 12.0:  # 1 是默认高程，不标注
-				var font_size: int = clampi(int(s * 0.5), 8, 16)
-				draw_string(ThemeDB.fallback_font, rect.position + Vector2(2, s * 0.5 + font_size * 0.5), _height_text(e),
-					HORIZONTAL_ALIGNMENT_LEFT, s - 2, font_size, Color(1, 1, 1, 0.9))
 
 
 func _draw_flow(flow: int, center: Vector2) -> void:

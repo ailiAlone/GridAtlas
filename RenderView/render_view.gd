@@ -6,7 +6,7 @@ extends Control
 ## 阶段一（当前）：独立运行自动加载 first.tres 预览；并入主场景后由 main.gd 注入地图与配置。
 
 const NOISE_SIZE: int = 256
-const PREVIEW_MAP_PATH: String = "res://GridData/maps/first.tres"
+const PREVIEW_MAP_PATH: String = "res://GridData/maps/second.tres"
 const SHADER_PATH: String = "res://RenderView/render_view.gdshader"
 const COLOR_COUNT: int = 15  # 0空 1..6陆 7..8水 9..11路 12泡沫 13岩石 14雪线
 ## 平滑高程纹理的取值范围（级）。8 位纹理在这里换到最细的 0.0625 级。
@@ -21,7 +21,7 @@ const SCALAR_UNIFORMS: Array[StringName] = [
 	&"tide_frequency", &"tide_amplitude",
 	&"ripple_frequency", &"ripple_speed", &"ripple_strength", &"flow_speed",
 	&"foam_width", &"foam_strength",
-	&"road_width", &"road_softness", &"road_texture",
+	&"road_width", &"road_softness", &"road_texture", &"road_round", &"road_bend",
 	&"elevation_bright", &"elevation_shadow", &"elevation_rim", &"elevation_shadow_width",
 	&"height_scale",
 ]
@@ -34,6 +34,7 @@ var big_panel: bool = false  # 大面板模式（COVER 撑满滚动区）；fals
 var dataimage: Image    # RGBA8：R=陆地 G=水域 B=道路 A=流向
 var elevimage: Image    # R8：高程（原始单位，1 级 = elev_unit 单位）
 var elevsmoothimage: Image  # R8：平滑高程（几何与光照共用）
+var smoothbytes: PackedByteArray = PackedByteArray()  # 平滑高程的权威字节流（就地区域更新）
 var datatexture: ImageTexture
 var elevtexture: ImageTexture
 var elevsmoothtexture: ImageTexture
@@ -160,19 +161,24 @@ func sync_cell(cell: Vector2i) -> void:
 	elevtexture.update(elevimage)
 
 
-## 区域批量增量更新（笔刷/矩形填充，一次纹理上传）
-func sync_area(area: Rect2i) -> void:
+## 区域批量增量更新（笔刷/矩形填充）：只写区域内像素、只上传笔刷矩形。
+## elev_changed=true（地形笔刷动了高度）才重建高程派生数据——陆地/水域/道路
+## 笔刷完全不动高程，跳过整图模糊和最大高度扫描，这是大图涂画流畅的关键。
+func sync_area(area: Rect2i, elev_changed: bool = false) -> void:
 	if map == null or dataimage == null:
 		return
-	for y in range(area.position.y, area.end.y):
-		for x in range(area.position.x, area.end.x):
-			if map.in_bounds(Vector2i(x, y)):
-				_write_cell(x, y)
+	var clipped: Rect2i = area.intersection(Rect2i(Vector2i.ZERO, map.grid_size))
+	if clipped.size.x <= 0 or clipped.size.y <= 0:
+		return
+	for y in range(clipped.position.y, clipped.end.y):
+		for x in range(clipped.position.x, clipped.end.x):
+			_write_cell(x, y)
+	# ImageTexture 没有 update_region：整图一次上传（128² 仅 64KB，成本在驱动一次调用）
 	datatexture.update(dataimage)
-	elevtexture.update(elevimage)
-	_rebuild_elev_smooth()
-	elevsmoothtexture.update(elevsmoothimage)
-	_refresh_height_max()
+	if elev_changed:
+		elevtexture.update(elevimage)
+		_rebuild_elev_smooth(clipped)
+		_refresh_height_max()
 
 
 func get_content_size() -> Vector2:
@@ -285,32 +291,50 @@ func _sync_textures() -> void:
 
 ## 平滑高程纹理：可分离 5 点核，把整数台阶摊成缓坡。
 ## 斜角的射线求交和地面的山体阴影都用它 —— 几何与明暗因此是同一张嘴脸。
-func _rebuild_elev_smooth() -> void:
+## 平滑高程纹理：可分离 5 点核，把整数台阶摊成缓坡。
+## 斜角的射线求交和地面的山体阴影都用它 —— 几何与明暗因此是同一张嘴脸。
+## area 非空时只重算该区域外扩 2 格（核半径）的部分：笔刷落点几十字，
+## 字节流就地更新后整图一次上传（create_from_data 是 C++ 拷贝）。
+func _rebuild_elev_smooth(area: Rect2i = Rect2i()) -> void:
 	if map == null or elevsmoothimage == null:
 		return
 	var w: int = map.grid_size.x
 	var h: int = map.grid_size.y
+	if smoothbytes.size() != w * h:
+		smoothbytes = PackedByteArray()
+		smoothbytes.resize(w * h)
+		area = Rect2i(Vector2i.ZERO, map.grid_size)  # 纹理尺寸变了只能整图重算
+	var reg: Rect2i
+	if area.size.x <= 0 or area.size.y <= 0:
+		reg = Rect2i(Vector2i.ZERO, map.grid_size)
+	else:
+		reg = area.grow(2).intersection(Rect2i(Vector2i.ZERO, map.grid_size))
 	var unit: float = float(map.elev_unit)
+	var scale: float = 255.0 / ELEV_SMOOTH_MAX
+	# 横向趟只算 区域行±2 × 区域列（纵向趟的输入范围）；结果落在全图坐标系的 tmp 里
+	var ty0: int = maxi(reg.position.y - 2, 0)
+	var ty1: int = mini(reg.end.y + 2, h)
 	var tmp: PackedFloat32Array = PackedFloat32Array()
 	tmp.resize(w * h)
-	for y in h:
+	for y in range(ty0, ty1):
 		var row: int = y * w
-		for x in w:
+		for x in range(reg.position.x, reg.end.x):
 			var acc: float = 0.0
 			for k in 5:
 				var xx: int = clampi(x + k - 2, 0, w - 1)
 				acc += float(map.elevation[row + xx]) * ELEV_BLUR[k]
 			tmp[row + x] = acc * 0.0625
-	for y in h:
+	for y in range(reg.position.y, reg.end.y):
 		var row: int = y * w
-		for x in w:
+		for x in range(reg.position.x, reg.end.x):
 			var acc: float = 0.0
 			for k in 5:
 				var yy: int = clampi(y + k - 2, 0, h - 1)
 				acc += tmp[yy * w + x] * ELEV_BLUR[k]
 			var level: float = acc * 0.0625 / unit
-			var encoded: float = clampf(level / ELEV_SMOOTH_MAX, 0.0, 1.0)
-			elevsmoothimage.set_pixel(x, y, Color(encoded, 0.0, 0.0, 1.0))
+			smoothbytes[row + x] = clampi(int(round(level * scale)), 0, 255)
+	elevsmoothimage.copy_from(Image.create_from_data(w, h, false, Image.FORMAT_R8, smoothbytes))
+	elevsmoothtexture.update(elevsmoothimage)
 
 
 ## 斜角射线的范围要跟着地形最高点走（高程改动后调用）

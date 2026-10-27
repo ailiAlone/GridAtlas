@@ -54,6 +54,8 @@ uniform float u_foam_strength = 0.65;
 uniform float u_road_width = 0.30;
 uniform float u_road_softness = 0.06;
 uniform float u_road_texture = 0.24;
+uniform float u_road_round = 0.26;   // 转弯/路角的圆角半径（格）
+uniform float u_road_bend = 0.14;    // 直路蛇行幅度（格，峰-峰的一半）
 // ---- 高程 ----
 uniform float u_elev_bright = 0.045;
 uniform float u_elev_shadow = 0.16;
@@ -217,6 +219,13 @@ float fbm(vec2 p) {
 	return vnoise(p) * 0.5 + vnoise(p * 2.03 + vec2(0.33, 0.71)) * 0.3 + vnoise(p * 4.13 + vec2(0.71, 0.33)) * 0.2;
 }
 
+// 整数格哈希：给每块石头/砖一个稳定的随机数（不依赖噪声纹理，方便按块索引取）
+float hash21(vec2 p) {
+	p = fract(p * vec2(123.34, 456.21));
+	p += dot(p, p + 45.32);
+	return fract(p.x * p.y);
+}
+
 // 光照用高度：平滑高程 + 一层很轻的低频起伏（约 0.14 格）。
 // 起伏让平直的台阶轮廓自然弯曲，明暗带才不会读成两条云影。
 float elev_relief(vec2 p) {
@@ -266,10 +275,25 @@ float material_pattern(vec2 p, float id) {
 	return 1.0;
 }
 
-float soft_box(vec2 p, vec2 mn, vec2 mx, float e) {
-	vec2 lo = smoothstep(mn - e, mn + e, p);
-	vec2 hi = 1.0 - smoothstep(mx - e, mx + e, p);
-	return lo.x * hi.x * lo.y * hi.y;
+// 点到轴对齐矩形的有符号距离（矩形：中心 c、半边长 0.5）
+float rect_dist(vec2 p, vec2 c) {
+	vec2 q = abs(p - c) - vec2(0.5);
+	return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0);
+}
+
+// 凸角圆角系数：把内缩后的方角换成半径 rr 的弧，弧心在 (inset+rr, inset+rr)。
+// 弧与两条内缩边相切，所以必须在角方格 [0, inset+rr]² 内才削 —— 否则会削到
+// 直边中段，把整格切成碎边。返回值 1=保留，0=削掉。
+float convex_round(vec2 u, float inset, float rr, float e) {
+	vec2 c = vec2(inset + rr);
+	float keep = 1.0 - smoothstep(rr - e, rr + e, length(u - c));
+	vec2 win = step(u, c);   // u <= c 的分量为 1
+	return mix(1.0, keep, win.x * win.y);
+}
+
+// 凹角圆角系数：在角点补一个半径 rr 的四分之一圆，把内侧直角磨圆。返回值 1=填满。
+float concave_round(vec2 u, float rr, float e) {
+	return 1.0 - smoothstep(rr - e, rr + e, length(u));
 }
 
 // 定向波列：正弦相位 + 两级噪声扭曲（否则是完美平行的直线条纹，很假）
@@ -535,7 +559,12 @@ vec3 shade_surface(vec2 cf) {
 		col = mix(col, water, clamp(waterness, 0.0, 1.0));
 	}
 
-	// ---- 7) 道路：不参与边界扭曲，路带笔直并与相邻道路格连接 ----
+	// ---- 7) 道路：按"到道路区域边界的内缩距离"绘制 ----
+	// 以前是每格中心画一条固定宽度的带：单格路好看，但两格宽的路会在两列之间
+	// 留缝（每行补丁之间 0.4 格的小洞，连成一串绿方块）。现在把道路格集合
+	// 当成一个区域，取到最近非道路格的距离，按内缩量裁边：
+	// 任意宽度（1/2/3 格）、任意形状（直路/丁字/十字/广场）都自然连续，
+	// 外凸角自动得到圆角，路宽也只由数据决定。
 	vec2 dcell = floor(cf);
 	vec2 dinc = cf - dcell;
 	float road_id = cell_data(dcell).b * 255.0;
@@ -544,18 +573,131 @@ vec3 shade_surface(vec2 cf) {
 		bool cW = cell_data(dcell + vec2(-1.0, 0.0)).b * 255.0 > 0.5;
 		bool cS = cell_data(dcell + vec2(0.0, 1.0)).b * 255.0 > 0.5;
 		bool cN = cell_data(dcell + vec2(0.0, -1.0)).b * 255.0 > 0.5;
-		vec2 rp = dinc + (vec2(vnoise(cf * 3.3), vnoise(cf * 3.3 + vec2(4.1, 8.2))) - 0.5) * 0.05;
-		float w = u_road_width;
-		float e = max(u_road_softness, 0.01);
-		float m = soft_box(rp, vec2(0.5 - w), vec2(0.5 + w), e);
-		if (cE) m = max(m, soft_box(rp, vec2(0.5 - w, 0.5 - w), vec2(1.0, 0.5 + w), e));
-		if (cW) m = max(m, soft_box(rp, vec2(0.0, 0.5 - w), vec2(0.5 + w, 0.5 + w), e));
-		if (cS) m = max(m, soft_box(rp, vec2(0.5 - w, 0.5 - w), vec2(0.5 + w, 1.0), e));
-		if (cN) m = max(m, soft_box(rp, vec2(0.5 - w, 0.0), vec2(0.5 + w, 0.5 + w), e));
+		bool cNE = cell_data(dcell + vec2(1.0, -1.0)).b * 255.0 > 0.5;
+		bool cNW = cell_data(dcell + vec2(-1.0, -1.0)).b * 255.0 > 0.5;
+		bool cSE = cell_data(dcell + vec2(1.0, 1.0)).b * 255.0 > 0.5;
+		bool cSW = cell_data(dcell + vec2(-1.0, 1.0)).b * 255.0 > 0.5;
+		// 直路蛇行：取边界距离前先把局部坐标按低频噪声整体推一点。
+		// 位移场是连续的世界坐标函数，所以相邻格推的方向一致 —— 路带整体平移，
+		// 直段因此缓慢摆动而不是笔直一条；幅度压在 inset 以内，不会顶到格子边界被裁断。
+		vec2 bend = vec2(vnoise(cf * 0.105 + vec2(3.1, 7.7)), vnoise(cf * 0.105 + vec2(11.4, 2.3))) - 0.5;
+		vec2 dww = dinc + bend * (u_road_bend * 2.0);
+		float db = 1.0;   // 到区域边界的距离（格）；四周全路时封顶 1
+		if (!cE) db = min(db, rect_dist(dww, vec2(1.5, 0.5)));
+		if (!cW) db = min(db, rect_dist(dww, vec2(-0.5, 0.5)));
+		if (!cS) db = min(db, rect_dist(dww, vec2(0.5, 1.5)));
+		if (!cN) db = min(db, rect_dist(dww, vec2(0.5, -0.5)));
+		if (!cNE) db = min(db, rect_dist(dww, vec2(1.5, -0.5)));
+		if (!cNW) db = min(db, rect_dist(dww, vec2(-0.5, -0.5)));
+		if (!cSE) db = min(db, rect_dist(dww, vec2(1.5, 1.5)));
+		if (!cSW) db = min(db, rect_dist(dww, vec2(-0.5, 1.5)));
+		float rw = u_road_width;
+		float re = max(u_road_softness, 0.01);
+		float inset = 0.5 - rw;   // 从数据边界向内收多少（0.5 格宽 = 路占满整格）
+		db += (vnoise(dcell + dinc * 0.35 + vec2(1.7, 5.2)) - 0.5) * 0.05;   // 边线不绝对平直
+		float rm = smoothstep(inset - re, inset + re, db);
+		// 角部圆角：阶梯路每格都是 90° 折角，削凸补凹之后读起来是一条连续的弯道。
+		// 只在"真拐角"上做 —— 相邻两侧都是草才是凸角，两侧都路而斜邻是草才是凹角。
+		float rr = clamp(u_road_round, 0.0, max(rw - 0.04, 0.0));
+		vec2 uNW = dww;
+		vec2 uNE = vec2(1.0 - dww.x, dww.y);
+		vec2 uSW = vec2(dww.x, 1.0 - dww.y);
+		vec2 uSE = 1.0 - dww;
+		if (!cW && !cN && !cNW) rm *= convex_round(uNW, inset, rr, re);
+		if (!cE && !cN && !cNE) rm *= convex_round(uNE, inset, rr, re);
+		if (!cW && !cS && !cSW) rm *= convex_round(uSW, inset, rr, re);
+		if (!cE && !cS && !cSE) rm *= convex_round(uSE, inset, rr, re);
+		if (cW && cN && !cNW) rm = max(rm, concave_round(uNW, rr, re));
+		if (cE && cN && !cNE) rm = max(rm, concave_round(uNE, rr, re));
+		if (cW && cS && !cSW) rm = max(rm, concave_round(uSW, rr, re));
+		if (cE && cS && !cSE) rm = max(rm, concave_round(uSE, rr, re));
 		vec3 rcol = table_color(8 + int(clamp(road_id, 1.0, 3.0)));
-		float grain = vnoise(cf * 9.0) * 0.6 + vnoise(cf * 3.5 + vec2(2.0, 6.0)) * 0.4;
-		rcol *= 1.0 - u_road_texture * 0.5 + u_road_texture * grain;
-		col = mix(col, rcol, m);
+		if (road_id > 2.5) {
+			// ---- 石砖路：错缝矩形砖 + 灰缝 + 棱边明暗 ----
+			// 砖块按世界坐标铺（数据本来就是网格地图，砖缝与格子对齐最自然）；
+			// 奇偶行错开半块，读起来才是砖砌而不是方格。
+			float bw = 0.58;    // 砖长（格）
+			float bh = 0.26;    // 砖高（格）
+			vec2 bp = vec2(cf.x / bw, cf.y / bh);
+			float brow = floor(bp.y);
+			bp.x += mod(brow, 2.0) * 0.5;   // 错缝
+			vec2 bid = floor(bp);
+			vec2 bf = fract(bp);
+			float mortar = 0.048;            // 灰缝半宽（格）
+			float bx0 = bf.x * bw;           // 砖内到左/上边的距离（格）
+			float by0 = bf.y * bh;
+			float bd = min(min(bx0, bw - bx0), min(by0, bh - by0));
+			float joint = 1.0 - smoothstep(mortar, mortar + 0.018, bd);
+			// 逐砖色差 + 砖面细起伏
+			float stone_tone = 0.86 + 0.26 * hash21(bid + vec2(3.7, 1.3));
+			vec3 bcol = rcol * stone_tone * (0.95 + 0.10 * vnoise(cf * 5.5 + bid * 2.9));
+			// 棱带：紧贴灰缝内侧的一窄条亮带（左上）/暗带（右下），砖才有厚度感。
+			// 带必须落在砖面上（bd > mortar），否则会把灰缝本身照亮、竖缝就糊掉了。
+			float m2 = mortar + 0.020;
+			float m3 = mortar + 0.058;
+			float band_l = smoothstep(mortar, m2, bx0) * (1.0 - smoothstep(m2, m3, bx0));
+			float band_t = smoothstep(mortar, m2, by0) * (1.0 - smoothstep(m2, m3, by0));
+			float band_r = smoothstep(mortar, m2, bw - bx0) * (1.0 - smoothstep(m2, m3, bw - bx0));
+			float band_b = smoothstep(mortar, m2, bh - by0) * (1.0 - smoothstep(m2, m3, bh - by0));
+			bcol *= 1.0 + max(band_l, band_t) * 0.20 - max(band_r, band_b) * 0.22;
+			// 灰缝压暗（"路面质感"控制缝的深浅）
+			bcol = mix(bcol, bcol * 0.42, joint * (0.55 + u_road_texture * 1.4));
+			rcol = bcol;
+		} else if (road_id > 1.5) {
+			// ---- 碎石路：Voronoi 卵石 —— 每颗石子有独立明暗，石缝压暗 ----
+			float gs = 0.34;    // 石子胞元尺寸（格）
+			vec2 gp = cf / gs;
+			vec2 gi = floor(gp);
+			vec2 gf = fract(gp);
+			float f1 = 8.0;
+			float f2 = 8.0;
+			vec2 gbest = vec2(0.0);
+			vec2 gfrom = vec2(0.0);   // 像素相对最近石子中心的方向
+			for (int oy = -1; oy <= 1; oy++) {
+				for (int ox = -1; ox <= 1; ox++) {
+					vec2 o = vec2(float(ox), float(oy));
+					vec2 rnd = vec2(hash21(gi + o), hash21(gi + o + vec2(17.1, 4.7)));
+					vec2 pos = o + rnd - gf;
+					float d = length(pos);
+					if (d < f1) {
+						f2 = f1;
+						f1 = d;
+						gbest = gi + o;
+						gfrom = pos;
+					} else if (d < f2) {
+						f2 = d;
+					}
+				}
+			}
+			float seam = smoothstep(0.03, 0.16, f2 - f1);   // 1=石面，0=石缝
+			float pebble = 0.90 + 0.22 * hash21(gbest + vec2(6.1, 2.3));
+			vec3 gcol = rcol * pebble;
+			// 石子隆起：中心亮、边缘暗；再按光向（左上）给一点方向性
+			float dome = 1.0 - smoothstep(0.0, 0.55, f1);
+			float light_dir = dot(normalize(gfrom + vec2(1e-4)), normalize(vec2(-0.62, -0.62)));
+			gcol *= 0.88 + dome * 0.20 + light_dir * dome * 0.10;
+			gcol *= 0.94 + 0.12 * vnoise(cf * 9.0);
+			// 石缝：暗、带一点冷色
+			gcol = mix(gcol * 0.50, gcol, seam * (0.55 + u_road_texture * 1.2));
+			rcol = gcol;
+		} else {
+			// ---- 土路：沿走向拉长的车辙 ----
+			float ew = (cE || cW) ? 1.0 : 0.0;
+			float ns = (cN || cS) ? 1.0 : 0.0;
+			float run_t = ew / max(ew + ns, 1.0);
+			vec2 suv = mix(vec2(cf.x * 2.4, cf.y * 9.0), vec2(cf.x * 9.0, cf.y * 2.4), run_t);
+			float grain = vnoise(cf * 9.0) * 0.6 + vnoise(cf * 3.5 + vec2(2.0, 6.0)) * 0.4;
+			grain = mix(grain, vnoise(suv), 0.55);
+			rcol *= 1.0 - u_road_texture * 0.5 + u_road_texture * grain;
+		}
+		// 路边一圈压暗：让路"嵌"进地面，而不是贴上去
+		float rim = rm * (1.0 - smoothstep(inset, inset + re * 5.0, db));
+		rcol *= 1.0 - rim * 0.16;
+		// 与地形共用同一套坡面明暗：山坡上的路才不会像贴纸
+		rcol *= lit_c;
+		// 水下不显路（道路数据仍在陆地层，水退后自动露出来）
+		rm *= 1.0 - clamp(waterness, 0.0, 1.0);
+		col = mix(col, rcol, rm);
 	}
 
 	// ---- 8) 细颗粒：只做极低幅度抖动，防止色带 ----

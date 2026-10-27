@@ -338,6 +338,11 @@ horizontal_alignment = 1
 [node name="HFlowContainer" type="HFlowContainer" parent="PanelContainer4/VBoxContainer" unique_id=1279541181]
 layout_mode = 2
 
+[node name="None" type="Button" parent="PanelContainer4/VBoxContainer/HFlowContainer"]
+custom_minimum_size = Vector2(36, 30)
+layout_mode = 2
+text = "无"
+
 [node name="Dirt" type="Button" parent="PanelContainer4/VBoxContainer/HFlowContainer" unique_id=1372146605]
 custom_minimum_size = Vector2(36, 30)
 layout_mode = 2

@@ -97,9 +97,9 @@ func _on_area_painted(area: Rect2i, erase: bool) -> void:
 		_sculpt_area(area, erase)
 		tools.mark_dirty()
 		for view: GridView in grids:
-			view.queue_redraw()
+			view.sync_cell_area(area)
 		for view: RenderView in renders:
-			view.sync_area(area)
+			view.sync_area(area, true)   # 动了高度：高程派生数据要重建
 		print("[绘制] (%d,%d) %d×%d 地形 %s（%s%s）" % [area.position.x, area.position.y, area.size.x, area.size.y,
 			tools.terrain_mode_text(), tools.terrain_param_text(), "，右键压低" if erase else ""])
 		return
@@ -134,9 +134,9 @@ func _on_area_painted(area: Rect2i, erase: bool) -> void:
 				map.set_flow(cell, value)
 	tools.mark_dirty()
 	for view: GridView in grids:
-		view.queue_redraw()
+		view.sync_cell_area(area)
 	for view: RenderView in renders:
-		view.sync_area(area)
+		view.sync_area(area)   # 非地形笔刷不动高程，跳过高程派生数据重建
 	if erase:
 		print("[绘制] (%d,%d) %d×%d 擦除 %s -> %s" % [area.position.x, area.position.y, area.size.x, area.size.y, GridDefs.LAYER_NAMES.get(layer, layer), tools.value_name(layer, value)])
 	else:
@@ -201,12 +201,12 @@ func _on_cell_hovered(cell: Vector2i) -> void:
 
 # ---------- 地图与配置事件 ----------
 
-## 尺寸变化：同一个 MapData 对象原地 resize，重建渲染纹理、刷新编辑视图
+## 尺寸变化：同一个 MapData 对象原地 resize，重建渲染纹理、重铺格子缓存
 func _on_map_resized(_size: Vector2i) -> void:
 	for view: RenderView in renders:
 		view.set_map(map)
 	for view: GridView in grids:
-		view.refresh()
+		view.set_map(map)
 
 
 ## 打开地图：MapData 被整体替换，回灌给所有使用方

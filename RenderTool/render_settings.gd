@@ -96,6 +96,8 @@ const SURFACE_SHORT: Dictionary = {1: "草", 2: "沙", 3: "荒", 4: "雪", 5: "�
 @export var road_width: float = 0.30
 @export var road_softness: float = 0.06
 @export var road_texture: float = 0.24
+@export var road_round: float = 0.26    # 转弯/路角的圆角半径（格）
+@export var road_bend: float = 0.14     # 直路蛇行幅度（格，峰-峰的一半）
 
 # ---------- 高程光照（光固定左上） ----------
 
