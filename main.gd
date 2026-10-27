@@ -92,13 +92,23 @@ func _refresh_views() -> void:
 ## 涂画/矩形填充统一入口：把笔刷值写到区域内每个格子（越界部分跳过）
 func _on_area_painted(area: Rect2i, erase: bool) -> void:
 	var layer: StringName = tools.brush_layer
-	# 陆地/高程没有 NONE：擦除=恢复默认（草地/1）；水域/道路/流向擦除=0（NONE）
+	# 地形笔刷按径向衰减逐格改高度，和固定值写入不是一回事，单独走
+	if layer == &"terrain":
+		_sculpt_area(area, erase)
+		tools.mark_dirty()
+		for view: GridView in grids:
+			view.queue_redraw()
+		for view: RenderView in renders:
+			view.sync_area(area)
+		print("[绘制] (%d,%d) %d×%d 地形 %s（%s%s）" % [area.position.x, area.position.y, area.size.x, area.size.y,
+			tools.terrain_mode_text(), tools.terrain_param_text(), "，右键压低" if erase else ""])
+		return
+	# 陆地没有 NONE：擦除=恢复默认（草地）；水域/道路/流向擦除=0（NONE）
 	var value: int = tools.brush_value
-	var height: float = 1.0 if erase else tools.brush_height
 	if erase:
 		if layer == &"land":
 			value = GridDefs.Land.GRASS
-		elif layer != &"elevation":
+		else:
 			value = 0
 	for y in range(area.position.y, area.end.y):
 		for x in range(area.position.x, area.end.x):
@@ -122,24 +132,64 @@ func _on_area_painted(area: Rect2i, erase: bool) -> void:
 					map.set_road(cell, value)
 			elif layer == &"flow":
 				map.set_flow(cell, value)
-			elif layer == &"elevation":
-				map.set_height(cell, height)
 	tools.mark_dirty()
 	for view: GridView in grids:
 		view.queue_redraw()
 	for view: RenderView in renders:
 		view.sync_area(area)
 	if erase:
-		print("[绘制] (%d,%d) %d×%d 擦除 %s -> %s" % [area.position.x, area.position.y, area.size.x, area.size.y, GridDefs.LAYER_NAMES.get(layer, layer), _brush_text(layer, value)])
+		print("[绘制] (%d,%d) %d×%d 擦除 %s -> %s" % [area.position.x, area.position.y, area.size.x, area.size.y, GridDefs.LAYER_NAMES.get(layer, layer), tools.value_name(layer, value)])
 	else:
-		print("[绘制] (%d,%d) %d×%d %s = %s" % [area.position.x, area.position.y, area.size.x, area.size.y, GridDefs.LAYER_NAMES.get(layer, layer), _brush_text(layer, tools.brush_value)])
+		print("[绘制] (%d,%d) %d×%d %s = %s" % [area.position.x, area.position.y, area.size.x, area.size.y, GridDefs.LAYER_NAMES.get(layer, layer), tools.value_name(layer, tools.brush_value)])
 
 
-## 绘制日志用的笔刷值文本（高程是浮点，其余是枚举名）
-func _brush_text(layer: StringName, value: int) -> String:
-	if layer == &"elevation":
-		return tools.height_text(tools.brush_height)
-	return tools.value_name(layer, value)
+## 地形笔刷：范围内按径向衰减抬升/压低/平滑（右键 = 压低）
+## 平滑读取的是落笔前的原值，避免同一笔里"边算边改"造成方向性拖影。
+## 展平是"设定值"不是雕刻：不走衰减，区域内每格直接写"高度"参数的目标值。
+func _sculpt_area(area: Rect2i, erase: bool) -> void:
+	var mode: StringName = &"lower" if erase else tools.terrain_mode
+	if mode == &"flatten":
+		for y in range(area.position.y, area.end.y):
+			for x in range(area.position.x, area.end.x):
+				var flat_cell: Vector2i = Vector2i(x, y)
+				if map.in_bounds(flat_cell):
+					map.set_height(flat_cell, tools.brush_height)
+		return
+	var strength: float = tools.terrain_strength
+	var center: Vector2 = Vector2(area.position) + Vector2(area.size) * 0.5
+	var radius: float = maxf(float(maxi(area.size.x, area.size.y)) * 0.5, 0.5)
+	var updates: Dictionary = {}
+	for y in range(area.position.y, area.end.y):
+		for x in range(area.position.x, area.end.x):
+			var cell: Vector2i = Vector2i(x, y)
+			if not map.in_bounds(cell):
+				continue
+			var dist: float = (Vector2(x + 0.5, y + 0.5) - center).length() / radius
+			var fall: float = clampf(1.0 - dist, 0.0, 1.0)
+			fall = fall * fall * (3.0 - 2.0 * fall)
+			if fall <= 0.001:
+				continue
+			var height: float = map.get_height(cell)
+			if mode == &"raise":
+				updates[cell] = height + strength * fall
+			elif mode == &"lower":
+				updates[cell] = height - strength * fall
+			else:
+				updates[cell] = lerpf(height, _neighbor_height(cell, height), clampf(strength * fall, 0.0, 1.0))
+	for cell: Vector2i in updates:
+		map.set_height(cell, updates[cell])
+
+
+## 3×3 邻域均值（中心权重 4，四邻各 1）
+func _neighbor_height(cell: Vector2i, own: float) -> float:
+	var total: float = own * 4.0
+	var count: int = 4
+	for offset: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		var neighbor: Vector2i = cell + offset
+		if map.in_bounds(neighbor):
+			total += map.get_height(neighbor)
+			count += 1
+	return total / float(count)
 
 
 func _on_cell_hovered(cell: Vector2i) -> void:

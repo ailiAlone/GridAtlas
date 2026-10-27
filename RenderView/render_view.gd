@@ -8,9 +8,9 @@ extends Control
 const NOISE_SIZE: int = 256
 const PREVIEW_MAP_PATH: String = "res://GridData/maps/first.tres"
 const SHADER_PATH: String = "res://RenderView/render_view.gdshader"
-const COLOR_COUNT: int = 13  # 0空 1..6陆 7..8水 9..11路 12泡沫
+const COLOR_COUNT: int = 15  # 0空 1..6陆 7..8水 9..11路 12泡沫 13岩石 14雪线
 ## 平滑高程纹理的取值范围（级）。8 位纹理在这里换到最细的 0.0625 级。
-const ELEV_SMOOTH_MAX: float = 16.0
+const ELEV_SMOOTH_MAX: float = 32.0
 ## 可分离 5 点平滑核（1 4 6 4 1）/16
 const ELEV_BLUR: Array[float] = [1.0, 4.0, 6.0, 4.0, 1.0]
 ## RenderSettings 属性名 == uniform 名去掉 u_ 前缀

@@ -34,6 +34,9 @@ const SURFACE_SHORT: Dictionary = {1: "草", 2: "沙", 3: "荒", 4: "雪", 5: "�
 	11: Color(0.44, 0.486, 0.522),
 }
 @export var foam_color: Color = Color(0.93, 0.97, 1.0)
+## 山体：坡度与高度驱动的两种覆盖色（不属于地表编号，只进颜色表 13/14）
+@export var rock_color: Color = Color(0.58, 0.55, 0.50)
+@export var snowcap_color: Color = Color(0.94, 0.96, 0.975)
 
 # ---------- 亲和度矩阵（键：Vector2i(小, 大)） ----------
 
@@ -70,7 +73,7 @@ const SURFACE_SHORT: Dictionary = {1: "草", 2: "沙", 3: "荒", 4: "雪", 5: "�
 @export var crease_dark: float = 0.14   # 折痕压暗强度
 
 # ---------- 潮汐（深浅交界与"沙地↔浅水"岸线的来回摆动） ----------
-# TODO（以后）：沙地↔浅水 与 浅↔深水 目前共用下面两个参数，之后需要拆成两组独立参数。
+# 二期 TODO（见 Docs/二期优化.md）：沙地↔浅水 与 浅↔深水 共用下面两个参数，之后拆成两组独立。
 
 @export var tide_frequency: float = 1.85  # 潮汐频率倍率（1 = 默认速度）
 @export var tide_amplitude: float = 1.15  # 潮汐幅度倍率（1 = 默认幅度，0 = 完全静止）
@@ -130,6 +133,10 @@ func set_affinity(a: int, b: int, value: float) -> void:
 
 ## 颜色纹理取色：索引见文件头注释；0 号空置不使用
 func surface_color(index: int) -> Color:
+	if index == 14:
+		return snowcap_color
+	if index == 13:
+		return rock_color
 	if index == 12:
 		return foam_color
 	if index >= 9:

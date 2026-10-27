@@ -472,80 +472,136 @@ custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
 text = "↘"
 
-[node name="PanelContainer3" type="PanelContainer" parent="." unique_id=780239576]
+[node name="PanelTerrain" type="PanelContainer" parent="." unique_id=780239577]
 layout_mode = 2
 
-[node name="VBoxContainer" type="VBoxContainer" parent="PanelContainer3" unique_id=897037542]
+[node name="VBoxContainer" type="VBoxContainer" parent="PanelTerrain" unique_id=897037543]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="PanelContainer3/VBoxContainer" unique_id=124985757]
+[node name="Label" type="Label" parent="PanelTerrain/VBoxContainer" unique_id=124985758]
 layout_mode = 2
-text = "高程"
+text = "地形"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Button" type="Button" parent="PanelContainer3/VBoxContainer/Label" unique_id=101672978]
+[node name="Button" type="Button" parent="PanelTerrain/VBoxContainer/Label" unique_id=101672978]
 layout_mode = 1
 anchors_preset = 6
 anchor_left = 1.0
 anchor_top = 0.5
 anchor_right = 1.0
 anchor_bottom = 0.5
-offset_left = -40.0
-offset_top = -10.0
-offset_bottom = 10.0
+offset_left = -56.0
+offset_top = -11.5
+offset_bottom = 13.5
 grow_horizontal = 0
 grow_vertical = 2
-theme_override_font_sizes/font_size = 8
+theme_override_font_sizes/font_size = 12
 text = "高程视图"
 
-[node name="HFlowContainer" type="HFlowContainer" parent="PanelContainer3/VBoxContainer" unique_id=1398242136]
+[node name="HFlowContainer" type="HFlowContainer" parent="PanelTerrain/VBoxContainer" unique_id=1398242138]
 layout_mode = 2
 
-[node name="ElevationSpin" type="SpinBox" parent="PanelContainer3/VBoxContainer/HFlowContainer" unique_id=1398242137]
+[node name="ButtonRaise" type="Button" parent="PanelTerrain/VBoxContainer/HFlowContainer" unique_id=1005337400]
+custom_minimum_size = Vector2(44, 32)
 layout_mode = 2
+toggle_mode = true
+text = "抬升"
+
+[node name="ButtonLower" type="Button" parent="PanelTerrain/VBoxContainer/HFlowContainer" unique_id=1005337401]
+custom_minimum_size = Vector2(44, 32)
+layout_mode = 2
+toggle_mode = true
+text = "压低"
+
+[node name="ButtonSmooth" type="Button" parent="PanelTerrain/VBoxContainer/HFlowContainer" unique_id=1005337402]
+custom_minimum_size = Vector2(44, 32)
+layout_mode = 2
+toggle_mode = true
+text = "平滑"
+
+[node name="ButtonFlatten" type="Button" parent="PanelTerrain/VBoxContainer/HFlowContainer" unique_id=147228270]
+custom_minimum_size = Vector2(44, 32)
+layout_mode = 2
+toggle_mode = true
+text = "展平"
+
+[node name="HBoxContainer" type="HBoxContainer" parent="PanelTerrain/VBoxContainer" unique_id=1398242139]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="PanelTerrain/VBoxContainer/HBoxContainer" unique_id=1398242140]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "强度"
+
+[node name="Slider" type="HSlider" parent="PanelTerrain/VBoxContainer/HBoxContainer" unique_id=1398242141]
+custom_minimum_size = Vector2(110, 20)
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.05
+max_value = 1.0
+step = 0.05
+value = 0.25
+
+[node name="Value" type="Label" parent="PanelTerrain/VBoxContainer/HBoxContainer" unique_id=1398242142]
+custom_minimum_size = Vector2(42, 0)
+layout_mode = 2
+text = "0.25"
+horizontal_alignment = 2
+
+[node name="HBoxHeight" type="HBoxContainer" parent="PanelTerrain/VBoxContainer" unique_id=484794859]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="PanelTerrain/VBoxContainer/HBoxHeight" unique_id=2103271546]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "高度"
+
+[node name="ElevationSpin" type="SpinBox" parent="PanelTerrain/VBoxContainer/HBoxHeight" unique_id=37360607]
 custom_minimum_size = Vector2(110, 32)
+layout_mode = 2
+size_flags_horizontal = 3
 min_value = 0.25
-max_value = 16.0
+max_value = 32.0
 step = 0.25
 value = 1.0
 
-[node name="PanelContainerBrush" type="PanelContainer" parent="."]
+[node name="PanelContainerBrush" type="PanelContainer" parent="." unique_id=1720444445]
 layout_mode = 2
 
-[node name="VBoxContainer" type="VBoxContainer" parent="PanelContainerBrush"]
+[node name="VBoxContainer" type="VBoxContainer" parent="PanelContainerBrush" unique_id=812671991]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="PanelContainerBrush/VBoxContainer"]
+[node name="Label" type="Label" parent="PanelContainerBrush/VBoxContainer" unique_id=1468111450]
 layout_mode = 2
 text = "笔刷"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="HFlowContainer" type="HFlowContainer" parent="PanelContainerBrush/VBoxContainer"]
+[node name="HFlowContainer" type="HFlowContainer" parent="PanelContainerBrush/VBoxContainer" unique_id=151225533]
 layout_mode = 2
 
-[node name="Button1" type="Button" parent="PanelContainerBrush/VBoxContainer/HFlowContainer"]
+[node name="Button1" type="Button" parent="PanelContainerBrush/VBoxContainer/HFlowContainer" unique_id=1443303570]
 custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
 text = "1"
 
-[node name="Button2" type="Button" parent="PanelContainerBrush/VBoxContainer/HFlowContainer"]
+[node name="Button2" type="Button" parent="PanelContainerBrush/VBoxContainer/HFlowContainer" unique_id=942740451]
 custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
 text = "2"
 
-[node name="Button3" type="Button" parent="PanelContainerBrush/VBoxContainer/HFlowContainer"]
+[node name="Button3" type="Button" parent="PanelContainerBrush/VBoxContainer/HFlowContainer" unique_id=688405523]
 custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
 text = "3"
 
-[node name="ButtonPlus" type="Button" parent="PanelContainerBrush/VBoxContainer/HFlowContainer"]
+[node name="ButtonPlus" type="Button" parent="PanelContainerBrush/VBoxContainer/HFlowContainer" unique_id=93388219]
 custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
 text = "+"
 
-[node name="ButtonRect" type="Button" parent="PanelContainerBrush/VBoxContainer"]
+[node name="ButtonRect" type="Button" parent="PanelContainerBrush/VBoxContainer" unique_id=1788314460]
 layout_mode = 2
 text = "矩形填充"
 

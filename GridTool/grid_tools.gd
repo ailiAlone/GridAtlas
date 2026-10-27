@@ -1,6 +1,6 @@
 extends VBoxContainer
 ## GridTools —— 编辑器左侧工具面板。
-## 负责：笔刷选择（陆地/道路/水域/流向/高程）、地图尺寸、保存/打开。
+## 负责：笔刷选择（陆地/道路/水域/流向）、地形工具（抬升/压低/平滑/展平）、地图尺寸、保存/打开。
 ## 状态变化通过信号通知外部，由 main.gd 负责把笔刷和地图接到 GridView 上。
 ## MapData 只归 main.gd 所有：这里的 map 是 main 通过 set_map 注入的借用引用，
 ## 本脚本不创建、不替换；打开文件得到的新地图经 map_loaded 信号交还 main。
@@ -8,7 +8,7 @@ extends VBoxContainer
 
 # ---------- 对外信号 ----------
 
-## 笔刷切换：layer 为 &"land"/&"road"/&"water"/&"flow"/&"elevation"，value 为 GridDefs 枚举值
+## 笔刷切换：layer 为 &"land"/&"road"/&"water"/&"flow"/&"terrain"，value 为 GridDefs 枚举值
 signal brush_changed(layer: StringName, value: int)
 signal map_resized(size: Vector2i)
 signal map_loaded(data: MapData)
@@ -25,8 +25,16 @@ signal rect_mode_changed(on: bool)
 @onready var roadscontainer:HFlowContainer = $"PanelContainer4/VBoxContainer/HFlowContainer"
 @onready var waterscontainer:HBoxContainer = $"PanelContainer2/VBoxContainer/HBoxContainer"
 @onready var directionscontainer:GridContainer = $"PanelContainer2/VBoxContainer/HBoxContainer/GridContainer"
-@onready var elevationspin:SpinBox = $"PanelContainer3/VBoxContainer/HFlowContainer/ElevationSpin"
-@onready var elevationviewbutton:Button = $"PanelContainer3/VBoxContainer/Label/Button"
+@onready var elevationviewbutton:Button = $"PanelTerrain/VBoxContainer/Label/Button"
+@onready var terrainraise:Button = $"PanelTerrain/VBoxContainer/HFlowContainer/ButtonRaise"
+@onready var terrainlower:Button = $"PanelTerrain/VBoxContainer/HFlowContainer/ButtonLower"
+@onready var terrainsmooth:Button = $"PanelTerrain/VBoxContainer/HFlowContainer/ButtonSmooth"
+@onready var terrainflatten:Button = $"PanelTerrain/VBoxContainer/HFlowContainer/ButtonFlatten"
+@onready var terrainstrength:HSlider = $"PanelTerrain/VBoxContainer/HBoxContainer/Slider"
+@onready var terrainvaluelabel:Label = $"PanelTerrain/VBoxContainer/HBoxContainer/Value"
+@onready var elevationspin:SpinBox = $"PanelTerrain/VBoxContainer/HBoxHeight/ElevationSpin"
+@onready var terrainstrengthrow:HBoxContainer = $"PanelTerrain/VBoxContainer/HBoxContainer"
+@onready var terrainheightrow:HBoxContainer = $"PanelTerrain/VBoxContainer/HBoxHeight"
 @onready var brushcontainer:HFlowContainer = $"PanelContainerBrush/VBoxContainer/HFlowContainer"
 @onready var brushplusbutton:Button = $"PanelContainerBrush/VBoxContainer/HFlowContainer/ButtonPlus"
 @onready var brushrectbutton:Button = $"PanelContainerBrush/VBoxContainer/ButtonRect"
@@ -73,7 +81,10 @@ const DIRECTION_BUTTONS: Dictionary = {
 var map: MapData  # 借用引用：由 main.gd 注入，不自己创建或替换
 var brush_layer: StringName = &"land"
 var brush_value: int = GridDefs.Land.GRASS
-var brush_height: float = 1.0  # 高程笔刷的值（级，0.25 步长）
+var brush_height: float = 1.0  # 展平的目标高度（级，0.25 步长）
+var terrain_mode: StringName = &"raise"  # 地形笔刷：raise / lower / smooth / flatten
+var terrain_strength: float = 0.25       # 每次落笔的高度变化量（级）
+var terrain_group: ButtonGroup = ButtonGroup.new()  # 地形模式互斥
 var brush_size: int = 1
 var brush_size_max: int = 3  # 当前可选的最大笔刷边长（与数字按钮数一致）
 var sizegroup: ButtonGroup = ButtonGroup.new()  # 笔刷大小互斥选择
@@ -90,6 +101,8 @@ func _ready() -> void:
 	elevationspin.value_changed.connect(_on_elevation_value)
 	elevationviewbutton.toggle_mode = true
 	elevationviewbutton.toggled.connect(_on_elevation_view_toggled)
+	_setup_terrain_buttons()
+	terrainstrength.value_changed.connect(_on_terrain_strength)
 	_setup_size_buttons()
 	brushplusbutton.pressed.connect(_on_brush_plus)
 	brushrectbutton.toggle_mode = true
@@ -126,7 +139,8 @@ func _on_direction_button(dir: Vector2i) -> void:
 	select_direction(dir)
 
 func _on_elevation_value(value: float) -> void:
-	set_elevation(value)
+	brush_height = snappedf(value, 0.25)
+	print("[笔刷] 展平高度 -> %s" % height_text(brush_height))
 
 ## 高程视图开关：按下时画布改用红绿归一化显示高度，按钮保持高亮、文字变为“普通视图”
 func _on_elevation_view_toggled(pressed: bool) -> void:
@@ -181,19 +195,76 @@ func select_water(id: int) -> void:
 func select_direction(dir: Vector2i) -> void:
 	_set_brush(&"flow", GridDefs.flow_from_vector(dir))
 
-func set_elevation(value: float) -> void:
-	brush_layer = &"elevation"
-	brush_height = snappedf(value, 0.25)
-	brush_changed.emit(&"elevation", 0)
-	print("[笔刷] 高程 -> %s" % height_text(brush_height))
 
-
-## 高程显示文本：整数不带小数，其余保留两位
+## 高度显示文本：整数不带小数，其余保留两位
 func height_text(value: float) -> String:
 	if absf(value - roundf(value)) < 0.001:
 		return str(int(roundf(value)))
 	var text: String = "%.2f" % value
 	return text
+
+
+## 地形模式：四个互斥 toggle，默认"抬升"。抬升/压低/平滑吃强度，展平吃高度
+func _setup_terrain_buttons() -> void:
+	var buttons: Array[Button] = [terrainraise, terrainlower, terrainsmooth, terrainflatten]
+	var modes: Array[StringName] = [&"raise", &"lower", &"smooth", &"flatten"]
+	for i in buttons.size():
+		var button: Button = buttons[i]
+		button.toggle_mode = true
+		button.button_group = terrain_group
+		button.toggled.connect(_on_terrain_mode.bind(modes[i]))
+		button.pressed.connect(_on_terrain_pressed)
+	terrainraise.set_pressed_no_signal(true)
+	terrainvaluelabel.text = "%.2f" % terrain_strength
+	_update_terrain_rows()
+
+
+## 互斥组里点击"已经选中"的那个按钮不会发 toggled（比如刚启动时的抬升），
+## 但 pressed 每次点击都发：用它兜底，保证点过地形按钮后地形笔刷一定处于激活状态。
+func _on_terrain_pressed() -> void:
+	if brush_layer != &"terrain":
+		brush_layer = &"terrain"
+		brush_changed.emit(&"terrain", 0)
+		_update_terrain_rows()
+
+
+func _on_terrain_mode(on: bool, mode: StringName) -> void:
+	if not on:
+		return
+	terrain_mode = mode
+	brush_layer = &"terrain"
+	brush_changed.emit(&"terrain", 0)
+	_update_terrain_rows()
+	print("[笔刷] 地形 -> %s（%s）" % [terrain_mode_text(), terrain_param_text()])
+
+
+func _on_terrain_strength(value: float) -> void:
+	terrain_strength = value
+	terrainvaluelabel.text = "%.2f" % value
+
+
+func terrain_mode_text() -> String:
+	if terrain_mode == &"raise":
+		return "抬升"
+	if terrain_mode == &"lower":
+		return "压低"
+	if terrain_mode == &"flatten":
+		return "展平"
+	return "平滑"
+
+
+## 当前模式的生效参数文本：展平报目标高度，其余三个报强度
+func terrain_param_text() -> String:
+	if terrain_mode == &"flatten":
+		return "高度 %s" % height_text(brush_height)
+	return "强度 %.2f" % terrain_strength
+
+
+## 两行参数各自只服务一部分模式：把当前用不到的那行压暗，避免误读
+func _update_terrain_rows() -> void:
+	var flatten: bool = terrain_mode == &"flatten"
+	terrainstrengthrow.modulate = Color(1.0, 1.0, 1.0, 0.45 if flatten else 1.0)
+	terrainheightrow.modulate = Color(1.0, 1.0, 1.0, 1.0 if flatten else 0.45)
 
 
 ## 初始化 1/2/3 尺寸按钮为互斥 toggle 组，默认选中 1
@@ -238,8 +309,8 @@ func value_name(layer: StringName, value: int) -> String:
 		return String(GridDefs.WATER_NAMES.get(value, str(value)))
 	elif layer == &"flow":
 		return String(GridDefs.Flow.keys()[value])
-	elif layer == &"elevation":
-		return str(value)
+	elif layer == &"terrain":
+		return terrain_mode_text()
 	return str(value)
 
 

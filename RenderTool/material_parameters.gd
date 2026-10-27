@@ -13,10 +13,12 @@ signal settings_changed
 const SWATCH_NODES: Dictionary = {
 	1: "Grass", 2: "Sand", 3: "Wasteland", 4: "Snow", 5: "Swamp", 6: "Ice",
 	7: "Shallow", 8: "Deep", 9: "Dirt", 10: "Gravel", 11: "StoneBrick", 12: "Foam",
+	13: "Rock", 14: "SnowCap",
 }
 const MATERIAL_NAMES: Dictionary = {
 	1: "草地", 2: "沙地", 3: "荒地", 4: "雪地", 5: "沼泽", 6: "冰面",
 	7: "浅水", 8: "深水", 9: "土路", 10: "碎石路", 11: "石砖路", 12: "泡沫",
+	13: "岩石", 14: "雪线",
 }
 
 var settings: RenderSettings
@@ -82,7 +84,11 @@ func _on_swatch_input(event: InputEvent, index: int) -> void:
 func _on_picker_changed(color: Color) -> void:
 	if settings == null:
 		return
-	if selected == 12:
+	if selected == 14:
+		settings.snowcap_color = color
+	elif selected == 13:
+		settings.rock_color = color
+	elif selected == 12:
 		settings.foam_color = color
 	elif selected >= 9:
 		settings.road_colors[selected] = color

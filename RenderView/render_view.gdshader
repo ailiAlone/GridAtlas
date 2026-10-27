@@ -92,7 +92,7 @@ float elev_smooth(vec2 cf) {
 
 // 渲染端烘焙的平滑高程（5 点可分离核）：整数台阶被摊成缓坡，
 // 斜角的射线求交与地面的山体阴影共用同一张，几何与明暗因此一致。
-const float ELEV_SMOOTH_MAX = 16.0;
+const float ELEV_SMOOTH_MAX = 32.0;
 
 float elev_field(vec2 p) {
 	return texture(u_elev_smooth, (p - vec2(0.5)) / u_map_size).r * ELEV_SMOOTH_MAX;
@@ -473,15 +473,36 @@ vec3 shade_surface(vec2 cf) {
 	vec3 nrm = normalize(vec3(-g.x * k, -g.y * k, 1.0));
 	vec3 lgt = normalize(vec3(-0.62, -0.62, 0.48));   // 固定左上
 	float ndl = dot(nrm, lgt);
+	// 山体：陡坡露岩、高处缓坡积雪。用世界坡度（梯度 × 垂直比例）判定。
+	float land_mask = 1.0 - waterness;
+	// 用原始坡度（级/格）而不是垂直夸张后的坡度：换"斜角高度"不会改变岩石分布
+	float slope = length(g);
+	float rock = smoothstep(0.52, 1.05, slope) * land_mask;
+	float snow_line = max(4.0, u_elev_max * 0.62);
+	// 雪线不是一条等高线：用低频噪声把阈值打散成斑块
+	float snow_n = (fbm(cf * 0.55 + vec2(5.3, 2.7)) - 0.5) * 2.4;
+	float snow = smoothstep(snow_line, snow_line + 1.0, h0 + snow_n)
+		* (1.0 - smoothstep(0.26, 0.46, slope)) * land_mask;
 	// 以平地（ndl = lgt.z）为零点做对称的明暗：迎光 +，背光 −，
 	// 不用 (ndl-1) 那种写法 —— 背光侧会一直压到黑，坡面就变成一条深沟。
 	float shade = clamp(ndl - lgt.z, -0.45, 0.55);
 	float lit = 1.0 + shade * (u_elev_shadow * 2.4);
 	lit += max(shade, 0.0) * u_elev_rim * 1.5;   // 迎光坡的窄高光
-	col *= mix(1.0, clamp(lit, 0.62, 1.42), 1.0 - waterness);
+	float lit_c = clamp(lit, 0.62, 1.32);
+	col *= mix(1.0, lit_c, land_mask);
 	// 暗部略偏冷、亮部略偏暖：比单纯压暗更像受光，也不容易读成脏污
 	col *= mix(vec3(0.97, 0.995, 1.03), vec3(1.02, 1.0, 0.97), clamp(shade * 2.0 + 0.5, 0.0, 1.0));
-	col *= 1.0 + (h0 - 1.0) * u_elev_bright;
+	// 高度提亮按全图最高点归一，否则高山会一路加到过曝
+	float hrel = clamp((h0 - 1.0) / max(u_elev_max - 1.0, 1.0), 0.0, 1.0);
+	col *= 1.0 + hrel * u_elev_bright * 2.0;
+	// 山体覆盖放在打光之后：岩石/雪帽用同一个 lit 明暗，但不再叠加高度提亮
+	if (rock > 0.002 || snow > 0.002) {
+		float rock_grain = 0.86 + 0.26 * fbm(cf * 1.25 + vec2(3.7, 8.1));
+		vec3 rock_c = table_color(13) * rock_grain * clamp(lit, 0.62, 1.32);
+		vec3 snow_c = table_color(14) * clamp(lit, 0.78, 1.16);
+		col = mix(col, rock_c, rock * 0.85);
+		col = mix(col, snow_c, snow * 0.72);
+	}
 
 	// ---- 6) 水面动效：定向波列（方向跟随流向）+ 波峰高光 + 岸线泡沫 ----
 	if (waterness > 0.01) {
