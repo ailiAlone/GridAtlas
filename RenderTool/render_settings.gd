@@ -57,7 +57,7 @@ const SURFACE_SHORT: Dictionary = {1: "草", 2: "沙", 3: "荒", 4: "雪", 5: "�
 # ---------- 质感与噪声 ----------
 
 @export var noise_seed: int = 20261026
-@export var texture_strength: float = 1.0    # 分材质结构图案的强度（1=原样）
+@export var texture_strength: float = 0.68    # 分材质结构图案的强度（1=原样）
 @export var texture_frequency: float = 0.9   # 结构图案的频率倍率
 @export var grain: float = 0.015             # 逐像素细颗粒（只做抖动，别大）
 @export var biome: float = 0.12              # 全图低频色差（避免大片纯色）

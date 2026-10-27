@@ -54,12 +54,12 @@ layout_mode = 2
 size_flags_horizontal = 3
 max_value = 1.0
 step = 0.01
-value = 0.2
+value = 0.68
 
 [node name="Value" type="Label" parent="PanelTexture/VBoxContainer/Rows/texture_strength" unique_id=587978135]
 custom_minimum_size = Vector2(42, 0)
 layout_mode = 2
-text = "0.2"
+text = "0.68"
 horizontal_alignment = 2
 
 [node name="texture_frequency" type="HBoxContainer" parent="PanelTexture/VBoxContainer/Rows" unique_id=319777344]

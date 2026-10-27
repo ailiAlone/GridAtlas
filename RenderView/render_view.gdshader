@@ -244,10 +244,18 @@ float material_pattern(vec2 p, float id) {
 		return 0.975 + 0.045 * clump + 0.025 * stroke;
 	}
 	if (id < 2.5) {
-		// 沙地：沙纹带（低频）
-		float ripple = 0.5 + 0.5 * sin(p.x * 1.7 + n2 * 2.4);
-		float band = smoothstep(0.50, 0.90, ripple);
-		return 0.955 + 0.06 * band + 0.02 * n2;
+		// 沙地：细沙粒 + 柔和沙丘起伏。
+		// 不用任何方向性条状结构（脊线/车辙式拉伸）—— 那和草叶是同一类笔触，
+		// 一眼就读成"换了颜色的草地"。沙靠的是各向同性的颗粒感和很软的大块明暗。
+		float grain = vnoise(p * 17.0) * 0.5 + vnoise(p * 9.0 + vec2(3.7, 8.9)) * 0.5;   // 沙粒（约 1px/粒）
+		float clump = vnoise(p * 4.2 + vec2(5.5, 1.3));                                   // 颗粒团（约 1/4 格）
+		float dune = fbm(p * 0.40 + vec2(2.4, 8.1));                                      // 沙丘起伏（3~5 格）
+		// 沙粒不是平滑噪声：阈值锐化出稀疏的亮点与暗坑，才有松散颗粒感
+		float speck = smoothstep(0.58, 0.72, vnoise(p * 14.0 + vec2(1.7, 9.3)));
+		float spark = smoothstep(0.60, 0.74, vnoise(p * 23.0 + vec2(6.2, 2.8)));
+		float pit = smoothstep(0.64, 0.78, vnoise(p * 18.0 + vec2(9.1, 4.4)));
+		return 0.955 + 0.060 * speck + 0.045 * spark - 0.040 * pit
+			+ 0.030 * (clump - 0.5) + 0.045 * (dune - 0.5) + 0.020 * (grain - 0.5);
 	}
 	if (id < 3.5) {
 		// 荒地：大块板 + 深色裂缝
@@ -413,6 +421,39 @@ vec3 shade_surface(vec2 cf) {
 	vec2 grad = vec2(pdx - p0, pdy - p0) * u_texture_strength * 2.2;
 	float bump = 1.0 - (grad.x + grad.y) * u_bump * 0.35;
 	col *= mix(1.0, clamp(bump, 0.90, 1.10), 1.0 - water_cover);
+
+	// ---- 1b) 草地：草叶 ----
+	// 草不是一块均匀的颜色，要有"成片的草叶"：细长、带方向、疏密成团。
+	// 叶身提亮、叶间压暗，叶尖偏黄绿 —— 这样 16px/格 下读出短笔触，放大也不糊。
+	// 叶片坐标沿 y 拉长、x 高频，并在低频噪声控制下整体倾斜（一片一片倒向不同方向）。
+	float grass_w = 0.0;
+	if (abs(base_id - 1.0) < 0.5) grass_w = 1.0 - mixw;
+	if (abs(other_id - 1.0) < 0.5) grass_w = max(grass_w, mixw);
+	grass_w *= 1.0 - clamp(water_cover, 0.0, 1.0);
+	if (grass_w > 0.01) {
+		// 叶片方向：低频噪声控制整片草倒向哪边（约 1~2 格换一次方向）
+		float lean = (vnoise(cf * 0.62 + vec2(4.4, 8.8)) - 0.5) * 2.6;
+		vec2 bq = vec2((cf.x + cf.y * lean * 0.18) * 7.0, cf.y * 4.6);   // 更窄更短
+		// 脊线噪声：等值线附近的窄亮条才是"叶"，比阈值团块更像草
+		float ridge = 1.0 - abs(2.0 * vnoise(bq + vec2(3.1, 7.7)) - 1.0);
+		float body = smoothstep(0.52, 0.86, ridge);
+		// 断叶：两级高频调制把长条打成 0.1~0.25 格的碎叶，缝隙多、不成条
+		float cut1 = smoothstep(0.36, 0.56, vnoise(vec2(cf.x * 5.5, cf.y * 13.0) + vec2(2.7, 5.1)));
+		float cut2 = smoothstep(0.34, 0.58, vnoise(vec2(cf.x * 8.5, cf.y * 19.0) + vec2(1.3, 8.2)));
+		float cut = cut1 * (0.50 + 0.50 * cut2);
+		float blade = body * cut;
+		float shade = (1.0 - smoothstep(0.28, 0.50, ridge)) * cut;   // 叶间暗缝
+		float dens = 0.55 + 0.45 * smoothstep(0.30, 0.72, fbm(cf * 1.15 + vec2(6.1, 3.3)));
+		float vary = 0.70 + 0.60 * vnoise(cf * 3.2 + vec2(8.4, 2.6));   // 叶片逐个参差
+		// 草叶强度跟"纹理强度"联动：调到 0 就是完全平色的草地
+		float gk = clamp(u_texture_strength, 0.0, 2.0);
+		col *= 1.0 + (blade * 0.18 - shade * 0.085) * dens * grass_w * vary * gk;
+		col = mix(col, col * vec3(1.08, 1.03, 0.74), blade * dens * grass_w * 0.45 * gk);   // 叶尖偏黄绿
+		// 高草丛：成簇的偏黄绿草块，在网格尺度上读出来（约 1~2 格一团）
+		float tuft = smoothstep(0.58, 0.76, vnoise(cf * 1.90 + vec2(7.4, 3.8)));
+		col = mix(col, col * vec3(1.10, 1.06, 0.80), tuft * grass_w * 0.35 * gk);
+		col *= 1.0 + (vnoise(cf * 6.5 + vec2(2.2, 5.5)) - 0.5) * 0.04 * grass_w;      // 细粒
+	}
 
 	// ---- 2b) 沼泽湿地：瓣状咬合 + 瓣外湿地，全部由一张连续沼泽场驱动 ----
 	// 分界不再是"格子归属"的切换：底色由噪声等值线被场推动后决定（大瓣互相伸入），
