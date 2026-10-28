@@ -9,8 +9,8 @@
 
 | 场景 | 用途 |
 |---|---|
-| `example.tscn` | 俯视玩法演示：缩放/平移/点击寻路，验证数据 + A* |
-| `grid_atlas_demo.tscn` | **固定 45° 游戏视角**：相机跟随、走格、树/角色立牌、遮挡规则 |
+| `example.tscn` | 俯视 A* 示例：缩放/平移/点击寻路，验证 `MapRuntime` 数据与寻路（不使用 45° 视图） |
+| `grid_atlas_demo.tscn` | **固定 45° 游戏视角**：相机跟随、走格、资源立牌、遮挡规则 |
 | `occlusion_test.tscn` | 遮挡验证：合成一道山脊横在角色与相机之间，检查半透明/消失 |
 
 ```bash
@@ -29,18 +29,18 @@ G 显示格线（确认地面与实体同一套投影）｜R 回到角色。
 |---|---|
 | `map_runtime.gd` | 运行时核心：数据纹理/高程/噪声/色表/亲和度 → 材质；通行代价与 A* |
 | `grid_atlas.gd` / `.tscn` | 45° 地图视图：全屏地表 + 同一投影的实体容器 + 调试图层 |
-| `actor_card.gd` | 立牌：程序化占位或 Tiny Swords 贴图，共用脚底锚点/画序/高度场遮挡 |
-| `actor_sprite.gdshader` | 贴图立牌着色器（Tiny Swords）；遮挡算法与 `actor_card.gdshader` 相同 |
+| `actor_card.gd` | 立牌：程序化占位或贴图，共用脚底锚点/画序/高度场遮挡 |
+| `actor_sprite.gdshader` | 贴图立牌着色器（静态资源 / 示例玩家）；遮挡算法与 `actor_card.gdshader` 相同 |
 | `actor_card.gdshader` | 程序化占位立牌（贴图缺失时的退路） |
 | `debug_grid.gd` | 相机附近逐格画四边形（顶点抬到该格高度），验证投影对齐 |
 | `grid_atlas_demo.gd` | 演示场景：取景、相机跟随、走格、缩放、截图 |
 | `occlusion_test.gd` | 合成山脊的遮挡验证 |
-| `example.gd` / `overlay.gd` | 俯视寻路示例与覆盖层（旧示例，仍然有效） |
-| `../GridData/props_data.gd` | 静态资源实例边车；`asset_ids` / `rots` / `cells` / `scales`（旧 `kinds` 仅用于读旧文件） |
+| `example.gd` / `overlay.gd` | 俯视寻路示例与覆盖层（只用于验证 `MapRuntime` / A*） |
+| `../GridData/props_data.gd` | 静态资源实例边车；`asset_ids` / `rots` / `cells` |
 | `../GridData/static_asset_*.gd` | 静态资源定义/目录/读写：footprint、阻挡掩码、PNG、立牌参数 |
 | `../GridTool/props_tool.*` | 编辑器物件面板（资源库 / 横竖方向 / 清空） |
 | `../RenderView/game_preview.*` | 编辑器 45° 视图：渲染模式大画面 + 编辑模式左上角整图概览（复用这里的运行时与立牌） |
-| `../Assets/TinySwords/` | Tiny Swords 素材（蓝队建筑 / 树 / 灌木 / 石头 / 战士）+ 来源与授权说明 |
+| `../Assets/TinySwords/` | 示例玩家立牌使用的 `Warrior_Idle.png`（由 `demo_unit.gd` 裁切）；不再作为可放置资源 |
 
 ## 固定 45° 视角
 
@@ -113,8 +113,8 @@ screen = 视口中心 + ppm · ( (P-C)·rt , (P-C)·(-fd)·sin(pitch) - z·cos(p
 保存是为了把物件写进 `.props.tres`，让游戏和 demo 也能读到。
 
 编辑器已移除内置物件按钮和立牌缩放滑条：新物件全部来自资源库。内置物件的运行路径也已
-完全移除——旧边车里的 `kinds` 实例在载入时丢弃，不再渲染/阻挡。示例场景的玩家立牌仍使用
-`Assets/TinySwords/` 的战士贴图（`example/demo_unit.gd`），它不是可放置的地图资源。
+完全移除——旧边车（`kinds/cells/scales` 格式）里的实例在载入时丢弃，不再渲染/阻挡。示例场景的
+玩家立牌仍使用 `Assets/TinySwords/` 的战士贴图（`example/demo_unit.gd`），它不是可放置的地图资源。
 
 
 ## 接进自己的游戏
@@ -141,7 +141,7 @@ var asset_defs = {}
 for def in StaticAssetStore.load_all(StaticAssetStore.load_catalog()):
 	asset_defs[def.id] = def
 
-# 物件（可选）：与地图同名的 <map>.props.tres
+# 物件（可选）：与地图同名的 <map>.props.tres，保存过物件后才会生成
 var props = load("res://GridData/maps/second.props.tres")
 props.set_asset_defs(asset_defs)         # 定义里查 footprint/阻挡格
 rt.apply_props(props)                    # 按资源定义只写实际 blocking_cells
@@ -150,13 +150,12 @@ rt.apply_props(props)                    # 按资源定义只写实际 blocking_
 约定：`cell_to_screen` / `screen_to_cell` 用的是**格坐标**（0..map_size，格心在
 x+0.5），不是世界像素。`MapRuntime.CELL_SIZE`（16）只服务于旧的俯视示例。
 
-物件数据是并行数组：`asset_ids / rots / cells(交错 x,y) / scales`，读取用
-`props.asset_id_at(i) / props.rotation_at(i) / props.cell_at(i) / props.scale_at(i)`。
-旧边车还可能带 `kinds` 字段，只为反序列化；载入时 `ensure_compat()` 会丢弃所有没有
-`asset_ids` 的旧内置实例。`asset_ids[i]`、`rots[i]`、`cells[2i]`、`scales[i]` 才是有效数据；
-占地/阻挡格从 `GridData/static_assets/defs/<id>.tres` 解析（实例不重复存档）。
-**地图和物件是两个文件**，拷贝地图时记得带上 `.props.tres`；旧边车里的内置实例会被丢弃，
-静态资源实例保留。
+物件数据是并行数组：`asset_ids / rots / cells(交错 x,y)`，读取用
+`props.asset_id_at(i) / props.rotation_at(i) / props.cell_at(i)`。
+旧边车如果只有 `kinds/cells/scales`、没有 `asset_ids`，载入时 `sanitize()` 会整体清空；
+`asset_ids[i]`、`rots[i]`、`cells[2i]` 才是有效数据。占地/阻挡格从
+`GridData/static_assets/defs/<id>.tres` 解析（实例不重复存档）。
+**地图和物件是两个文件**，拷贝地图时记得带上 `.props.tres`。
 
 示例场景的玩家立牌仍使用 `Assets/TinySwords/Units/Warrior_Idle.png`，由
 `example/demo_unit.gd` 在内存里裁切；素材的再分发限制见 `Assets/TinySwords/SOURCE.md`。
@@ -191,9 +190,8 @@ Processed/delivery/`；导入与占地范围定义流程见 `Docs/三期-资源�
 - 地块高度是**视觉数据**：`look.height_scale` 默认 2.5 格/级，适合展示地形，
   但一步 2.5 格高的"台阶"在玩法上是否可走，需要在移动规则里单独决定。
 - 物件与地图分文件保存：拷贝/移动地图时把同名的 `.props.tres` 一起带上。
-- 物件面板的“大小”只影响之后放置的实例；已放置的物件要改大小只能删掉重放。
-- 贴图立牌目前固定第 0 帧；树/灌木/单位的源图是 6~8 帧动画，动画还没接。
-- 只接入了蓝队建筑/自然物/战士；其他队伍色、UI、特效、资源点和 terrain tileset 未使用。
+- 静态资源立牌目前固定第 0 帧；示例玩家也只取 `Warrior_Idle` 的第 0 帧，动画还没接。
+- 只接入了示例所需的蓝队战士；其他队伍色、UI、特效、资源点和 terrain tileset 未使用。
   素材来源与再分发限制见 `Assets/TinySwords/SOURCE.md`。
 - 编辑模式左上角是 45° 整图概览（有立牌、只读）；渲染模式左上角是俯视网格镜像。
   45° 立牌和遮挡看这个概览、渲染模式大画面或 `grid_atlas_demo.tscn`。

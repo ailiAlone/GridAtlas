@@ -151,7 +151,7 @@ cropped, front elevation only, long cast shadow
 要接动画时：
 
 - 生成/整理成**等宽帧横排**（例如每帧 192×192），脚底和阴影位置逐帧对齐；
-- 在 `PropDefs` 记录帧宽/帧数，`actor_card` 按时间推进帧；
+- 给 `StaticAssetDef` 增加帧宽/帧数（或单独的动画定义），`actor_card` 按时间推进帧；
 - 贴图 shader 仍然逐片元遮挡，但需要用帧 UV 或每帧一张内存裁切；
 - 角色走路可以先用 4 个屏幕方向（前/后/左/右）的 idle/run，固定相机下够用；
   如果以后相机要转，才需要 8 方向或 3D。

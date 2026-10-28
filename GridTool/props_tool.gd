@@ -9,15 +9,6 @@ signal clear_requested
 signal assets_refresh_requested
 signal asset_edit_requested
 
-## 资源库排序：建筑/门/围墙优先，杂项最后
-const CATEGORY_ORDER: Array[StringName] = [
-	&"building", &"gate", &"fence", &"bridge", &"prop", &"tree", &"other",
-]
-const CATEGORY_LABELS: Dictionary = {
-	&"prop": "道具", &"building": "建筑", &"gate": "门",
-	&"fence": "围墙/栅栏", &"bridge": "桥", &"tree": "树/植被", &"other": "其他",
-}
-
 @onready var assetscontainer: HFlowContainer = $"VBox/Assets"
 @onready var assetempty: Label = $"VBox/AssetEmpty"
 @onready var assetsrefresh: Button = $"VBox/AssetTitleRow/AssetRefresh"
@@ -81,12 +72,8 @@ func set_asset_defs(defs: Dictionary) -> void:
 
 
 func _def_before(a: StaticAssetDef, b: StaticAssetDef) -> bool:
-	var ca: int = CATEGORY_ORDER.find(a.category)
-	var cb: int = CATEGORY_ORDER.find(b.category)
-	if ca < 0:
-		ca = CATEGORY_ORDER.size()
-	if cb < 0:
-		cb = CATEGORY_ORDER.size()
+	var ca: int = StaticAssetDef.category_rank(a.category)
+	var cb: int = StaticAssetDef.category_rank(b.category)
 	if ca != cb:
 		return ca < cb
 	if a.tier != b.tier:
@@ -96,9 +83,9 @@ func _def_before(a: StaticAssetDef, b: StaticAssetDef) -> bool:
 
 func _add_asset_button(def: StaticAssetDef) -> void:
 	var button: Button = Button.new()
-	button.text = _short_name(def)
+	button.text = def.short_name()
 	button.tooltip_text = "%s\n%s · 占地范围 %d×%d · 阻挡 %d 格" % [
-		String(def.id), String(CATEGORY_LABELS.get(def.category, "其他")),
+		String(def.id), StaticAssetDef.category_label(def.category),
 		def.footprint.x, def.footprint.y, def.blocking_count()]
 	button.custom_minimum_size = Vector2(104, 30)
 	button.clip_text = true
@@ -108,20 +95,6 @@ func _add_asset_button(def: StaticAssetDef) -> void:
 	button.pressed.connect(_on_asset_pressed.bind(StringName(def.id)))
 	assetscontainer.add_child(button)
 	asset_buttons[StringName(def.id)] = button
-
-
-## 按钮上只留可读名：去掉 ID 前缀（CV-E03_...__gate_r2_se -> gate_r2_se）
-func _short_name(def: StaticAssetDef) -> String:
-	var showname: String = def.display_name.strip_edges()
-	if showname.is_empty():
-		showname = String(def.id)
-	if showname.contains("__"):
-		showname = showname.split("__", true, 1)[1]
-	else:
-		var cut: int = showname.find("_")
-		if cut > 0 and cut <= 8 and showname.substr(0, cut).contains("-"):
-			showname = showname.substr(cut + 1)
-	return showname
 
 
 func _asset_button(id: StringName) -> Button:

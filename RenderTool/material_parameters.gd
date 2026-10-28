@@ -162,18 +162,14 @@ func _set_box_text(a: int, b: int, value: float) -> void:
 	_syncing = false
 
 
-## 摆到父视图可见区左上角（ScrollContainer 会把子节点位置设为负的滚动偏移）
+## 摆到父视图左上角，并限制在大面板可见区内（浮窗覆盖 45° 预览）
 func _place_in_view() -> void:
 	var parent_ctl: Control = get_parent() as Control
 	if parent_ctl == null:
 		return
-	var vis_origin: Vector2 = Vector2.ZERO
-	var vis_size: Vector2 = parent_ctl.size
-	var scroll: Node = parent_ctl.get_parent()
-	if scroll is ScrollContainer:
-		vis_origin = -parent_ctl.position
-		vis_size = (scroll as ScrollContainer).size
 	set_anchors_preset(Control.PRESET_TOP_LEFT)
-	position = vis_origin + Vector2(8, 8)
+	position = Vector2(8, 8)
 	var pref: Vector2 = get_combined_minimum_size()
-	size = Vector2(minf(maxf(pref.x, 400.0), vis_size.x - 16.0), minf(maxf(pref.y, 300.0), vis_size.y - 16.0))
+	size = Vector2(
+		minf(maxf(pref.x, 400.0), maxf(parent_ctl.size.x - 16.0, 400.0)),
+		minf(maxf(pref.y, 300.0), maxf(parent_ctl.size.y - 16.0, 300.0)))

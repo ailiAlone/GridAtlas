@@ -18,7 +18,7 @@ extends Control
 @onready var smallpanel: Panel = $HBoxContainer/VBoxContainer/Panel
 @onready var bigscroll: ScrollContainer = $HBoxContainer/VBoxContainer2/Panel/ScrollContainer
 @onready var import_overlay: Control = $ImportOverlay
-@onready var import_view = $ImportOverlay/StaticAssestImportView
+@onready var import_view = $ImportOverlay/StaticAssetImportView
 
 const PropsData = preload("res://GridData/props_data.gd")
 const GamePreviewScript = preload("res://RenderView/game_preview.gd")
@@ -57,13 +57,13 @@ func _ready() -> void:
 	tools.brush_size_changed.connect(grid_view.set_brush_size)
 	tools.rect_mode_changed.connect(grid_view.set_rect_mode)
 	tools.prop_rotation_changed.connect(_on_prop_rotation_changed)
-	tools.prop_clear_requested.connect(_on_props_clear_requested)
+	tools.propstool.clear_requested.connect(_on_props_clear_requested)
 	tools.map_resized.connect(_on_map_resized)
 	tools.map_loaded.connect(_on_map_loaded)
 	tools.map_saved.connect(_on_map_saved)
 	tools.edit_checkpoint.connect(_push_history)
-	tools.assets_refresh_requested.connect(_reload_asset_defs.bind(true))
-	tools.asset_edit_requested.connect(_on_asset_edit_requested)
+	tools.propstool.assets_refresh_requested.connect(_reload_asset_defs.bind(true))
+	tools.propstool.asset_edit_requested.connect(_on_asset_edit_requested)
 	import_view.closed.connect(_on_import_view_closed)
 	# 高程视图是显示模式，大小编辑视图一起切
 	tools.elevation_view_changed.connect(grid_view.set_elevation_mode)
@@ -74,6 +74,7 @@ func _ready() -> void:
 	grid_view.stroke_ended.connect(_on_stroke_ended)
 	rtool.settings_changed.connect(_on_render_settings_changed)
 	rtool.material_params_requested.connect(_on_material_params_requested)
+	material_params.connect("settings_changed", _on_material_params_changed)
 	material_params.visibility_changed.connect(_on_material_params_visibility)
 	swapbutton.pressed.connect(_on_swap_pressed)
 	smallpanel.resized.connect(_refresh_views)
@@ -338,15 +339,7 @@ func _on_stroke_ended() -> void:
 ## 按钮与 45° 立牌跟着更新。资源导入页保存后点“资源库/刷新”即可生效，不必重启。
 func _reload_asset_defs(announce: bool = false) -> void:
 	StaticAssetStore.clear_texture_cache()
-	var catalog: StaticAssetCatalog = StaticAssetStore.load_catalog()
-	var list: Array[StaticAssetDef] = StaticAssetStore.load_all(catalog)
-	asset_defs.clear()
-	for def: StaticAssetDef in list:
-		def.normalize()
-		if String(def.id).is_empty():
-			push_warning("忽略没有 ID 的资源定义: " + def.resource_path)
-			continue
-		asset_defs[def.id] = def
+	asset_defs = StaticAssetStore.load_def_map()
 	if props != null:
 		props.set_asset_defs(asset_defs)
 		var missing: int = 0
@@ -396,7 +389,7 @@ func _paint_asset(center: Vector2i) -> void:
 	var anchor: Vector2i = PropsData.anchor_for(fp, center)
 	if not _prop_area_valid(anchor, fp):
 		return
-	if props.add_asset(tools.prop_asset_id, anchor, 1.0, map.grid_size, rot):
+	if props.add_asset(tools.prop_asset_id, anchor, map.grid_size, rot):
 		tools.mark_dirty()
 		_refresh_props()
 		print("[资源] 放置 %s @ %s（占地范围 %d×%d，方向 %s，阻挡 %d 格）" % [
@@ -480,11 +473,9 @@ func _on_props_clear_requested() -> void:
 	if props == null or props.count() == 0:
 		return
 	_push_history()
-	props.kinds.clear()
 	props.asset_ids.clear()
 	props.rots.clear()
 	props.cells.clear()
-	props.scales.clear()
 	tools.mark_dirty()
 	_refresh_props()
 	print("[物件] 已清除全部物件")
@@ -541,12 +532,15 @@ func _neighbor_height(cell: Vector2i, own: float) -> float:
 
 ## 资源库“编辑”：打开模态导入页。Main.tscn 里只放一个实例，反复开关不重建。
 func _on_asset_edit_requested() -> void:
+	# 导入页是模态的：预览不再响应 G/R，避免用户在填表时把背后画面转走
+	game_preview.set_process_unhandled_key_input(false)
 	import_overlay.visible = true
 	import_view.open_page()
 
 
 ## 导入页关闭：隐藏遮罩并重新读 catalog；增删/改占地立即回到左侧资源库和已放实例
 func _on_import_view_closed() -> void:
+	game_preview.set_process_unhandled_key_input(true)
 	import_overlay.visible = false
 	_reload_asset_defs(true)
 	print("[资源] 导入页已关闭，资源库已刷新")
@@ -600,12 +594,17 @@ func _on_map_loaded(data: MapData) -> void:
 
 ## 渲染配置面板任何改动：即时注入左上角 45° 预览与 45° 游戏预览
 func _on_render_settings_changed() -> void:
+	_apply_look_to_views()
+	if material_params.visible:
+		material_params.call("set_settings", rtool.settings)
+
+
+## 把当前 RenderSettings 推给两个 45° 视图；小预览可见时重新整图取景
+func _apply_look_to_views() -> void:
 	preview_mini.apply_look(rtool.settings)
 	if preview_mini.visible:
 		preview_mini.fit_overview()
 	game_preview.apply_look(rtool.settings)
-	if material_params.visible:
-		material_params.call("set_settings", rtool.settings)
 
 
 # ---------- 渲染配置持久化（与地图同名的 .look.tres 边车） ----------
@@ -662,8 +661,8 @@ func _load_props(map_path: String):
 		push_warning("物件边车不是有效资源: " + side)
 		return data
 	loaded.set_asset_defs(asset_defs)
-	if loaded.ensure_compat():
-		print("[物件] 旧边车已迁移为当前静态资源格式: " + side)
+	if loaded.sanitize():
+		print("[物件] 旧边车内置实例已清理: " + side)
 	var dropped: int = loaded.drop_out_of_bounds(map.grid_size)
 	if dropped > 0:
 		push_warning("物件边车有 %d 个越界物件已丢弃: %s" % [dropped, side])
@@ -771,18 +770,13 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 ## 点“材质参数”：打开大面板里的材质浮窗（颜色/过渡矩阵），并把它的改动接回重渲
 func _on_material_params_requested() -> void:
-	if not material_params.is_connected("settings_changed", Callable(self, "_on_material_params_changed")):
-		material_params.connect("settings_changed", Callable(self, "_on_material_params_changed"))
 	material_params.call("set_settings", rtool.settings)
 	material_params.call("open")
 	print("[材质] 材质参数窗口已打开")
 
 
 func _on_material_params_changed() -> void:
-	preview_mini.apply_look(rtool.settings)
-	if preview_mini.visible:
-		preview_mini.fit_overview()
-	game_preview.apply_look(rtool.settings)
+	_apply_look_to_views()
 
 
 func _on_material_params_visibility() -> void:

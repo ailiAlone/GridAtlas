@@ -140,6 +140,7 @@ func refresh_props() -> void:
 	if runtime == null:
 		return
 	_spawn_props()
+	_update_hint()
 
 
 ## 渲染配置改动：只换颜色/亲和度/噪声/标量，不重建地图纹理，也不重置相机与动画。
@@ -201,9 +202,8 @@ func _max_actor_height() -> float:
 		var def: StaticAssetDef = props.asset(props.asset_id_at(i))
 		if def == null:
 			continue
-		var pscale: float = props.scale_at(i)
-		var top: float = def.art_size.y * (1.0 + maxf(def.art_lift.x, def.art_lift.y)) * pscale \
-			- def.art_offset.y * pscale
+		var top: float = def.art_size.y * (1.0 + maxf(def.art_lift.x, def.art_lift.y)) \
+			- def.art_offset.y
 		tallest = maxf(tallest, top)
 	return tallest
 
@@ -222,19 +222,18 @@ func _spawn_props() -> void:
 		var def: StaticAssetDef = props.asset(props.asset_id_at(i))
 		if def == null:
 			continue
-		var pscale: float = props.scale_at(i)
 		var vertical: bool = props.rotation_at(i) == 1
 		var card = CARD_SCRIPT.new()
 		var tex: Texture2D = StaticAssetStore.texture_for(def)
 		if tex != null:
-			card.setup_sprite(atlas, def.art_size * pscale, 0.0, tex, def.art_lift, vertical)
-			var offset: Vector2 = def.art_offset * pscale
+			card.setup_sprite(atlas, def.art_size, 0.0, tex, def.art_lift, vertical)
+			var offset: Vector2 = def.art_offset
 			if vertical:
 				offset.x = -offset.x   # 镜像后偏移也绕中心翻到另一侧
 			card.art_offset = offset
 		else:
 			# PNG 缺失时退回程序化建筑占位，至少能看到占地位置
-			card.setup(atlas, 4, def.art_size * pscale, 0.0)
+			card.setup(atlas, 4, def.art_size, 0.0)
 		atlas.actors.add_child(card)
 		card.place(center, z)
 

@@ -98,7 +98,6 @@ func _load_map(path: String) -> void:
 	runtime.setup(map, look)
 	props = _load_props(path)
 	var blocked: int = runtime.apply_props(props)
-	atlas.ppm = start_zoom
 	atlas.setup(runtime)
 	print("[GridAtlas] %s %d×%d → yaw %.0f° pitch %.0f° ppm %.0f" % [
 		path.get_file(), map.grid_size.x, map.grid_size.y,
@@ -109,16 +108,11 @@ func _load_map(path: String) -> void:
 ## 资源目录：编辑器导入页保存的定义，游戏端按同一份数据解析占地/阻挡
 func _load_asset_defs() -> void:
 	StaticAssetStore.clear_texture_cache()
-	asset_defs.clear()
-	var catalog: StaticAssetCatalog = StaticAssetStore.load_catalog()
-	for def: StaticAssetDef in StaticAssetStore.load_all(catalog):
-		def.normalize()
-		if not String(def.id).is_empty():
-			asset_defs[def.id] = def
+	asset_defs = StaticAssetStore.load_def_map()
 	print("[GridAtlas] 资源定义 %d 个" % asset_defs.size())
 
 
-## 物件边车：与地图同名；缺失时返回空层，demo 会退回随机林
+## 物件边车：与地图同名；缺失时返回空层（不再生成随机林）
 func _load_props(map_path: String):
 	var data = PropsData.new()
 	data.set_asset_defs(asset_defs)
@@ -130,8 +124,8 @@ func _load_props(map_path: String):
 		push_warning("物件边车不是有效资源: " + side)
 		return data
 	loaded.set_asset_defs(asset_defs)
-	if loaded.ensure_compat():
-		print("[GridAtlas] 旧边车已迁移为当前静态资源格式: " + side)
+	if loaded.sanitize():
+		print("[GridAtlas] 旧边车内置实例已清理: " + side)
 	var dropped: int = loaded.drop_out_of_bounds(runtime.map.grid_size)
 	if dropped > 0:
 		push_warning("物件边车有 %d 个越界物件已丢弃: %s" % [dropped, side])
@@ -234,18 +228,17 @@ func _spawn_prop(i: int) -> void:
 	var def: StaticAssetDef = props.asset(props.asset_id_at(i))
 	if def == null:
 		return
-	var pscale: float = props.scale_at(i)
 	var vertical: bool = props.rotation_at(i) == 1
 	var card = CARD_SCRIPT.new()
 	var tex: Texture2D = StaticAssetStore.texture_for(def)
 	if tex != null:
-		card.setup_sprite(atlas, def.art_size * pscale, 0.0, tex, def.art_lift, vertical)
-		var offset: Vector2 = def.art_offset * pscale
+		card.setup_sprite(atlas, def.art_size, 0.0, tex, def.art_lift, vertical)
+		var offset: Vector2 = def.art_offset
 		if vertical:
 			offset.x = -offset.x
 		card.art_offset = offset
 	else:
-		card.setup(atlas, 4, def.art_size * pscale, 0.0)
+		card.setup(atlas, 4, def.art_size, 0.0)
 	atlas.actors.add_child(card)
 	card.place(center, runtime.terrain_z(ground))
 

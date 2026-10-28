@@ -11,7 +11,7 @@ extends RefCounted
 ##   terrain.material = rt.material
 ##   rt.find_path(from_cell, to_cell)
 
-const SHADER_PATH: String = "res://RenderView/render_view.gdshader"
+const SHADER_PATH: String = "res://RenderView/terrain.gdshader"
 const NOISE_SIZE: int = 256
 const COLOR_COUNT: int = 15
 const ELEV_BLUR: Array[int] = [1, 4, 6, 4, 1]

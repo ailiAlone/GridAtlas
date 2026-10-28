@@ -185,7 +185,7 @@ func _draw() -> void:
 		for cell: Vector2i in _label_cells:
 			var rect: Rect2 = Rect2(Vector2(cell) * s, Vector2(s, s))
 			draw_string(ThemeDB.fallback_font, rect.position + Vector2(2, s * 0.5 + font_size * 0.5),
-				_height_text(map.get_height(cell)), HORIZONTAL_ALIGNMENT_LEFT, s - 2, font_size, text_color)
+				GridDefs.height_text(map.get_height(cell)), HORIZONTAL_ALIGNMENT_LEFT, s - 2, font_size, text_color)
 	_draw_props()
 	_draw_grid_lines()
 	_draw_cursor_bars()
@@ -203,7 +203,8 @@ func _draw_props() -> void:
 	for i in props.count():
 		var cell: Vector2i = props.cell_at(i)
 		var fp: Rect2i = props.footprint_at(i)
-		if not visible.has_point(Vector2(cell) + Vector2(fp.size) * 0.5):
+		var area: Rect2 = Rect2(Vector2(cell), Vector2(fp.size))
+		if not visible.intersects(area):
 			continue
 		_draw_asset_icon(props.asset_id_at(i), Vector2(cell) * s, fp.size,
 			props.rotation_at(i), s, 1.0)
@@ -429,13 +430,6 @@ func _remove_sparse(list: Array[Vector2i], area: Rect2i) -> void:
 		var c: Vector2i = list[i]
 		if c.x >= area.position.x and c.x < area.end.x and c.y >= area.position.y and c.y < area.end.y:
 			list.remove_at(i)
-
-
-## 高程显示文本：整数不带小数，其余保留两位
-func _height_text(value: float) -> String:
-	if absf(value - roundf(value)) < 0.001:
-		return str(int(roundf(value)))
-	return "%.2f" % value
 
 
 func _draw_flow(flow: int, center: Vector2) -> void:

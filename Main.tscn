@@ -6,7 +6,7 @@
 [ext_resource type="PackedScene" uid="uid://dxiuobwm7qm4b" path="res://RenderTool/render_tool.tscn" id="7_rtool"]
 [ext_resource type="PackedScene" path="res://RenderView/game_preview.tscn" id="8_gpreview"]
 [ext_resource type="PackedScene" uid="uid://1y80if473x7a" path="res://RenderTool/material_parameters.tscn" id="9_mparams"]
-[ext_resource type="PackedScene" path="res://GridData/StaticAssestImportView.tscn" id="10_import"]
+[ext_resource type="PackedScene" path="res://GridData/StaticAssetImportView.tscn" id="10_import"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_glv2v"]
 bg_color = Color(1, 1, 1, 0.14117648)
@@ -166,4 +166,4 @@ grow_vertical = 2
 mouse_filter = 0
 color = Color(0, 0, 0, 0.58)
 
-[node name="StaticAssestImportView" parent="ImportOverlay" instance=ExtResource("10_import")]
+[node name="StaticAssetImportView" parent="ImportOverlay" instance=ExtResource("10_import")]

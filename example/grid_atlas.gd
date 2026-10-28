@@ -129,26 +129,6 @@ func _apply_camera() -> void:
 	debug_layer.queue_redraw()
 
 
-## 视口四角投影到 z=0 地面后的包围盒（格）：小地图视口框 / 调试用。
-func view_cell_bounds() -> Rect2:
-	return _bounds_at(center_cell)
-
-
-func _bounds_at(c: Vector2) -> Rect2:
-	var fd: Vector2 = forward_axis()
-	var rt: Vector2 = right_axis()
-	var hw: float = _view_size.x * 0.5 / ppm
-	var hh: float = _view_size.y * 0.5 / ppm
-	var minv: Vector2 = Vector2(1e20, 1e20)
-	var maxv: Vector2 = Vector2(-1e20, -1e20)
-	for sx: float in [-hw, hw]:
-		for sy: float in [-hh, hh]:
-			var p: Vector2 = c + rt * sx - fd * (sy / sin(pitch))
-			minv = Vector2(minf(minv.x, p.x), minf(minv.y, p.y))
-			maxv = Vector2(maxf(maxv.x, p.x), maxf(maxv.y, p.y))
-	return Rect2(minv, maxv - minv)
-
-
 ## 把相机中心收进地图范围（允许视口伸到图外）。
 ## 不能要求"整块视口都在地图内"：那会把相机顶在离边缘半个视口的地方，
 ## 玩家继续走向边缘就会离开画面。图外的天空/边缘侧壁由着色器兜住。

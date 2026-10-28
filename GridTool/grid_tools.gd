@@ -18,9 +18,6 @@ signal elevation_view_changed(on: bool)
 signal brush_size_changed(size: int)
 signal rect_mode_changed(on: bool)
 signal prop_rotation_changed(rot: int)
-signal prop_clear_requested
-signal assets_refresh_requested
-signal asset_edit_requested
 
 
 # ---------- 节点引用 ----------
@@ -124,9 +121,6 @@ func _ready() -> void:
 	heightbox.value_changed.connect(_on_height_changed)
 	propstool.asset_selected.connect(_on_asset_selected)
 	propstool.rotation_selected.connect(_on_rotation_selected)
-	propstool.clear_requested.connect(_on_prop_clear_requested)
-	propstool.assets_refresh_requested.connect(_on_assets_refresh_requested)
-	propstool.asset_edit_requested.connect(_on_asset_edit_requested)
 	_update_save_button()
 	_update_file_label()
 
@@ -155,7 +149,7 @@ func _on_direction_button(dir: Vector2i) -> void:
 
 func _on_elevation_value(value: float) -> void:
 	brush_height = snappedf(value, 0.25)
-	print("[笔刷] 展平高度 -> %s" % height_text(brush_height))
+	print("[笔刷] 展平高度 -> %s" % GridDefs.height_text(brush_height))
 
 ## 高程视图开关：按下时画布改用红绿归一化显示高度，按钮保持高亮、文字变为“普通视图”
 func _on_elevation_view_toggled(pressed: bool) -> void:
@@ -183,14 +177,6 @@ func _on_asset_selected(asset_id: StringName) -> void:
 	brush_layer = &"prop"
 	brush_changed.emit(&"prop", -1)
 	print("[笔刷] 资源 -> %s" % asset_name(asset_id))
-
-
-func _on_assets_refresh_requested() -> void:
-	assets_refresh_requested.emit()
-
-
-func _on_asset_edit_requested() -> void:
-	asset_edit_requested.emit()
 
 
 func _on_rotation_selected(rot: int) -> void:
@@ -229,10 +215,6 @@ func asset_name(asset_id: StringName) -> String:
 	return String(asset_id)
 
 
-func _on_prop_clear_requested() -> void:
-	prop_clear_requested.emit()
-
-
 func set_prop_count(n: int) -> void:
 	propstool.set_count(n)
 
@@ -269,14 +251,6 @@ func select_water(id: int) -> void:
 
 func select_direction(dir: Vector2i) -> void:
 	_set_brush(&"flow", GridDefs.flow_from_vector(dir))
-
-
-## 高度显示文本：整数不带小数，其余保留两位
-func height_text(value: float) -> String:
-	if absf(value - roundf(value)) < 0.001:
-		return str(int(roundf(value)))
-	var text: String = "%.2f" % value
-	return text
 
 
 ## 地形模式：四个互斥 toggle，默认"抬升"。抬升/压低/平滑吃强度，展平吃高度
@@ -335,7 +309,7 @@ func terrain_mode_text() -> String:
 ## 当前模式的生效参数文本：展平报目标高度，其余三个报强度
 func terrain_param_text() -> String:
 	if terrain_mode == &"flatten":
-		return "高度 %s" % height_text(brush_height)
+		return "高度 %s" % GridDefs.height_text(brush_height)
 	return "强度 %.2f" % terrain_strength
 
 

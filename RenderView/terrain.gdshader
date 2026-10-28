@@ -20,7 +20,7 @@ uniform sampler2D u_data : filter_nearest, repeat_disable;     // R=陆地 G=水
 uniform sampler2D u_elev : filter_linear, repeat_disable;      // R=高程（原始单位，1 级 = 4 单位）
 uniform sampler2D u_elev_smooth : filter_linear, repeat_disable; // R=平滑高程（0..16 级）
 uniform sampler2D u_noise : filter_linear, repeat_enable;      // 白噪声，线性采样当值噪声
-uniform sampler2D u_colors : filter_nearest, repeat_disable;   // 13×1 颜色表
+uniform sampler2D u_colors : filter_nearest, repeat_disable;   // 15×1 颜色表
 uniform sampler2D u_affinity : filter_nearest, repeat_disable; // 8×8 亲和度矩阵
 
 uniform vec2 u_map_size = vec2(64.0, 64.0);
