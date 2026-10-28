@@ -128,9 +128,10 @@ cropped, front elevation only, long cast shadow
 3. **去背景**：颜色键后检查边缘；保留底部软阴影，不要让阴影被抠掉。
 4. **量内容区**：取非透明像素的包围盒（x, y, w, h）。工程里用 `Image.get_used_rect()`
    或 Aseprite 的裁剪信息；不要生成裁切 PNG。
-5. **放进项目**：`Assets/ChineseVillage/Processed/delivery/<族>/`（按分类分文件夹：
-   `C_commercial` 商业、`E_enclosure` 围栏墙门、`F_farm` 农副、`H_house` 民居、
-   `P_public` 公共、`R_shrine` 神龛、`T_bridge` 桥、`W_work` 仓储工坊），
+5. **放进项目**：`Assets/ChineseVillage/Processed/delivery/<族>/`（最终交付件用中文命名，
+   文件夹按分类：`商业建筑`、`围栏墙门`、`农副`、`民居`、`公共建筑`、`祠庙`、`桥`、
+   `工坊仓储`、`风格参考`；文件名 = 中文名 + 款式/部位后缀，如 `夯土墙_直段.png`、
+   `水井_款式2.png`。manifest 的 `orig_file` 保留原始英文名，`id` 对应 CATALOG 编号），
    Godot 自动导入。
 6. **在编辑器登记**：打开 GridAtlas，左侧「物件 → 资源库」右侧点「编辑」弹出导入页：
    - 选择透明 PNG，导入页自动检测 alpha、裁出内容区；
