@@ -8,12 +8,6 @@ extends Resource
 ## 亲和度（affinity）：0=硬边（清晰界面，如冰↔水），1=完全消融（连续渐变，如浅↔深水）。
 ## 矩阵只存对称对 Vector2i(小, 大)；未写明的对按默认值处理。
 
-const SURFACE_NAMES: Dictionary = {
-	1: "草地", 2: "沙地", 3: "荒地", 4: "雪地", 5: "沼泽", 6: "冰面",
-	7: "浅水", 8: "深水",
-}
-const SURFACE_SHORT: Dictionary = {1: "草", 2: "沙", 3: "荒", 4: "雪", 5: "沼", 6: "冰", 7: "浅", 8: "深"}
-
 # ---------- 颜色（编辑器调色板 GridDefs 不受这里影响，两套各管各的） ----------
 
 @export var land_colors: Dictionary = {

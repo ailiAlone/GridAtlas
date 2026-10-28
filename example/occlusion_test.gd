@@ -41,7 +41,7 @@ func _ready() -> void:
 		occluder_tex = StaticAssetStore.texture_for(occluder_def)
 	atlas.yaw = deg_to_rad(135.0)
 	atlas.pitch = deg_to_rad(45.0)
-	atlas.ppm = 34.0
+	atlas.set_zoom(34.0)
 	atlas.setup(runtime)
 	await get_tree().process_frame
 
