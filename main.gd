@@ -473,9 +473,7 @@ func _on_props_clear_requested() -> void:
 	if props == null or props.count() == 0:
 		return
 	_push_history()
-	props.asset_ids.clear()
-	props.rots.clear()
-	props.cells.clear()
+	props.clear()
 	tools.mark_dirty()
 	_refresh_props()
 	print("[物件] 已清除全部物件")

@@ -394,12 +394,6 @@ horizontal_alignment = 1
 [node name="HBoxContainer" type="HBoxContainer" parent="PanelContainer2/VBoxContainer" unique_id=1734572218]
 layout_mode = 2
 
-[node name="VBoxContainer" type="VBoxContainer" parent="PanelContainer2/VBoxContainer/HBoxContainer" unique_id=1611997481]
-layout_mode = 2
-
-[node name="HBoxContainer" type="HBoxContainer" parent="PanelContainer2/VBoxContainer/HBoxContainer/VBoxContainer" unique_id=1887044285]
-layout_mode = 2
-
 [node name="ShallowWater" type="Button" parent="PanelContainer2/VBoxContainer/HBoxContainer" unique_id=1623864930]
 custom_minimum_size = Vector2(0, 51.505)
 layout_mode = 2

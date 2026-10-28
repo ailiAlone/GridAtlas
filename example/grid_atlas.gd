@@ -218,7 +218,7 @@ func make_actor_material(kind: int, art_size: Vector2, fade: float) -> ShaderMat
 	return mat
 
 
-## 贴图立牌（Tiny Swords / 静态资源）：几何/遮挡与程序化立牌同一套，只是颜色来自贴图。
+## 贴图立牌（静态资源 / 示例玩家）：几何/遮挡与程序化立牌同一套，只是颜色来自贴图。
 ## lift：左/右整侧垂直抬升比例；flip_x：竖向资源水平镜像贴图与左右抬升。
 func make_sprite_material(texture: Texture2D, art_size: Vector2, fade: float,
 		lift: Vector2 = Vector2.ZERO, flip_x: bool = false) -> ShaderMaterial:

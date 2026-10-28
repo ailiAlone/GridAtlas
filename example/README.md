@@ -9,7 +9,7 @@
 
 | 场景 | 用途 |
 |---|---|
-| `example.tscn` | 俯视 A* 示例：缩放/平移/点击寻路，验证 `MapRuntime` 数据与寻路（不使用 45° 视图） |
+| `example.tscn` | 俯视 A* 示例：缩放/平移/点击寻路，验证 `MapRuntime` 基础地形寻路（不含物件阻挡，不使用 45° 视图） |
 | `grid_atlas_demo.tscn` | **固定 45° 游戏视角**：相机跟随、走格、资源立牌、遮挡规则 |
 | `occlusion_test.tscn` | 遮挡验证：合成一道山脊横在角色与相机之间，检查半透明/消失 |
 
@@ -35,7 +35,7 @@ G 显示格线（确认地面与实体同一套投影）｜R 回到角色。
 | `debug_grid.gd` | 相机附近逐格画四边形（顶点抬到该格高度），验证投影对齐 |
 | `grid_atlas_demo.gd` | 演示场景：取景、相机跟随、走格、缩放、截图 |
 | `occlusion_test.gd` | 合成山脊的遮挡验证 |
-| `example.gd` / `overlay.gd` | 俯视寻路示例与覆盖层（只用于验证 `MapRuntime` / A*） |
+| `example.gd` / `overlay.gd` | 俯视基础地形寻路示例与覆盖层（只用于验证 `MapRuntime` / A*） |
 | `../GridData/props_data.gd` | 静态资源实例边车；`asset_ids` / `rots` / `cells` |
 | `../GridData/static_asset_*.gd` | 静态资源定义/目录/读写：footprint、阻挡掩码、PNG、立牌参数 |
 | `../GridTool/props_tool.*` | 编辑器物件面板（资源库 / 横竖方向 / 清空） |
