@@ -1,6 +1,6 @@
 class_name RenderSettings
 extends Resource
-## RenderSettings —— 渲染层全部开发者参数：RenderTool 面板编辑，RenderView 消费。
+## RenderSettings —— 渲染层全部开发者参数：RenderTool 面板编辑，GamePreview / 游戏端消费。
 ## 两张场景想要不同观感（如地面颜色不同）时，各持一份本资源即可，着色器零改动。
 ##
 ## 表面编号（颜色纹理与亲和度矩阵共用这套索引）：
@@ -78,7 +78,7 @@ const SURFACE_SHORT: Dictionary = {1: "草", 2: "沙", 3: "荒", 4: "雪", 5: "�
 @export var tide_frequency: float = 1.85  # 潮汐频率倍率（1 = 默认速度）
 @export var tide_amplitude: float = 1.15  # 潮汐幅度倍率（1 = 默认幅度，0 = 完全静止）
 
-# ---------- 浮雕光照（光固定左上） ----------
+# ---------- 浮雕光照（方向见下方 light_azimuth / light_elevation） ----------
 
 @export var relief: float = 1.2         # 高程起伏带来的明暗强度
 
@@ -99,14 +99,23 @@ const SURFACE_SHORT: Dictionary = {1: "草", 2: "沙", 3: "荒", 4: "雪", 5: "�
 @export var road_round: float = 0.26    # 转弯/路角的圆角半径（格）
 @export var road_bend: float = 0.14     # 直路蛇行幅度（格，峰-峰的一半）
 
-# ---------- 高程光照（光固定左上） ----------
+# ---------- 高程光照 ----------
 
 @export var elevation_bright: float = 0.09
 @export var elevation_shadow: float = 0.16
 @export var elevation_rim: float = 0.05
 @export var elevation_shadow_width: float = 0.30
 
-# ---------- 斜角视图（正交俯看的高度场投影） ----------
+# ---------- 山体与光照（岩石/雪线阈值、坡面光向） ----------
+
+@export var rock_slope_low: float = 0.52    # 坡度（级/格）开始露岩
+@export var rock_slope_high: float = 1.05   # 完全成为岩石的坡度
+@export var snow_line_ratio: float = 0.62   # 雪线 = 全图最高高程 × 该比例
+@export var snow_line_min: float = 4.0      # 雪线最低高程（级）：低海拔图不积雪
+@export var light_azimuth: float = 315.0    # 光的来向（度）：0=北 90=东 180=南 270=西
+@export var light_elevation: float = 28.7   # 光的高度角（度）：0=贴地 90=正上方
+
+# ---------- 地形垂直比例（45° 游戏视图 / 斜角渲染共用） ----------
 
 @export var height_scale: float = 2.5   # 每级高程对应的世界高度（格）；越大山越陡
 

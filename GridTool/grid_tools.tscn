@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://duqxx0801a83k"]
 
 [ext_resource type="Script" uid="uid://cukkums4ce3kf" path="res://GridTool/grid_tools.gd" id="1_qcoyp"]
+[ext_resource type="PackedScene" path="res://GridTool/props_tool.tscn" id="2_props"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_grass_n"]
 bg_color = Color(0.42, 0.745, 0.348, 1)
@@ -609,6 +610,9 @@ text = "+"
 [node name="ButtonRect" type="Button" parent="PanelContainerBrush/VBoxContainer" unique_id=1788314460]
 layout_mode = 2
 text = "矩形填充"
+
+[node name="PropsTool" parent="." instance=ExtResource("2_props")]
+layout_mode = 2
 
 [node name="PanelContainer5" type="PanelContainer" parent="." unique_id=1829918086]
 layout_mode = 2

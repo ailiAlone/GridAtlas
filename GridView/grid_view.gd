@@ -24,6 +24,7 @@ const BAR_MARK: Color = Color(1, 1, 1, 0.9)
 # 笔刷落点只重画笔刷区域的纹素，再整图一次上传（create_from_data 是 C++ 侧拷贝，
 # 远快于逐纹素写）。流向箭头/高程数字数量稀疏，仍走矢量指令，用稀疏列表登记。
 const CACHE_RES: int = 4  # 每格纹素数：道路内缩块需要 ≥4 才画得出来
+const PropsData = preload("res://GridData/props_data.gd")
 
 var cachebytes: PackedByteArray = PackedByteArray()
 var cachetexture: ImageTexture
@@ -37,6 +38,9 @@ var _label_cells: Array[Vector2i] = []  # 高程 > 1 需标数字的格子
 		queue_redraw()
 
 var map: MapData
+var props   # PropsData（地图边车；main 注入，本视图不拥有）
+var prop_asset_preview: StringName = &""  # 当前选中的资源定义 id；空串=不画落点预览
+var prop_asset_rotation: int = 0          # 资源落点预览方向：0=横向 / 1=竖向
 var brush_layer: StringName = &"land"
 var brush_value: int = GridDefs.Land.GRASS
 var zoom: float = 1.0
@@ -74,6 +78,24 @@ func set_map(data: MapData) -> void:
 func set_brush(layer: StringName, value: int) -> void:
 	brush_layer = layer
 	brush_value = value
+
+
+## 注入物件层（地图边车）。只画图标，不参与格子填色缓存。
+func set_props(data) -> void:
+	props = data
+	queue_redraw()
+
+
+## 选中资源后的落点预览（用占地范围 + 阻挡掩码画；空串清除）
+func set_asset_preview(asset_id: StringName, rot: int = 0) -> void:
+	prop_asset_preview = asset_id
+	prop_asset_rotation = posmod(rot, 2)
+	queue_redraw()
+
+
+## 当前鼠标悬停格（不在网格内时返回 (-1,-1)）；main 的 R 旋转用
+func hover_cell() -> Vector2i:
+	return _hover_cell
 
 
 ## 切换 高程视图（true：红绿归一化显示高度）/ 普通视图（false：地形各图层）
@@ -164,9 +186,136 @@ func _draw() -> void:
 			var rect: Rect2 = Rect2(Vector2(cell) * s, Vector2(s, s))
 			draw_string(ThemeDB.fallback_font, rect.position + Vector2(2, s * 0.5 + font_size * 0.5),
 				_height_text(map.get_height(cell)), HORIZONTAL_ALIGNMENT_LEFT, s - 2, font_size, text_color)
+	_draw_props()
 	_draw_grid_lines()
 	_draw_cursor_bars()
 	_draw_previews()
+
+
+# ---------- 物件 ----------
+
+## 只画视野内的资源实例（大面板按滚动位置裁剪；小面板整图）
+func _draw_props() -> void:
+	if props == null or map == null:
+		return
+	var s: float = step()
+	var visible: Rect2 = _visible_cell_rect()
+	for i in props.count():
+		var cell: Vector2i = props.cell_at(i)
+		var fp: Rect2i = props.footprint_at(i)
+		if not visible.has_point(Vector2(cell) + Vector2(fp.size) * 0.5):
+			continue
+		_draw_asset_icon(props.asset_id_at(i), Vector2(cell) * s, fp.size,
+			props.rotation_at(i), s, 1.0)
+
+
+func _visible_cell_rect() -> Rect2:
+	if not big_panel or scroll == null:
+		return Rect2(Vector2(-4.0, -4.0), Vector2(map.grid_size) + Vector2(8.0, 8.0))
+	var s: float = step()
+	if s <= 0.0:
+		return Rect2(Vector2.ZERO, Vector2(map.grid_size))
+	var origin: Vector2 = Vector2(scroll.scroll_horizontal, scroll.scroll_vertical) / s
+	return Rect2(origin - Vector2(2.0, 2.0), scroll.size / s + Vector2(4.0, 4.0))
+
+
+## 静态资源：俯视图里只做识别用——占地范围 + 一张缩小的 PNG + 门柱等阻挡格标记。
+## 真正的 45° 立牌在 GamePreview 里，这里不按俯角变形；rot 只影响占地和掩码。
+func _draw_asset_icon(asset_id: StringName, origin: Vector2, fp: Vector2i, rot: int,
+		s: float, alpha: float) -> void:
+	var def: StaticAssetDef = props.asset(asset_id) if props != null else null
+	if def == null:
+		var missing: Rect2 = Rect2(origin, Vector2(fp) * s)
+		draw_rect(missing, Color(0.85, 0.25, 0.75, 0.18 * alpha), true)
+		draw_rect(missing, Color(0.95, 0.35, 0.85, 0.8 * alpha), false, 1.0)
+		return
+	var rect: Rect2 = Rect2(origin, Vector2(fp) * s)
+	draw_rect(rect, Color(0.95, 0.86, 0.55, 0.10 * alpha), true)
+	_draw_asset_texture(def, origin, fp, s, 0.86 * alpha, rot == 1)
+	if def.blocking_mode == StaticAssetDef.Blocking.MASK and s >= 10.0:
+		for local: Vector2i in PropsData.rotated_blocking_cells(def, rot):
+			var cellrect: Rect2 = Rect2(origin + Vector2(local) * s, Vector2(s, s))
+			draw_rect(cellrect.grow(-1.0), Color(0.95, 0.30, 0.24, 0.20 * alpha), true)
+			draw_rect(cellrect.grow(-1.0), Color(1.0, 0.42, 0.32, 0.75 * alpha), false, 1.0)
+	draw_rect(rect, Color(0.95, 0.85, 0.50, 0.70 * alpha), false, 1.0)
+
+
+## 把资源 PNG 按比例塞进占地范围框（不拉伸），作为俯视图图标。
+## flip_x：竖向资源水平镜像缩略图，和 45° 立牌的方向保持一致。
+func _draw_asset_texture(def: StaticAssetDef, origin: Vector2, fp: Vector2i, s: float,
+		alpha: float, flip_x: bool = false) -> void:
+	var tex: Texture2D = StaticAssetStore.texture_for(def)
+	if tex == null:
+		return
+	var rect: Rect2 = Rect2(origin, Vector2(fp) * s)
+	var tw: float = maxf(float(tex.get_width()), 1.0)
+	var th: float = maxf(float(tex.get_height()), 1.0)
+	var fit: float = minf(rect.size.x * 0.92 / tw, rect.size.y * 0.92 / th)
+	var drawn: Vector2 = Vector2(tw, th) * fit
+	if drawn.x < 2.0 or drawn.y < 2.0:
+		return
+	if flip_x:
+		draw_set_transform(rect.get_center(), 0.0, Vector2(-1.0, 1.0))
+		draw_texture_rect(tex, Rect2(-drawn * 0.5, drawn), false, Color(1, 1, 1, alpha))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	else:
+		draw_texture_rect(tex, Rect2(rect.get_center() - drawn * 0.5, drawn), false,
+			Color(1, 1, 1, alpha))
+
+
+func _brush_center() -> Vector2i:
+	var half: int = int(brush_size * 0.5)
+	return _hover_cell + Vector2i(half, half)
+
+
+## 资源落点预览：占地范围以鼠标为中心（奇数边）或左上角（偶数边）。
+## 红格=真正阻挡（门柱），绿格=可通行（门洞），外框绿/红表示能不能放。
+func _draw_asset_ghost() -> void:
+	if props == null:
+		return
+	var def: StaticAssetDef = props.asset(prop_asset_preview)
+	if def == null:
+		return
+	var rot: int = prop_asset_rotation
+	var fp: Vector2i = PropsData.rotated_footprint(def.footprint, rot)
+	var blocked: Array[Vector2i] = PropsData.rotated_blocking_cells(def, rot)
+	var cell: Vector2i = PropsData.anchor_for(fp, _brush_center())
+	var ok: bool = _asset_placeable(cell, fp)
+	var s: float = step()
+	var origin: Vector2 = Vector2(cell) * s
+	for y in fp.y:
+		for x in fp.x:
+			var local: Vector2i = Vector2i(x, y)
+			var cellrect: Rect2 = Rect2(origin + Vector2(local) * s, Vector2(s, s))
+			var fill: Color = Color(0.88, 0.30, 0.24, 0.16) if blocked.has(local) \
+				else Color(0.30, 0.72, 0.42, 0.12)
+			draw_rect(cellrect, fill, true)
+	_draw_asset_texture(def, origin, fp, s, 0.52, prop_asset_rotation == 1)
+	for y in fp.y:
+		for x in fp.x:
+			var local2: Vector2i = Vector2i(x, y)
+			var cellrect2: Rect2 = Rect2(origin + Vector2(local2) * s, Vector2(s, s))
+			var edge: Color = Color(1.0, 0.42, 0.32, 0.85) if blocked.has(local2) \
+				else Color(0.38, 0.94, 0.55, 0.50)
+			draw_rect(cellrect2, edge, false, 1.0)
+	var outer: Rect2 = Rect2(origin, Vector2(fp) * s)
+	var border: Color = Color(0.35, 1.0, 0.45, 0.95) if ok else Color(1.0, 0.30, 0.24, 0.95)
+	draw_rect(outer, border, false, 2.0)
+
+
+func _asset_placeable(cell: Vector2i, fp: Vector2i) -> bool:
+	if map == null:
+		return false
+	for y in range(cell.y, cell.y + fp.y):
+		for x in range(cell.x, cell.x + fp.x):
+			var c: Vector2i = Vector2i(x, y)
+			if not map.in_bounds(c):
+				return false
+			if map.get_water(c) != GridDefs.Water.NONE:
+				return false
+	if props != null and not props.can_place_fp(fp, cell, map.grid_size):
+		return false
+	return true
 
 
 # ---------- 格子填色缓存 ----------
@@ -328,9 +477,13 @@ func _draw_cursor_bars() -> void:
 		draw_rect(Rect2(0, _hover_cell.y * s, BAR, s), BAR_MARK)
 
 
-## 操作预览：大笔刷（>1）的落笔范围框；矩形模式的拖选框
+## 操作预览：资源落点框；大笔刷（>1）的落笔范围框；矩形模式的拖选框
 func _draw_previews() -> void:
 	var s: float = step()
+	if brush_layer == &"prop" and prop_asset_preview != &"" and _hover_cell.x >= 0 \
+			and not (rect_mode and _rect_dragging):
+		_draw_asset_ghost()
+		return
 	if rect_mode and _rect_dragging:
 		var area: Rect2i = _rect_area()
 		var rect: Rect2 = Rect2(Vector2(area.position) * s, Vector2(area.size) * s)

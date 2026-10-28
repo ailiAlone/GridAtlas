@@ -3,8 +3,10 @@
 [ext_resource type="PackedScene" uid="uid://duqxx0801a83k" path="res://GridTool/grid_tools.tscn" id="2_uu6xs"]
 [ext_resource type="Script" uid="uid://bg63e3d0c11ss" path="res://main.gd" id="3_main"]
 [ext_resource type="PackedScene" uid="uid://bt54rkajpdso1" path="res://GridView/grid_view.tscn" id="4_gview"]
-[ext_resource type="PackedScene" uid="uid://c8dt3ujym2ce0" path="res://RenderView/render_view.tscn" id="6_rview"]
 [ext_resource type="PackedScene" uid="uid://dxiuobwm7qm4b" path="res://RenderTool/render_tool.tscn" id="7_rtool"]
+[ext_resource type="PackedScene" path="res://RenderView/game_preview.tscn" id="8_gpreview"]
+[ext_resource type="PackedScene" uid="uid://1y80if473x7a" path="res://RenderTool/material_parameters.tscn" id="9_mparams"]
+[ext_resource type="PackedScene" path="res://GridData/StaticAssestImportView.tscn" id="10_import"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_glv2v"]
 bg_color = Color(1, 1, 1, 0.14117648)
@@ -40,7 +42,7 @@ custom_minimum_size = Vector2(240, 240)
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_glv2v")
 
-[node name="RenderViewMini" parent="HBoxContainer/VBoxContainer/Panel" unique_id=1964010287 instance=ExtResource("6_rview")]
+[node name="GamePreviewMini" parent="HBoxContainer/VBoxContainer/Panel" unique_id=2071377717 instance=ExtResource("8_gpreview")]
 layout_mode = 1
 
 [node name="GridViewMini" parent="HBoxContainer/VBoxContainer/Panel" unique_id=1548795333 instance=ExtResource("4_gview")]
@@ -60,7 +62,7 @@ offset_top = -31.0
 offset_right = 36.0
 grow_horizontal = 2
 grow_vertical = 0
-text = "切换编辑"
+text = "切换渲染"
 
 [node name="Panel2" type="Panel" parent="HBoxContainer/VBoxContainer" unique_id=484675213]
 layout_mode = 2
@@ -109,9 +111,14 @@ grow_vertical = 2
 [node name="GridView" parent="HBoxContainer/VBoxContainer2/Panel/ScrollContainer" unique_id=1982929602 instance=ExtResource("4_gview")]
 layout_mode = 2
 
-[node name="RenderView" parent="HBoxContainer/VBoxContainer2/Panel/ScrollContainer" unique_id=1497185976 instance=ExtResource("6_rview")]
+[node name="GamePreview" parent="HBoxContainer/VBoxContainer2/Panel" unique_id=881172530 instance=ExtResource("8_gpreview")]
 visible = false
-layout_mode = 2
+layout_mode = 1
+
+[node name="MaterialParameters" parent="HBoxContainer/VBoxContainer2/Panel" unique_id=691965688 instance=ExtResource("9_mparams")]
+visible = false
+z_index = 4050
+layout_mode = 1
 
 [node name="Panel2" type="Panel" parent="HBoxContainer/VBoxContainer2" unique_id=114504322]
 layout_mode = 2
@@ -126,7 +133,37 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
+[node name="Label2" type="Label" parent="HBoxContainer/VBoxContainer2/Panel2/HBoxContainer" unique_id=1883174500]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.88, 0.92, 0.98, 0.78)
+theme_override_font_sizes/font_size = 13
+text = "Ctrl+Z 撤销 · Ctrl+Shift+Z / Ctrl+Y 重做 · 编辑：左键绘制 / 右键擦除 / R 切换资源横竖 · 渲染：滚轮缩放 / 右键/中键拖动 / G 格线 / R 复位"
+vertical_alignment = 1
+
 [node name="Label" type="Label" parent="HBoxContainer/VBoxContainer2/Panel2/HBoxContainer" unique_id=482572023]
 layout_mode = 2
-size_flags_horizontal = 10
 text = "当前坐标(-,-)"
+
+[node name="ImportOverlay" type="Control" parent="."]
+visible = false
+z_index = 100
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="Dim" type="ColorRect" parent="ImportOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+color = Color(0, 0, 0, 0.58)
+
+[node name="StaticAssestImportView" parent="ImportOverlay" instance=ExtResource("10_import")]

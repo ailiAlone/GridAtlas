@@ -1,11 +1,11 @@
 extends PanelContainer
-## MaterialParameters —— 材质参数浮窗（RenderView 子节点）。
+## MaterialParameters —— 材质参数浮窗（挂在 Main 大面板上，打开时覆盖 45° 游戏预览）。
 ## 结构全部静态在 material_parameters.tscn：
 ##   材质颜色：HFlowContainer 下 12 个 ColorRect（内含文字 Label + 选中描边 Outline）
 ##   材质过渡矩阵：GridContainer（9 列）下的表头 Label + 8×8 TextEdit（直接输入 0..1）
 ## 本脚本只负责：点选色块 → 右侧取色器实时调色；矩阵输入解析并镜像对称格；
-## 改动经 settings_changed 通知外部（main 接到两个渲染实例即时重渲）。
-## settings 由所属 RenderView 在 apply_settings 时推入，这里只做数值同步。
+## 改动经 settings_changed 通知外部（main 更新 45° 小预览与 45° 游戏预览）。
+## settings 由 main 在打开/配置变化时推入，这里只做数值同步。
 
 signal settings_changed
 
@@ -60,7 +60,7 @@ func _bind_static_widgets() -> void:
 
 # ---------- 对外 ----------
 
-## 由 RenderView.apply_settings 推入配置，同步到静态控件
+## 由 GamePreview.apply_look 推入配置，同步到静态控件
 func set_settings(s: RenderSettings) -> void:
 	settings = s
 	_sync_widgets()

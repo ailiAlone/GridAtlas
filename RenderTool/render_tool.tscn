@@ -9,10 +9,6 @@ script = ExtResource("1_rendertool")
 layout_mode = 2
 text = "材质参数"
 
-[node name="CheckOblique" type="CheckButton" parent="." unique_id=80709206]
-layout_mode = 2
-text = "斜角视图"
-
 [node name="PanelTexture" type="PanelContainer" parent="." unique_id=1844980940]
 layout_mode = 2
 
@@ -512,7 +508,7 @@ layout_mode = 2
 [node name="Title" type="Label" parent="PanelElev/VBoxContainer/Rows/height_scale" unique_id=441141497]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "斜角高度"
+text = "地形高度"
 
 [node name="Slider" type="HSlider" parent="PanelElev/VBoxContainer/Rows/height_scale" unique_id=441141498]
 custom_minimum_size = Vector2(150, 20)
@@ -615,4 +611,153 @@ value = 0.3
 custom_minimum_size = Vector2(42, 0)
 layout_mode = 2
 text = "0.3"
+horizontal_alignment = 2
+
+[node name="PanelMountain" type="PanelContainer" parent="."]
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="PanelMountain"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="PanelMountain/VBoxContainer"]
+layout_mode = 2
+text = "山体与光照"
+horizontal_alignment = 1
+
+[node name="Rows" type="VBoxContainer" parent="PanelMountain/VBoxContainer"]
+layout_mode = 2
+
+[node name="rock_slope_low" type="HBoxContainer" parent="PanelMountain/VBoxContainer/Rows"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="PanelMountain/VBoxContainer/Rows/rock_slope_low"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "露岩起始"
+
+[node name="Slider" type="HSlider" parent="PanelMountain/VBoxContainer/Rows/rock_slope_low"]
+custom_minimum_size = Vector2(150, 20)
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.05
+max_value = 1.5
+step = 0.01
+value = 0.52
+
+[node name="Value" type="Label" parent="PanelMountain/VBoxContainer/Rows/rock_slope_low"]
+custom_minimum_size = Vector2(42, 0)
+layout_mode = 2
+text = "0.52"
+horizontal_alignment = 2
+
+[node name="rock_slope_high" type="HBoxContainer" parent="PanelMountain/VBoxContainer/Rows"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="PanelMountain/VBoxContainer/Rows/rock_slope_high"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "露岩满坡"
+
+[node name="Slider" type="HSlider" parent="PanelMountain/VBoxContainer/Rows/rock_slope_high"]
+custom_minimum_size = Vector2(150, 20)
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.1
+max_value = 2.5
+step = 0.01
+value = 1.05
+
+[node name="Value" type="Label" parent="PanelMountain/VBoxContainer/Rows/rock_slope_high"]
+custom_minimum_size = Vector2(42, 0)
+layout_mode = 2
+text = "1.05"
+horizontal_alignment = 2
+
+[node name="snow_line_ratio" type="HBoxContainer" parent="PanelMountain/VBoxContainer/Rows"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="PanelMountain/VBoxContainer/Rows/snow_line_ratio"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "雪线比例"
+
+[node name="Slider" type="HSlider" parent="PanelMountain/VBoxContainer/Rows/snow_line_ratio"]
+custom_minimum_size = Vector2(150, 20)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 1.2
+step = 0.01
+value = 0.62
+
+[node name="Value" type="Label" parent="PanelMountain/VBoxContainer/Rows/snow_line_ratio"]
+custom_minimum_size = Vector2(42, 0)
+layout_mode = 2
+text = "0.62"
+horizontal_alignment = 2
+
+[node name="snow_line_min" type="HBoxContainer" parent="PanelMountain/VBoxContainer/Rows"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="PanelMountain/VBoxContainer/Rows/snow_line_min"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "雪线最低"
+
+[node name="Slider" type="HSlider" parent="PanelMountain/VBoxContainer/Rows/snow_line_min"]
+custom_minimum_size = Vector2(150, 20)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 16.0
+step = 0.25
+value = 4.0
+
+[node name="Value" type="Label" parent="PanelMountain/VBoxContainer/Rows/snow_line_min"]
+custom_minimum_size = Vector2(42, 0)
+layout_mode = 2
+text = "4"
+horizontal_alignment = 2
+
+[node name="light_azimuth" type="HBoxContainer" parent="PanelMountain/VBoxContainer/Rows"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="PanelMountain/VBoxContainer/Rows/light_azimuth"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "光照方位"
+
+[node name="Slider" type="HSlider" parent="PanelMountain/VBoxContainer/Rows/light_azimuth"]
+custom_minimum_size = Vector2(150, 20)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 360.0
+step = 1.0
+value = 315.0
+
+[node name="Value" type="Label" parent="PanelMountain/VBoxContainer/Rows/light_azimuth"]
+custom_minimum_size = Vector2(42, 0)
+layout_mode = 2
+text = "315"
+horizontal_alignment = 2
+
+[node name="light_elevation" type="HBoxContainer" parent="PanelMountain/VBoxContainer/Rows"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="PanelMountain/VBoxContainer/Rows/light_elevation"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "光照高度"
+
+[node name="Slider" type="HSlider" parent="PanelMountain/VBoxContainer/Rows/light_elevation"]
+custom_minimum_size = Vector2(150, 20)
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 2.0
+max_value = 85.0
+step = 0.1
+value = 28.7
+
+[node name="Value" type="Label" parent="PanelMountain/VBoxContainer/Rows/light_elevation"]
+custom_minimum_size = Vector2(42, 0)
+layout_mode = 2
+text = "28.7"
 horizontal_alignment = 2

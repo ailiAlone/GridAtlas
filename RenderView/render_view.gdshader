@@ -1,5 +1,6 @@
 shader_type canvas_item;
-// RenderView 成品渲染着色器。数据每格一像素，逐像素程序化着色。
+// 地表成品着色器（GamePreview / GamePreviewMini / 游戏端 MapRuntime 共用）。
+// 数据每格一像素，逐像素程序化着色。
 //
 // 机制总览：
 //  0) 连续水深场：把水域数据当标量做平滑插值，岸线/浅深分界由【等值线】决定，
@@ -8,7 +9,7 @@ shader_type canvas_item;
 //     例外是沼泽↔草地：它不是"两种地的分界"，而是"越来越湿"，所以用一张连续沼泽场
 //     驱动底色与水洼密度（见 2b），边界因此既不是格子阶梯，也不是一条渐变线。
 //  2) 分材质结构图案：硬边碎块/团簇，频率压在 0.3~2 周期/格。
-//  3) 微凹凸光照 + 高程浮雕：固定光源（左上），让表面有立体感。
+//  3) 微凹凸光照 + 高程浮雕：可调光源方向（默认左上），让表面有立体感。
 //  4) 低频生物群系色差：避免大片纯色。
 //  5) 交界折痕：一条窄暗线，读起来是物理接缝而不是颜色渐变。
 //  6) 细颗粒只做极低幅度抖动，绝不主导画面。
@@ -61,12 +62,25 @@ uniform float u_elev_bright = 0.045;
 uniform float u_elev_shadow = 0.16;
 uniform float u_elev_rim = 0.05;
 uniform float u_elev_shadow_width = 0.30;
+// ---- 山体与光照 ----
+uniform float u_rock_slope_low = 0.52;    // 坡度（级/格）开始露岩
+uniform float u_rock_slope_high = 1.05;   // 完全成为岩石的坡度
+uniform float u_snow_line_ratio = 0.62;   // 雪线 = 全图最高高程 × 该比例
+uniform float u_snow_line_min = 4.0;      // 雪线最低高程（级）
+uniform float u_light_azimuth = 315.0;    // 光的来向（度）：0=北 90=东 180=南 270=西
+uniform float u_light_elevation = 28.7;   // 光的高度角（度）：0=贴地 90=正上方
 // ---- 斜角视图（正交、从南向北俯看） ----
 uniform float u_oblique = 0.0;          // 0 = 俯视，1 = 斜角
 uniform float u_pitch = 0.93;           // 俯仰角（弧度），约 53°
 uniform float u_height_scale = 2.5;     // 每级高程 = 多少世界格高
 uniform float u_elev_max = 4.0;         // 全图最高高程（级），GDScript 侧更新
 uniform vec2 u_view_size = vec2(1024.0, 1024.0);
+// ---- 固定游戏视角（GridAtlas 用；工具预览用默认值，保持原取景） ----
+// yaw = 相机所在方位（从目标看向相机）：0=北 90°=东 135°=东南 180°=南（工具默认）
+// 视线方向 fd = (-sin yaw, cos yaw)，所以相机在南边时 fd 指向北。
+uniform float u_view_yaw = 3.14159265;
+uniform vec2 u_view_center = vec2(0.0); // 视口中心对应的地面格（仅 view_cells > 0 时生效）
+uniform float u_view_cells = 0.0;       // 视口宽度覆盖多少格；<= 0 表示"整图铺满"（工具预览）
 uniform vec3 u_sky_top = vec3(0.40, 0.58, 0.75);
 uniform vec3 u_sky_bottom = vec3(0.79, 0.85, 0.88);
 
@@ -312,6 +326,21 @@ float wave_train(vec2 p, vec2 dir, float freq, float speed, float t) {
 	return sin(phase);
 }
 
+// 坡面光照方向：方位角是"光从哪个方向来"（0=北、90=东、180=南、270=西），
+// 高度角 0=贴着地平线、90=正上方。默认 315°/28.7° 即原来的左上光
+// normalize(-0.62, -0.62, 0.48)。高度角夹到 2°~88°，避免退化向量。
+vec3 light_vector() {
+	float az = radians(u_light_azimuth);
+	float el = radians(clamp(u_light_elevation, 2.0, 88.0));
+	return normalize(vec3(sin(az) * cos(el), -cos(az) * cos(el), sin(el)));
+}
+
+// 水平光向：只有俯视明暗的地方（道路碎石）用，和 light_vector 的 xy 一致。
+vec2 light_vector_xy() {
+	float az = radians(u_light_azimuth);
+	return normalize(vec2(sin(az), -cos(az)));
+}
+
 // 地表着色：cf 是格坐标（0..map_size）。俯视时直接由 UV 换算，斜角时由高度场步进得到。
 vec3 shade_surface(vec2 cf) {
 
@@ -408,6 +437,20 @@ vec3 shade_surface(vec2 cf) {
 	float marsh = smoothstep(0.24, 0.56, swfn);
 	float swamp_zone = (base_id < 1.5 || (base_id > 4.5 && base_id < 5.5)) ? 1.0 : 0.0;
 
+	// ---- 1.5) 高程梯度 + 陡壁参数（图案/光照共用） ----
+	// 俯视纹理落在近垂直的坡面上会沿坡拉长；这里先算出坡度，
+	// 后面把俯视图案压平、换成立面岩层。梯度同时给光照段复用，不重复采样高度场。
+	float d = max(u_elev_shadow_width, 0.10) * 1.6;
+	float h0 = elev_relief(cf);
+	float hx = elev_relief(cf + vec2(d, 0.0));
+	float hy = elev_relief(cf + vec2(0.0, d));
+	vec2 g = vec2(hx - h0, hy - h0) / d;        // 梯度（高度/格）
+	float slope = length(g);
+	float land_mask = 1.0 - waterness;
+	// 陡壁不画俯视图案：斜角里沿坡会被拉长。这里只算一个“压平图案/草叶”的权重，
+	// 不额外生成立面纹理——陡壁只保留材质底色 + 光照。俯视视图不启用。
+	float cliff = smoothstep(0.12, 0.30, slope) * land_mask * (u_oblique > 0.5 ? 1.0 : 0.0);
+
 	// ---- 2) 分材质结构图案 + 微凹凸光照 ----
 	vec2 pf = cf * u_texture_frequency;
 	float p0 = material_pattern(pf, pattern_id);
@@ -417,6 +460,10 @@ vec3 shade_surface(vec2 cf) {
 	}
 	float pdx = material_pattern(pf + vec2(0.40, 0.0), pattern_id);
 	float pdy = material_pattern(pf + vec2(0.0, 0.40), pattern_id);
+	// 陡壁：俯视图案和微凹凸沿坡会被拉长，先压平，后面由立面岩层接手
+	p0 = mix(p0, 1.0, cliff);
+	pdx = mix(pdx, 1.0, cliff);
+	pdy = mix(pdy, 1.0, cliff);
 	col *= 1.0 + (p0 - 1.0) * u_texture_strength;
 	vec2 grad = vec2(pdx - p0, pdy - p0) * u_texture_strength * 2.2;
 	float bump = 1.0 - (grad.x + grad.y) * u_bump * 0.35;
@@ -430,6 +477,7 @@ vec3 shade_surface(vec2 cf) {
 	if (abs(base_id - 1.0) < 0.5) grass_w = 1.0 - mixw;
 	if (abs(other_id - 1.0) < 0.5) grass_w = max(grass_w, mixw);
 	grass_w *= 1.0 - clamp(water_cover, 0.0, 1.0);
+	grass_w *= 1.0 - cliff;   // 草叶也是俯视笔触，陡壁上会拉长
 	if (grass_w > 0.01) {
 		// 叶片方向：低频噪声控制整片草倒向哪边（约 1~2 格换一次方向）
 		float lean = (vnoise(cf * 0.62 + vec2(4.4, 8.8)) - 0.5) * 2.6;
@@ -527,23 +575,17 @@ vec3 shade_surface(vec2 cf) {
 	col = mix(col, deep_c, deep_cover);
 	col *= 1.0 - 0.02 * clamp(wfield - 1.0, 0.0, 1.0);   // 越深越沉（很轻微）
 
-	// ---- 5) 高程浮雕：平滑高度场 → 法线 → 固定左上光 ----
+	// ---- 5) 高程浮雕：法线 → 光照方向（方位/高度角见 u_light_*） ----
 	// 平地的法线是竖直的，读数归一为 1；迎光坡变亮、背光坡变暗，由此读出坡向和体量。
-	float d = max(u_elev_shadow_width, 0.10) * 1.6;
-	float h0 = elev_relief(cf);
-	float hx = elev_relief(cf + vec2(d, 0.0));
-	float hy = elev_relief(cf + vec2(0.0, d));
-	vec2 g = vec2(hx - h0, hy - h0) / d;        // 梯度（高度/格）
+	// 梯度 / 坡度 / land_mask 已在 1.5 段算好（图案与陡壁共用同一份）。
 	float k = max(u_relief, 0.05) * 1.4;        // 垂直夸张
 	vec3 nrm = normalize(vec3(-g.x * k, -g.y * k, 1.0));
-	vec3 lgt = normalize(vec3(-0.62, -0.62, 0.48));   // 固定左上
+	vec3 lgt = light_vector();
 	float ndl = dot(nrm, lgt);
-	// 山体：陡坡露岩、高处缓坡积雪。用世界坡度（梯度 × 垂直比例）判定。
-	float land_mask = 1.0 - waterness;
-	// 用原始坡度（级/格）而不是垂直夸张后的坡度：换"斜角高度"不会改变岩石分布
-	float slope = length(g);
-	float rock = smoothstep(0.52, 1.05, slope) * land_mask;
-	float snow_line = max(4.0, u_elev_max * 0.62);
+	// 山体：陡坡露岩、高处缓坡积雪。用原始坡度（级/格）而不是垂直夸张后的坡度：
+	// 换"斜角高度"不会改变岩石分布。
+	float rock = smoothstep(u_rock_slope_low, max(u_rock_slope_high, u_rock_slope_low + 0.01), slope) * land_mask;
+	float snow_line = max(u_snow_line_min, u_elev_max * u_snow_line_ratio);
 	// 雪线不是一条等高线：用低频噪声把阈值打散成斑块
 	float snow_n = (fbm(cf * 0.55 + vec2(5.3, 2.7)) - 0.5) * 2.4;
 	float snow = smoothstep(snow_line, snow_line + 1.0, h0 + snow_n)
@@ -560,12 +602,14 @@ vec3 shade_surface(vec2 cf) {
 	// 高度提亮按全图最高点归一，否则高山会一路加到过曝
 	float hrel = clamp((h0 - 1.0) / max(u_elev_max - 1.0, 1.0), 0.0, 1.0);
 	col *= 1.0 + hrel * u_elev_bright * 2.0;
-	// 山体覆盖放在打光之后：岩石/雪帽用同一个 lit 明暗，但不再叠加高度提亮
+	// 山体覆盖放在打光之后：岩石/雪帽用同一个 lit 明暗，但不再叠加高度提亮。
+	// 俯视颗粒在斜角陡壁上会被拉长；陡壁直接压成平色（只留 lit 明暗）。
 	if (rock > 0.002 || snow > 0.002) {
-		float rock_grain = 0.86 + 0.26 * fbm(cf * 1.25 + vec2(3.7, 8.1));
-		vec3 rock_c = table_color(13) * rock_grain * clamp(lit, 0.62, 1.32);
+		float grain = 0.86 + 0.26 * fbm(cf * 1.25 + vec2(3.7, 8.1));
+		grain = mix(grain, 0.95, cliff);
+		vec3 rock_c = table_color(13) * grain * clamp(lit, 0.62, 1.32);
 		vec3 snow_c = table_color(14) * clamp(lit, 0.78, 1.16);
-		col = mix(col, rock_c, rock * 0.85);
+		col = mix(col, rock_c, rock * 0.92);
 		col = mix(col, snow_c, snow * 0.72);
 	}
 
@@ -715,7 +759,7 @@ vec3 shade_surface(vec2 cf) {
 			vec3 gcol = rcol * pebble;
 			// 石子隆起：中心亮、边缘暗；再按光向（左上）给一点方向性
 			float dome = 1.0 - smoothstep(0.0, 0.55, f1);
-			float light_dir = dot(normalize(gfrom + vec2(1e-4)), normalize(vec2(-0.62, -0.62)));
+			float light_dir = dot(normalize(gfrom + vec2(1e-4)), light_vector_xy());
 			gcol *= 0.88 + dome * 0.20 + light_dir * dome * 0.10;
 			gcol *= 0.94 + 0.12 * vnoise(cf * 9.0);
 			// 石缝：暗、带一点冷色
@@ -766,38 +810,48 @@ vec3 oblique_color(vec2 uv) {
 	float H = u_map_size.y;
 	float zmax = max((u_elev_max - 1.0) * u_height_scale, 0.4);
 
-	// 视野：宽度取整张地图，高度按视口比例；含地形高度的总高度也尽量铺满
-	float aspect = max(u_view_size.x, 1.0) / max(u_view_size.y, 1.0);
-	float need_h = H * sp + zmax * cp;
-	float world_w = max(W, need_h * aspect) * 1.04;
-	float world_h = world_w / aspect;
-	float sx = (uv.x - 0.5) * world_w + W * 0.5;
-	float sy = (0.5 - uv.y) * world_h - (H * sp - zmax * cp) * 0.5;
+	// 视线水平朝向 fd（相机 → 场景）与屏幕右向 rt，都是格空间单位向量。
+	// 工具预览 yaw=0：fd=(0,-1)，从南往北看，与旧实现等价；
+	// 游戏视图 yaw=3π/4：fd=(-0.707,-0.707)，从东南（地图右下角）看向中心。
+	vec2 fd = vec2(-sin(u_view_yaw), cos(u_view_yaw));
+	vec2 rt = vec2(-fd.y, fd.x);
 
-	float cot = cp / sp;              // 每上升 1 格高度，射线在 y 方向后退多少格
-	float base_y = -sy / sp;          // 该像素对应的 z=0 地面点
+	float aspect = max(u_view_size.x, 1.0) / max(u_view_size.y, 1.0);
+	float world_w;
+	vec2 center;
+	if (u_view_cells > 0.5) {
+		// 游戏取景：视口宽度覆盖 u_view_cells 格，中心由相机给出
+		world_w = u_view_cells;
+		center = u_view_center;
+	} else {
+		// 工具取景：整图铺满，并把"地图 + 最高点"竖直居中（原公式）
+		float need_h = H * sp + zmax * cp;
+		world_w = max(W, need_h * aspect) * 1.04;
+		center = vec2(W * 0.5, H * 0.5 - zmax * cp / (2.0 * sp));
+	}
+	float world_h = world_w / aspect;
+	float sx = (uv.x - 0.5) * world_w;
+	float sy = (0.5 - uv.y) * world_h;         // 屏幕向上为正
+
+	float cot = cp / sp;
+	// 屏幕中心对应 center 这个地面点；沿 fd 退 sy/sp 格就是该像素在 z=0 的落点
+	vec2 base = center + rt * sx + fd * (sy / sp);
 	float step_z = max(zmax / 22.0, 0.05);
 	float z = zmax;
 	float prev_z = zmax + step_z;
 	bool hit = false;
-	bool wall = false;                // 命中地图边缘的侧壁
+	bool wall = false;
 	for (int i = 0; i < 24; i++) {
-		float y = base_y + z * cot;
-		if (sx >= 0.0 && sx < W) {
-			if (y >= 0.0 && y < H) {
-				if (z <= terrain_z(vec2(sx, y))) {
-					hit = true;
-					break;
-				}
-			} else if (y < 0.0) {
-				// 越过北边缘：如果低于该处地表，看到的是切面侧壁；否则整条射线都在空中
-				if (z <= terrain_z(vec2(sx, 0.0)) && z > 0.001) wall = true;
+		vec2 p = base - fd * (z * cot);
+		if (p.x >= 0.0 && p.x < W && p.y >= 0.0 && p.y < H) {
+			if (z <= terrain_z(p)) {
+				hit = true;
 				break;
 			}
-		} else if (y >= 0.0 && y < H) {
-			// 东西边缘同理
-			float ex = clamp(sx, 0.0, W - 0.001);
-			if (z <= terrain_z(vec2(ex, y)) && z > 0.001) wall = true;
+		} else if (p.y < 0.0 || p.x < 0.0) {
+			// 越过远端边缘（工具：北；游戏：北/西）：低于边缘地表 = 切面侧壁，否则是天空
+			vec2 edge = clamp(p, vec2(0.0), vec2(W - 0.001, H - 0.001));
+			if (z <= terrain_z(edge) && z > 0.001) wall = true;
 			break;
 		}
 		if (z <= 0.0) break;
@@ -805,32 +859,38 @@ vec3 oblique_color(vec2 uv) {
 		z -= step_z;
 	}
 	if (wall) {
-		float ex = clamp(sx, 0.0, W - 0.001);
-		float ey = clamp(base_y + z * cot, 0.0, H - 0.001);
-		vec3 wcol = shade_surface(vec2(ex, ey)) * vec3(0.50, 0.47, 0.42);
-		float top = max(terrain_z(vec2(ex, ey)), 0.001);
+		// 游戏视图不再画地图边缘的假切面：那两块向外拉的大三角只是把边缘格
+		// 拉成一面墙，除了在工具整图预览里看边界，没有存在必要。
+		if (u_view_cells > 0.5) {
+			return mix(u_sky_bottom, u_sky_top, clamp(uv.y, 0.0, 1.0));
+		}
+		vec2 edge = clamp(base - fd * (z * cot), vec2(0.0), vec2(W - 0.001, H - 0.001));
+		vec3 wcol = shade_surface(edge) * vec3(0.50, 0.47, 0.42);
+		float top = max(terrain_z(edge), 0.001);
 		wcol *= mix(0.62, 1.0, clamp(z / top, 0.0, 1.0));   // 越靠底越暗
-		float wfog = smoothstep(0.0, 1.0, clamp((H - ey) / H, 0.0, 1.0)) * 0.20;
+		float wfog = smoothstep(0.0, 1.0, clamp((H - edge.y) / H, 0.0, 1.0)) * 0.20;
 		return mix(wcol, u_sky_bottom, wfog);
 	}
-	float hy = 0.0;
+	vec2 surf = base;
 	if (hit) {
 		float lo = z;        // 已在地表以下
 		float hi = prev_z;   // 仍在地表以上
 		for (int k = 0; k < 4; k++) {
 			float mid = (lo + hi) * 0.5;
-			float my = base_y + mid * cot;
-			if (mid <= terrain_z(vec2(sx, clamp(my, 0.0, H - 0.001)))) lo = mid;
+			vec2 mp = base - fd * (mid * cot);
+			if (mid <= terrain_z(clamp(mp, vec2(0.0), vec2(W - 0.001, H - 0.001)))) lo = mid;
 			else hi = mid;
 		}
-		hy = base_y + lo * cot;
+		surf = base - fd * (lo * cot);
 	}
-
-	vec3 sky = mix(u_sky_bottom, u_sky_top, clamp(uv.y, 0.0, 1.0));
-	if (!hit || hy < 0.0 || hy >= H) return sky;
-	vec3 col = shade_surface(vec2(sx, hy));
+	// 没被地形挡住时，射线一定落到 z=0 的地面 —— 不能因为步进恰好停在 0 上方就返回天空。
+	// （旧实现靠浮点误差刚好命中平地，地图换尺寸/换最高点就可能整片平地变天空。）
+	if (surf.x < 0.0 || surf.x >= W || surf.y < 0.0 || surf.y >= H) {
+		return mix(u_sky_bottom, u_sky_top, clamp(uv.y, 0.0, 1.0));
+	}
+	vec3 col = shade_surface(surf);
 	// 远景薄雾：越靠北（画面深处）越淡，给纵深
-	float fog = smoothstep(0.0, 1.0, clamp((H - hy) / H, 0.0, 1.0)) * 0.20;
+	float fog = smoothstep(0.0, 1.0, clamp((H - surf.y) / H, 0.0, 1.0)) * 0.20;
 	return mix(col, u_sky_bottom, fog);
 }
 

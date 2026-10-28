@@ -1,0 +1,36 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://RenderView/game_preview.gd" id="1_gpreview"]
+[ext_resource type="PackedScene" path="res://example/grid_atlas.tscn" id="2_atlas"]
+
+[node name="GamePreview" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+script = ExtResource("1_gpreview")
+
+[node name="Atlas" parent="." instance=ExtResource("2_atlas")]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Hint" type="Label" parent="."]
+z_index = 4000
+layout_mode = 0
+offset_left = 14.0
+offset_top = 10.0
+offset_right = 880.0
+offset_bottom = 64.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(1, 1, 1, 0.96)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 15
+text = "45° 游戏视图 · 滚轮缩放 / 右键拖动 / G 格线"

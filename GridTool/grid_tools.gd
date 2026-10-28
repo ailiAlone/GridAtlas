@@ -17,6 +17,10 @@ signal edit_checkpoint              # 即将发生不可逆改动（如改尺寸
 signal elevation_view_changed(on: bool)
 signal brush_size_changed(size: int)
 signal rect_mode_changed(on: bool)
+signal prop_rotation_changed(rot: int)
+signal prop_clear_requested
+signal assets_refresh_requested
+signal asset_edit_requested
 
 
 # ---------- 节点引用 ----------
@@ -44,6 +48,9 @@ signal rect_mode_changed(on: bool)
 @onready var filedialog:FileDialog = $"PanelContainer5/FileDialog"
 @onready var widthbox:SpinBox = $"PanelContainer5/VBoxContainer/HBoxContainer2/SpinBox"
 @onready var heightbox:SpinBox = $"PanelContainer5/VBoxContainer/HBoxContainer2/SpinBox2"
+@onready var propstool: PanelContainer = $"PropsTool"
+
+
 
 
 # ---------- 按钮名 -> 业务参数（枚举定义见 grid_defs.gd） ----------
@@ -89,6 +96,8 @@ var terrain_group: ButtonGroup = ButtonGroup.new()  # 地形模式互斥
 var brush_size: int = 1
 var brush_size_max: int = 3  # 当前可选的最大笔刷边长（与数字按钮数一致）
 var sizegroup: ButtonGroup = ButtonGroup.new()  # 笔刷大小互斥选择
+var prop_asset_id: StringName = &""  # 当前选中的资源定义 id（空串=未选资源）
+var prop_rotation: int = 0           # 待放置方向：0=横向 / 1=竖向（图片水平镜像）
 var current_path: String = ""
 var dirty: bool = false
 var _saving_via_dialog: bool = false
@@ -113,6 +122,11 @@ func _ready() -> void:
 	filedialog.file_selected.connect(_on_file_selected)
 	widthbox.value_changed.connect(_on_width_changed)
 	heightbox.value_changed.connect(_on_height_changed)
+	propstool.asset_selected.connect(_on_asset_selected)
+	propstool.rotation_selected.connect(_on_rotation_selected)
+	propstool.clear_requested.connect(_on_prop_clear_requested)
+	propstool.assets_refresh_requested.connect(_on_assets_refresh_requested)
+	propstool.asset_edit_requested.connect(_on_asset_edit_requested)
 	_update_save_button()
 	_update_file_label()
 
@@ -161,6 +175,66 @@ func _on_brush_plus() -> void:
 func _on_rect_toggled(pressed: bool) -> void:
 	rect_mode_changed.emit(pressed)
 	print("[笔刷] %s" % ("矩形填充模式（拖选区域，右键=擦除填充）" if pressed else "涂画模式"))
+
+
+## 资源库：选中即切到资源笔刷；真正的放置/擦除由 GridView 上报、main 写数据
+func _on_asset_selected(asset_id: StringName) -> void:
+	prop_asset_id = asset_id
+	brush_layer = &"prop"
+	brush_changed.emit(&"prop", -1)
+	print("[笔刷] 资源 -> %s" % asset_name(asset_id))
+
+
+func _on_assets_refresh_requested() -> void:
+	assets_refresh_requested.emit()
+
+
+func _on_asset_edit_requested() -> void:
+	asset_edit_requested.emit()
+
+
+func _on_rotation_selected(rot: int) -> void:
+	prop_rotation = posmod(rot, 2)
+	prop_rotation_changed.emit(prop_rotation)
+	print("[笔刷] 资源方向 -> %s" % rotation_name(prop_rotation))
+
+
+## 鼠标不在已放资源上时按 R：在横向/竖向之间切换
+func cycle_rotation() -> void:
+	prop_rotation = (prop_rotation + 1) % 2
+	propstool.set_pending_rotation(prop_rotation)
+	prop_rotation_changed.emit(prop_rotation)
+	print("[笔刷] 资源方向 -> %s" % rotation_name(prop_rotation))
+
+
+static func rotation_name(rot: int) -> String:
+	return "竖向（图片镜像）" if posmod(rot, 2) == 1 else "横向"
+
+
+func set_asset_defs(defs: Dictionary) -> void:
+	propstool.set_asset_defs(defs)
+	# 当前选中的资源被删除/改名：退回陆地笔刷，避免之后落笔引用一个不存在的 id
+	if prop_asset_id != &"" and not defs.has(prop_asset_id):
+		prop_asset_id = &""
+		if brush_layer == &"prop":
+			brush_layer = &"land"
+			brush_value = GridDefs.Land.GRASS
+			brush_changed.emit(&"land", brush_value)
+
+
+func asset_name(asset_id: StringName) -> String:
+	var def: StaticAssetDef = propstool.asset_defs.get(asset_id) as StaticAssetDef
+	if def != null:
+		return def.display_name
+	return String(asset_id)
+
+
+func _on_prop_clear_requested() -> void:
+	prop_clear_requested.emit()
+
+
+func set_prop_count(n: int) -> void:
+	propstool.set_count(n)
 
 func _on_save_pressed() -> void:
 	save_map()
@@ -223,6 +297,8 @@ func _setup_terrain_buttons() -> void:
 ## 互斥组里点击"已经选中"的那个按钮不会发 toggled（比如刚启动时的抬升），
 ## 但 pressed 每次点击都发：用它兜底，保证点过地形按钮后地形笔刷一定处于激活状态。
 func _on_terrain_pressed() -> void:
+	propstool.clear_selection()
+	prop_asset_id = &""
 	if brush_layer != &"terrain":
 		brush_layer = &"terrain"
 		brush_changed.emit(&"terrain", 0)
@@ -232,6 +308,8 @@ func _on_terrain_pressed() -> void:
 func _on_terrain_mode(on: bool, mode: StringName) -> void:
 	if not on:
 		return
+	propstool.clear_selection()
+	prop_asset_id = &""
 	terrain_mode = mode
 	brush_layer = &"terrain"
 	brush_changed.emit(&"terrain", 0)
@@ -294,6 +372,8 @@ func add_brush_size() -> void:
 	print("[笔刷] 新增大小 %d" % brush_size_max)
 
 func _set_brush(layer: StringName, value: int) -> void:
+	propstool.clear_selection()
+	prop_asset_id = &""
 	brush_layer = layer
 	brush_value = value
 	brush_changed.emit(layer, value)
@@ -312,6 +392,8 @@ func value_name(layer: StringName, value: int) -> String:
 		return String(GridDefs.Flow.keys()[value])
 	elif layer == &"terrain":
 		return terrain_mode_text()
+	elif layer == &"prop":
+		return asset_name(prop_asset_id) if prop_asset_id != &"" else "资源"
 	return str(value)
 
 

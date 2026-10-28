@@ -1,3 +1,9 @@
 # Godot 4+ specific ignores
 .godot/
 /android/
+
+# Local agent/session metadata
+/.zcode/
+
+# Local art assets (Tiny Swords license forbids redistributing raw files)
+/Assets/
