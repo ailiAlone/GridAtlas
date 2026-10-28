@@ -161,7 +161,8 @@ x+0.5），不是世界像素。`MapRuntime.CELL_SIZE`（16）只服务于旧的
 `example/demo_unit.gd` 在内存里裁切；素材的再分发限制见 `Assets/TinySwords/SOURCE.md`。
 
 新的静态资源来自 `GridData/static_assets/defs/*.tres` + `Assets/ChineseVillage/
-Processed/delivery/`；导入与占地范围定义流程见 `Docs/三期-资源导入.md`。
+Processed/delivery/<族>/`（PNG 按分类分文件夹）；导入与占地范围定义流程见
+`Docs/三期-资源导入.md`。
 
 ## 性能取舍
 
