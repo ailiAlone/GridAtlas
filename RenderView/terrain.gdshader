@@ -184,6 +184,28 @@ float land_blur(vec2 p) {
 	return s;
 }
 
+// 干沙滩指示：该格是沙地且没有水面（1/0）。
+// 有水面的格子陆地字段已强制为沙（河床），所以识别"沙滩"必须排除水下沙，
+// 否则浅水内部的沙河床会满足潮汐遮罩，水与水之间也会互相摆动。
+float beach_ind(vec2 p) {
+	vec4 d = cell_data(floor(p));
+	float l = d.r * 255.0;
+	float sand = step(1.5, l) * step(l, 2.5);
+	float wet = step(0.5, d.g * 255.0);
+	return sand * (1.0 - wet);
+}
+
+// 干沙滩的宽核模糊：与 water_blur 同核，岸线两侧各有约 1 格的过渡带。
+float beach_blur(vec2 p) {
+	float r = 1.3;
+	float s = beach_ind(p) * 0.24;
+	s += (beach_ind(p + vec2(r, 0.0)) + beach_ind(p - vec2(r, 0.0))
+		+ beach_ind(p + vec2(0.0, r)) + beach_ind(p - vec2(0.0, r))) * 0.12;
+	s += (beach_ind(p + vec2(r, r)) + beach_ind(p + vec2(-r, r))
+		+ beach_ind(p + vec2(r, -r)) + beach_ind(p + vec2(-r, -r))) * 0.07;
+	return s;
+}
+
 // 沼泽指示：该格是不是沼泽（1/0）
 float swamp_ind(vec2 p) {
 	float l = land_of(cell_data(floor(p)));
@@ -378,14 +400,15 @@ vec3 shade_surface(vec2 cf) {
 	float Lf = land_blur(cf) + (vnoise(cf * 1.6 + vec2(4.4, 8.8)) - 0.5) * u_edge_jitter * 0.06;
 
 	// 沙地↔浅水且高程相同的岸段：岸线来回进退（潮汐）
-	// 三个连续遮罩相乘：沙地在场 × 浅水在场 × 高程无落差
+	// sand_side 只认"干的沙滩"（beach_blur，水下沙河床不算），
+	// 否则浅水下面的沙会让水与水之间也互相潮汐。
 	float e0 = elev_smooth(cf);
 	float ex = elev_smooth(cf + vec2(0.60, 0.0));
 	float ey = elev_smooth(cf + vec2(0.0, 0.60));
 	float egrad = abs(ex - e0) + abs(ey - e0);
 	float same_elev = 1.0 - smoothstep(0.15, 0.55, egrad);
 	// 以"沙地"编号 2 为中心的窄带（不能用 smoothstep(下限,上限,Lf)：那样冰面/雪地/荒地都会命中）
-	float sand_side = exp(-pow((Lf - 2.0) / 0.55, 2.0));
+	float sand_side = exp(-pow((Lf - 2.0) / 0.55, 2.0)) * clamp(beach_blur(cf) * 2.5, 0.0, 1.0);
 	float shallow_side = smoothstep(0.15, 0.45, wfield) * (1.0 - smoothstep(1.15, 1.55, wfield));
 	float shore_tide = sand_side * shallow_side * same_elev;
 	float shore_phase = sin(u_time * 0.52 * u_tide_frequency + dot(cf, vec2(0.80, 0.60))) * (0.25 * u_tide_amplitude)
