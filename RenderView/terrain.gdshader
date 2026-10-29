@@ -142,6 +142,21 @@ float water_blur(vec2 p) {
 	return s;
 }
 
+// 流向场（有方向=1）的宽核平滑：与 water_blur 同核。
+// 流动的水不该再有往复摆动，潮汐按这个场削弱；宽核让河口/溪岸的削弱是渐变的。
+float flow_at(vec2 p) {
+	return step(0.5, cell_data(floor(p)).a * 255.0);
+}
+float flow_blur(vec2 p) {
+	float r = 1.3;
+	float s = flow_at(p) * 0.24;
+	s += (flow_at(p + vec2(r, 0.0)) + flow_at(p - vec2(r, 0.0))
+		+ flow_at(p + vec2(0.0, r)) + flow_at(p - vec2(0.0, r))) * 0.12;
+	s += (flow_at(p + vec2(r, r)) + flow_at(p + vec2(-r, r))
+		+ flow_at(p + vec2(r, -r)) + flow_at(p + vec2(-r, -r))) * 0.07;
+	return s;
+}
+
 // 陆地通道的双线性采样（格坐标）
 float land_of(vec4 d) {
 	float l = d.r * 255.0;
@@ -355,6 +370,8 @@ vec3 shade_surface(vec2 cf) {
 	// 交界带来回偏移（潮汐感）：两组缓慢行波叠加，让深浅带整体缓慢地进退，眼睛锁不住固定边界
 	float tide = sin(u_time * 0.62 * u_tide_frequency + dot(cf, vec2(0.65, 0.35))) * (0.26 * u_tide_amplitude)
 		+ sin(u_time * 0.34 * u_tide_frequency - dot(cf, vec2(0.25, 0.85)) + 1.7) * (0.16 * u_tide_amplitude);
+	// 有水流方向的水面削弱潮汐：流动的水由流向驱动漂移，不再叠加往复摆动
+	float tide_damp = 1.0 - 0.75 * clamp(flow_blur(cf), 0.0, 1.0);
 	float dw = mix(0.10, 0.45, pair_affinity(7.0, 8.0));
 
 	// 陆地类型场（提前取用，岸线潮汐需要它判断"沙地在场"）
@@ -374,8 +391,8 @@ vec3 shade_surface(vec2 cf) {
 	float shore_phase = sin(u_time * 0.52 * u_tide_frequency + dot(cf, vec2(0.80, 0.60))) * (0.25 * u_tide_amplitude)
 		+ sin(u_time * 0.29 * u_tide_frequency - dot(cf, vec2(0.30, 0.90)) + 2.1) * (0.15 * u_tide_amplitude);
 
-	float water_cover = smoothstep(0.46, 0.54, wfield + shore_tide * shore_phase);
-	float deep_cover = smoothstep(1.5 - dw, 1.5 + dw, wfield + deep_wobble + tide);
+	float water_cover = smoothstep(0.46, 0.54, wfield + shore_tide * tide_damp * shore_phase);
+	float deep_cover = smoothstep(1.5 - dw, 1.5 + dw, wfield + deep_wobble + tide * tide_damp);
 	float waterness = max(water_cover, deep_cover);
 
 	// ---- 1) 陆地类型：平滑场只当插值参数，两端必须是【真实相邻的两种材质】，
