@@ -83,6 +83,7 @@ func setup(data: MapData, look_settings: RenderSettings, with_gameplay: bool = t
 	map = data
 	look = look_settings if look_settings != null else RenderSettings.new()
 	map.ensure_precision()   # 旧存档（整数高程）在这里统一迁移，和工具一致
+	map.ensure_water_sand()  # 旧存档的“水下草地”统一迁移为沙地河床
 	_build_material()
 	_build_textures()
 	if with_gameplay:

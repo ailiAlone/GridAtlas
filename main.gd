@@ -275,10 +275,14 @@ func _on_area_painted(area: Rect2i, erase: bool) -> void:
 					map.set_water(cell, GridDefs.Water.NONE)
 					map.set_flow(cell, GridDefs.Flow.NONE)
 			elif layer == &"water":
-				map.set_water(cell, value)
-				if value == GridDefs.Water.NONE:
+				if value != GridDefs.Water.NONE:
+					# 河床强制是沙地：画水的同时把陆地类型改写为沙
+					map.set_land(cell, GridDefs.Land.SAND)
+					map.set_water(cell, value)
+				else:
+					map.set_water(cell, GridDefs.Water.NONE)
 					map.set_flow(cell, GridDefs.Flow.NONE)  # 水没了，流向一并清掉
-				# 陆地保留在水下：擦除水后陆地重新露出
+					# 擦除水后露出的是画水时改写的沙地
 			elif layer == &"road":
 				# 道路只能画在陆地上（水格跳过；擦除不受限）
 				if erase or map.get_water(cell) == GridDefs.Water.NONE:
@@ -574,6 +578,10 @@ func _on_map_loaded(data: MapData) -> void:
 		print("[地图] 高程已迁移到 0.25 级精度")
 		tools.mark_dirty()
 	map = data
+	var flooded: int = map.ensure_water_sand()
+	if flooded > 0:
+		tools.mark_dirty()
+		print("[地图] %d 个水下格子已迁移为沙地河床" % flooded)
 	props = _load_props(tools.current_path)
 	last_edit_cell = Vector2i(-1, -1)
 	undo_stack.clear()
