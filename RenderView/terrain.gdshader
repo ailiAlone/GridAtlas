@@ -350,11 +350,6 @@ float convex_round(vec2 u, float inset, float rr, float e) {
 	return mix(1.0, keep, win.x * win.y);
 }
 
-// 凹角圆角系数：在角点补一个半径 rr 的四分之一圆，把内侧直角磨圆。返回值 1=填满。
-float concave_round(vec2 u, float rr, float e) {
-	return 1.0 - smoothstep(rr - e, rr + e, length(u));
-}
-
 // 定向波列：正弦相位 + 两级噪声扭曲（否则是完美平行的直线条纹，很假）
 float wave_train(vec2 p, vec2 dir, float freq, float speed, float t) {
 	float phase = dot(p, dir) * freq * 6.2831853 - t * speed;
@@ -721,8 +716,9 @@ vec3 shade_surface(vec2 cf) {
 		float inset = 0.5 - rw;   // 从数据边界向内收多少（0.5 格宽 = 路占满整格）
 		db += (vnoise(dcell + dinc * 0.35 + vec2(1.7, 5.2)) - 0.5) * 0.05;   // 边线不绝对平直
 		float rm = smoothstep(inset - re, inset + re, db);
-		// 角部圆角：阶梯路每格都是 90° 折角，削凸补凹之后读起来是一条连续的弯道。
-		// 只在"真拐角"上做 —— 相邻两侧都是草才是凸角，两侧都路而斜邻是草才是凹角。
+		// 角部圆角：阶梯路每格都是 90° 折角，削凸之后读起来是一条连续的弯道。
+		// 只在"真凸角"上做 —— 相邻两侧都是草才削；凹角保留区域边界的自然圆弧，不再补圆
+		// （补圆会在拐弯内侧鼓出一个凸包）。
 		float rr = clamp(u_road_round, 0.0, max(rw - 0.04, 0.0));
 		vec2 uNW = dww;
 		vec2 uNE = vec2(1.0 - dww.x, dww.y);
@@ -732,10 +728,6 @@ vec3 shade_surface(vec2 cf) {
 		if (!cE && !cN && !cNE) rm *= convex_round(uNE, inset, rr, re);
 		if (!cW && !cS && !cSW) rm *= convex_round(uSW, inset, rr, re);
 		if (!cE && !cS && !cSE) rm *= convex_round(uSE, inset, rr, re);
-		if (cW && cN && !cNW) rm = max(rm, concave_round(uNW, rr, re));
-		if (cE && cN && !cNE) rm = max(rm, concave_round(uNE, rr, re));
-		if (cW && cS && !cSW) rm = max(rm, concave_round(uSW, rr, re));
-		if (cE && cS && !cSE) rm = max(rm, concave_round(uSE, rr, re));
 		vec3 rcol = table_color(8 + int(clamp(road_id, 1.0, 3.0)));
 		if (road_id > 2.5) {
 			// ---- 石砖路：错缝矩形砖 + 灰缝 + 棱边明暗 ----
