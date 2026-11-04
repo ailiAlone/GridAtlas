@@ -8,11 +8,14 @@ extends Control
 ## 操作：WASD 走格（按屏幕方向）｜滚轮缩放｜右键拖动平移｜G 网格｜R 回到角色
 ## 截图：--shot [--shot-yaw=0] [--shot-debug] [--shot-ppm=42] [--map=res://...]
 
-const MAP_PATH: String = "res://GridData/maps/first.tres"
+const MAP_PATH: String = "res://GridData/maps/first/first.tres"
 const RUNTIME_SCRIPT: GDScript = preload("res://example/map_runtime.gd")
 const CARD_SCRIPT: GDScript = preload("res://example/actor_card.gd")
+const BRIDGE_SCRIPT: GDScript = preload("res://example/procedural_bridge.gd")
 const DemoUnit = preload("res://example/demo_unit.gd")
 const PropsData = preload("res://GridData/props_data.gd")
+const BridgesData = preload("res://GridData/bridges_data.gd")
+const GridProj = preload("res://GridData/grid_projection.gd")
 const MOVE_SPEED: float = 6.0
 const CAMERA_AHEAD: float = 1.5
 
@@ -21,6 +24,7 @@ const CAMERA_AHEAD: float = 1.5
 
 var runtime
 var props
+var bridges
 var asset_defs: Dictionary = {}   # StringName -> StaticAssetDef（游戏端也读同一份资源目录）
 var prop_source: String = "无"
 var player
@@ -62,6 +66,7 @@ func _ready() -> void:
 	await get_tree().process_frame
 	_place_viewpoint(shot_debug, forced_cell)
 	_spawn_props()
+	_spawn_bridges()
 	_update_hud()
 	if "--bench" in args:
 		DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
@@ -97,12 +102,14 @@ func _load_map(path: String) -> void:
 	runtime = RUNTIME_SCRIPT.new()
 	runtime.setup(map, look)
 	props = _load_props(path)
+	bridges = _load_bridges(path)
 	var blocked: int = runtime.apply_props(props)
+	runtime.apply_bridges(bridges)
 	atlas.setup(runtime)
 	print("[GridAtlas] %s %d×%d → yaw %.0f° pitch %.0f° ppm %.0f" % [
 		path.get_file(), map.grid_size.x, map.grid_size.y,
 		rad_to_deg(atlas.yaw), rad_to_deg(atlas.pitch), atlas.ppm])
-	print("[GridAtlas] 物件 %d 个，阻挡 %d 格" % [props.count(), blocked])
+	print("[GridAtlas] 物件 %d 个，桥 %d 条，阻挡 %d 格" % [props.count(), bridges.count(), blocked])
 
 
 ## 资源目录：编辑器导入页保存的定义，游戏端按同一份数据解析占地/阻挡
@@ -125,7 +132,7 @@ func _load_props(map_path: String):
 		return data
 	loaded.set_asset_defs(asset_defs)
 	if loaded.sanitize():
-		print("[GridAtlas] 旧边车内置实例已清理: " + side)
+		print("[GridAtlas] 物件边车已升级/清理: " + side)
 	var dropped: int = loaded.drop_out_of_bounds(runtime.map.grid_size)
 	if dropped > 0:
 		push_warning("物件边车有 %d 个越界物件已丢弃: %s" % [dropped, side])
@@ -139,7 +146,7 @@ func _load_props(map_path: String):
 func _place_viewpoint(debug: bool, forced: Vector2i = Vector2i(-1, -1)) -> void:
 	player_cell = forced if (forced.x >= 0 and forced.y >= 0) else _find_viewpoint()
 	player_pos = Vector2(player_cell) + Vector2(0.5, 0.5)
-	player_z = runtime.terrain_z(player_cell)
+	player_z = runtime.surface_z(player_cell)
 	atlas.set_debug(debug)
 	atlas.set_zoom(start_zoom)
 	atlas.set_center_cell(player_pos + atlas.forward_axis() * CAMERA_AHEAD)
@@ -220,6 +227,36 @@ func _spawn_props() -> void:
 	print("[GridAtlas] 立牌：边车物件 %d 个" % props.count())
 
 
+## 桥层：独立边车，直接按类型 + 直线起终点生成。
+func _load_bridges(map_path: String):
+	var data = BridgesData.new()
+	var side: String = BridgesData.sidecar_path(map_path)
+	if not ResourceLoader.exists(side):
+		return data
+	var loaded = load(side)
+	if loaded == null or loaded.get_script() != BridgesData:
+		push_warning("桥边车不是有效资源: " + side)
+		return data
+	if loaded.sanitize():
+		print("[GridAtlas] 旧桥边车条目已清理: " + side)
+	var dropped: int = loaded.drop_out_of_bounds(runtime.map.grid_size)
+	if dropped > 0:
+		push_warning("桥边车有 %d 条越界桥已丢弃: %s" % [dropped, side])
+	print("[GridAtlas] 载入桥边车: %s (%d 条)" % [side, loaded.count()])
+	return loaded
+
+
+func _spawn_bridges() -> void:
+	if bridges == null:
+		return
+	for i in bridges.count():
+		var bridge: Node2D = BRIDGE_SCRIPT.new()
+		bridge.set_meta("is_bridge", true)
+		atlas.actors.add_child(bridge)
+		bridge.setup(atlas, runtime, bridges.kind_at(i),
+			bridges.start_at(i), bridges.end_at(i))
+
+
 ## 从物件数据生成一张立牌：脚底用占地中心，尺寸吃实例缩放，遮挡/阻挡走目录定义
 func _spawn_prop(i: int) -> void:
 	var fp: Rect2i = props.footprint_at(i)
@@ -228,19 +265,33 @@ func _spawn_prop(i: int) -> void:
 	var def: StaticAssetDef = props.asset(props.asset_id_at(i))
 	if def == null:
 		return
+	var art_size: Vector2 = def.art_size * float(props.multiplier_at(i)) * props.size_bias_at(i)
+	var plant: bool = def.category == &"tree"
+	var aspect: float = props.variation_aspect_at(i) if plant else 1.0
+	var tint: Color = props.variation_tint_at(i) if plant else Color.WHITE
+	var crown: Vector2 = props.variation_crown_at(i) if plant else Vector2.ZERO
+	var mirror: bool = props.variation_flip_at(i)
+	var indiv: float = props.variation_scale_at(i) if plant else 1.0
+	art_size *= indiv
+	art_size.x *= sqrt(aspect)
+	art_size.y /= sqrt(aspect)
 	var vertical: bool = props.rotation_at(i) == 1
+	var flip: bool = vertical != mirror
 	var card = CARD_SCRIPT.new()
 	var tex: Texture2D = StaticAssetStore.texture_for(def)
 	if tex != null:
-		card.setup_sprite(atlas, def.art_size, 0.0, tex, def.art_lift, vertical)
+		card.setup_sprite(atlas, art_size, 0.0, tex, def.art_lift, flip)
 		var offset: Vector2 = def.art_offset
-		if vertical:
+		if flip:
 			offset.x = -offset.x
 		card.art_offset = offset
 	else:
-		card.setup(atlas, 4, def.art_size, 0.0)
+		card.setup(atlas, 4, art_size, 0.0)
 	atlas.actors.add_child(card)
-	card.place(center, runtime.terrain_z(ground))
+	card.set_soft_grass_base(1.0 if plant else 0.0)
+	card.set_variation_tint(tint)
+	card.set_crown_variation(crown.x, crown.y)
+	card.place(center + props.visual_offset_at(i), runtime.terrain_z(ground))
 
 
 # ---------- 输入 ----------
@@ -287,7 +338,7 @@ func _process(delta: float) -> void:
 		_update_hud()
 
 
-## 走格：WASD 是屏幕方向，换算成格方向（45° 下 W 正好是地图西北对角）
+## 走格：WASD 是屏幕方向，换算成格方向（45° 下 W 仍是地图西北对角）
 func _step_move(delta: float) -> void:
 	if moving:
 		move_t = minf(move_t + delta * MOVE_SPEED / maxf(from_pos.distance_to(to_pos), 0.001), 1.0)
@@ -311,12 +362,12 @@ func _step_move(delta: float) -> void:
 	var next: Vector2i = player_cell + step
 	if not runtime.is_walkable(next):
 		return
-	if runtime.water_at(next) != GridDefs.Water.NONE:   # 演示只走陆地；涉水规则留给游戏自己定
-		return
+	if runtime.water_at(next) != GridDefs.Water.NONE and not runtime.is_bridge_cell(next):
+		return   # 水面只有桥面可以走；其它涉水规则留给游戏自己定
 	from_pos = player_pos
 	to_pos = Vector2(next) + Vector2(0.5, 0.5)
 	from_z = player_z
-	to_z = runtime.terrain_z(next)
+	to_z = runtime.surface_z(next)
 	moving = true
 	move_t = 0.0
 
@@ -330,7 +381,7 @@ func _update_hud() -> void:
 	lines.append("WASD 走格　滚轮缩放　右键拖动　G 网格　R 回到角色")
 	lines.append("格 %s · 高程 %.1f · 缩放 %.0f px/格" % [
 		str(player_cell), runtime.height_at(player_cell), atlas.ppm])
-	lines.append("物件：%s" % prop_source)
+	lines.append("物件：%s　桥：%d 条" % [prop_source, bridges.count() if bridges != null else 0])
 	lines.append("山挡住角色 → 半透明；挡住资源立牌 → 消失（G 看格线）")
 	info.text = "\n".join(lines)
 

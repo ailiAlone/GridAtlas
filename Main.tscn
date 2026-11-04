@@ -6,7 +6,7 @@
 [ext_resource type="PackedScene" uid="uid://dxiuobwm7qm4b" path="res://RenderTool/render_tool.tscn" id="7_rtool"]
 [ext_resource type="PackedScene" path="res://RenderView/game_preview.tscn" id="8_gpreview"]
 [ext_resource type="PackedScene" uid="uid://1y80if473x7a" path="res://RenderTool/material_parameters.tscn" id="9_mparams"]
-[ext_resource type="PackedScene" path="res://GridData/StaticAssetImportView.tscn" id="10_import"]
+[ext_resource type="PackedScene" uid="uid://b6u1u60pthv1q" path="res://GridData/StaticAssetImportView.tscn" id="10_import"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_glv2v"]
 bg_color = Color(1, 1, 1, 0.14117648)
@@ -107,6 +107,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+metadata/_edit_lock_ = true
 
 [node name="GridView" parent="HBoxContainer/VBoxContainer2/Panel/ScrollContainer" unique_id=1982929602 instance=ExtResource("4_gview")]
 layout_mode = 2
@@ -145,7 +146,7 @@ vertical_alignment = 1
 layout_mode = 2
 text = "当前坐标(-,-)"
 
-[node name="ImportOverlay" type="Control" parent="."]
+[node name="ImportOverlay" type="Control" parent="." unique_id=1226961433]
 visible = false
 z_index = 100
 layout_mode = 1
@@ -154,16 +155,26 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-mouse_filter = 0
 
-[node name="Dim" type="ColorRect" parent="ImportOverlay"]
+[node name="Dim" type="ColorRect" parent="ImportOverlay" unique_id=213648666]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-mouse_filter = 0
 color = Color(0, 0, 0, 0.58)
 
-[node name="StaticAssetImportView" parent="ImportOverlay" instance=ExtResource("10_import")]
+[node name="StaticAssetImportView" parent="ImportOverlay" unique_id=585433378 instance=ExtResource("10_import")]
+layout_mode = 0
+anchors_preset = 0
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 1160.0
+offset_bottom = 780.0
+grow_horizontal = 1
+grow_vertical = 1

@@ -17,6 +17,7 @@ const MIN_ZOOM: float = 3.0
 const MAX_ZOOM: float = 72.0
 const ACTOR_SHADER: String = "res://example/actor_card.gdshader"
 const ACTOR_SPRITE_SHADER: String = "res://example/actor_sprite.gdshader"
+const GridProj = preload("res://GridData/grid_projection.gd")
 
 @onready var ground: ColorRect = $"Ground"
 @onready var actors: Node2D = $"Actors"
@@ -51,12 +52,11 @@ func setup(rt) -> void:
 # ---------- 相机 ----------
 
 func forward_axis() -> Vector2:
-	return Vector2(-sin(yaw), cos(yaw))
+	return GridProj.forward_axis(yaw)
 
 
 func right_axis() -> Vector2:
-	var fd: Vector2 = forward_axis()
-	return Vector2(-fd.y, fd.x)
+	return GridProj.right_axis(yaw)
 
 
 func set_center_cell(pos: Vector2) -> void:
@@ -147,9 +147,7 @@ func _clamp_center() -> void:
 
 ## 地面点 → 投影空间（Actors 的局部坐标，单位=格）。height 是渲染高度（世界格）。
 func projected_point(pos: Vector2, height: float = 0.0) -> Vector2:
-	var fd: Vector2 = forward_axis()
-	var rt: Vector2 = right_axis()
-	return Vector2(pos.dot(rt), pos.dot(-fd) * sin(pitch) - height * cos(pitch))
+	return GridProj.project_point(pos, height, yaw, pitch)
 
 
 ## 地面点 → 屏幕像素（GridAtlas 本地）
@@ -215,6 +213,10 @@ func make_actor_material(kind: int, art_size: Vector2, fade: float) -> ShaderMat
 	mat.set_shader_parameter("u_art_size", art_size)
 	# 立牌不压缩：屏幕上 1 格高的图，等价于世界上 1/cos(pitch) 格高
 	mat.set_shader_parameter("u_art_height", art_size.y / cos(pitch))
+	# 所有 2D 立牌共享一层很轻的色盘/颗粒，向 shader 地形靠拢
+	mat.set_shader_parameter("u_style_sat", 0.93)
+	mat.set_shader_parameter("u_style_tint", Vector3(1.02, 0.99, 0.95))
+	mat.set_shader_parameter("u_style_grain", 0.012)
 	return mat
 
 
@@ -239,4 +241,8 @@ func make_sprite_material(texture: Texture2D, art_size: Vector2, fade: float,
 	mat.set_shader_parameter("u_art_lift", lift)
 	mat.set_shader_parameter("u_flip_x", flip_x)
 	mat.set_shader_parameter("u_art_height", art_size.y / cos(pitch))
+	# 所有 2D 立牌共享一层很轻的色盘/颗粒，向 shader 地形靠拢
+	mat.set_shader_parameter("u_style_sat", 0.93)
+	mat.set_shader_parameter("u_style_tint", Vector3(1.02, 0.99, 0.95))
+	mat.set_shader_parameter("u_style_grain", 0.012)
 	return mat

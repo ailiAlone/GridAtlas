@@ -11,6 +11,7 @@ signal area_painted(area: Rect2i, erase: bool)  # 涂画/矩形填充统一上�
 signal cell_hovered(cell: Vector2i)  # 移出网格时上报 (-1, -1)
 signal stroke_started  # 一次落笔开始（main 在此压撤销快照）
 signal stroke_ended    # 一次落笔结束（松开按键）
+signal bridge_committed(start: Vector2i, end: Vector2i, kind: int, erase: bool)  # 桥工具：直线起点/终点；erase=true 时为删除
 
 
 const EMPTY_COLOR: Color = Color(0.16, 0.16, 0.16, 1)
@@ -25,6 +26,7 @@ const BAR_MARK: Color = Color(1, 1, 1, 0.9)
 # 远快于逐纹素写）。流向箭头/高程数字数量稀疏，仍走矢量指令，用稀疏列表登记。
 const CACHE_RES: int = 4  # 每格纹素数：道路内缩块需要 ≥4 才画得出来
 const PropsData = preload("res://GridData/props_data.gd")
+const BridgesData = preload("res://GridData/bridges_data.gd")
 
 var cachebytes: PackedByteArray = PackedByteArray()
 var cachetexture: ImageTexture
@@ -39,8 +41,10 @@ var _label_cells: Array[Vector2i] = []  # 高程 > 1 需标数字的格子
 
 var map: MapData
 var props   # PropsData（地图边车；main 注入，本视图不拥有）
+var bridges # BridgesData（桥层边车；main 注入，本视图不拥有）
 var prop_asset_preview: StringName = &""  # 当前选中的资源定义 id；空串=不画落点预览
 var prop_asset_rotation: int = 0          # 资源落点预览方向：0=横向 / 1=竖向
+var prop_asset_scale: int = 1             # 植物倍率（占地/图标同时放大）
 var brush_layer: StringName = &"land"
 var brush_value: int = GridDefs.Land.GRASS
 var zoom: float = 1.0
@@ -57,6 +61,9 @@ var _hover_cell: Vector2i = Vector2i(-1, -1)
 var _rect_dragging: bool = false
 var _rect_anchor: Vector2i = Vector2i(-1, -1)
 var _rect_current: Vector2i = Vector2i(-1, -1)
+var _bridge_dragging: bool = false
+var _bridge_start: Vector2i = Vector2i(-1, -1)
+var _bridge_current: Vector2i = Vector2i(-1, -1)
 
 @onready var scroll: ScrollContainer = get_parent() as ScrollContainer
 
@@ -76,6 +83,8 @@ func set_map(data: MapData) -> void:
 
 
 func set_brush(layer: StringName, value: int) -> void:
+	if layer != &"bridge":
+		_bridge_dragging = false
 	brush_layer = layer
 	brush_value = value
 
@@ -86,10 +95,17 @@ func set_props(data) -> void:
 	queue_redraw()
 
 
+## 注入独立桥层（BridgesData 边车）。桥不参与静态资源的占地图标绘制。
+func set_bridges(data) -> void:
+	bridges = data
+	queue_redraw()
+
+
 ## 选中资源后的落点预览（用占地范围 + 阻挡掩码画；空串清除）
-func set_asset_preview(asset_id: StringName, rot: int = 0) -> void:
+func set_asset_preview(asset_id: StringName, rot: int = 0, scale: int = 1) -> void:
 	prop_asset_preview = asset_id
 	prop_asset_rotation = posmod(rot, 2)
+	prop_asset_scale = clampi(scale, 1, 4)
 	queue_redraw()
 
 
@@ -123,6 +139,7 @@ func set_panel_mode(big: bool) -> void:
 	set_anchors_preset(Control.PRESET_TOP_LEFT)  # 小面板手动控制 position/size，不能挂拉伸锚点；容器场景不受影响
 	_dragging = false
 	_stroke_active = false
+	_bridge_dragging = false
 	_last_cell = Vector2i(-1, -1)
 	_hover_cell = Vector2i(-1, -1)
 	mouse_filter = MOUSE_FILTER_PASS if big else MOUSE_FILTER_IGNORE
@@ -187,6 +204,7 @@ func _draw() -> void:
 			draw_string(ThemeDB.fallback_font, rect.position + Vector2(2, s * 0.5 + font_size * 0.5),
 				GridDefs.height_text(map.get_height(cell)), HORIZONTAL_ALIGNMENT_LEFT, s - 2, font_size, text_color)
 	_draw_props()
+	_draw_bridges()
 	_draw_grid_lines()
 	_draw_cursor_bars()
 	_draw_previews()
@@ -206,8 +224,134 @@ func _draw_props() -> void:
 		var area: Rect2 = Rect2(Vector2(cell), Vector2(fp.size))
 		if not visible.intersects(area):
 			continue
+		var plant: bool = props.is_plant(i)
+		var tint: Color = props.variation_tint_at(i) if plant else Color.WHITE
+		var aspect: float = props.variation_aspect_at(i) if plant else 1.0
+		var indiv: float = props.variation_scale_at(i) if plant else 1.0
+		var flip: bool = (props.rotation_at(i) == 1) != props.variation_flip_at(i)
 		_draw_asset_icon(props.asset_id_at(i), Vector2(cell) * s, fp.size,
-			props.rotation_at(i), s, 1.0)
+			props.rotation_at(i), s, 1.0, props.visual_offset_at(i),
+			props.size_bias_at(i) * indiv, props.multiplier_at(i), tint, aspect, flip)
+
+
+func _bridge_color(kind: int) -> Color:
+	if kind == BridgesData.Kind.LOG:
+		return Color(0.62, 0.40, 0.22, 1.0)
+	if kind == BridgesData.Kind.STONE:
+		return Color(0.72, 0.70, 0.64, 1.0)
+	return Color(0.72, 0.53, 0.33, 1.0)
+
+
+## 俯视图里的桥：一条格宽的带子 + 两侧栏杆线；不是 45° 成品。
+func _draw_bridges() -> void:
+	if bridges == null or map == null:
+		return
+	for i in bridges.count():
+		_draw_bridge_band(bridges.start_at(i), bridges.end_at(i),
+			_bridge_color(bridges.kind_at(i)), 0.82)
+
+
+func _draw_bridge_band(a: Vector2i, b: Vector2i, color: Color, alpha: float) -> void:
+	var cells: Array[Vector2i] = BridgesData.span_cells(a, b)
+	if cells.is_empty():
+		return
+	var s: float = step()
+	var inset: float = maxf(1.0, s * 0.10)
+	var seat_color: Color = Color(color.r * 1.18 + 0.06, color.g * 1.18 + 0.05,
+		color.b * 1.18 + 0.04, 1.0)
+	for idx in cells.size():
+		var cell: Vector2i = cells[idx]
+		var is_seat: bool = idx == 0 or idx == cells.size() - 1
+		var fill: Color = seat_color if is_seat else color
+		var r: Rect2 = Rect2(Vector2(cell) * s + Vector2(inset, inset),
+			Vector2(s, s) - Vector2(inset * 2.0, inset * 2.0))
+		draw_rect(r, Color(fill.r, fill.g, fill.b, 0.52 * alpha), true)
+		draw_rect(r, Color(0.16, 0.12, 0.08, 0.78 * alpha), false, maxf(1.0, s * 0.055))
+		if is_seat:
+			# 桥座：格内再画一圈，和桥身区分
+			draw_rect(r.grow(-maxf(1.0, s * 0.16)), Color(0.16, 0.12, 0.08, 0.55 * alpha),
+				false, maxf(1.0, s * 0.05))
+	var rail: float = s * 0.30
+	var off: float = s * 0.30
+	var dark: Color = Color(0.16, 0.12, 0.08, 0.9 * alpha)
+	var light: Color = Color(color.r * 1.16, color.g * 1.16, color.b * 1.16, 0.95 * alpha)
+	if a.y == b.y:
+		var x0: float = float(mini(a.x, b.x)) * s
+		var x1: float = float(maxi(a.x, b.x) + 1) * s
+		var y: float = (float(a.y) + 0.5) * s
+		draw_line(Vector2(x0, y - off), Vector2(x1, y - off), dark, rail, true)
+		draw_line(Vector2(x0, y + off), Vector2(x1, y + off), dark, rail, true)
+		draw_line(Vector2(x0, y - off - 1.0), Vector2(x1, y - off - 1.0), light, maxf(1.0, rail * 0.35), true)
+	else:
+		var y0: float = float(mini(a.y, b.y)) * s
+		var y1: float = float(maxi(a.y, b.y) + 1) * s
+		var x: float = (float(a.x) + 0.5) * s
+		draw_line(Vector2(x - off, y0), Vector2(x - off, y1), dark, rail, true)
+		draw_line(Vector2(x + off, y0), Vector2(x + off, y1), dark, rail, true)
+		draw_line(Vector2(x - off - 1.0, y0), Vector2(x - off - 1.0, y1), light, maxf(1.0, rail * 0.35), true)
+
+
+## 桥的落点/拖动预览：只画直线；对角拖动会按主导轴吸附。
+func _draw_bridge_preview() -> void:
+	var s: float = step()
+	if _bridge_dragging:
+		var a: Vector2i = _bridge_start
+		var b: Vector2i = _bridge_snapped_end()
+		var valid: bool = _bridge_span_valid(a, b)
+		var color: Color = _bridge_color(brush_value) if valid else Color(0.95, 0.25, 0.20, 1.0)
+		_draw_bridge_band(a, b, color, 0.62)
+		var ra: Rect2 = Rect2(Vector2(a) * s, Vector2(s, s))
+		var rb: Rect2 = Rect2(Vector2(b) * s, Vector2(s, s))
+		draw_rect(ra, Color(1, 1, 1, 0.9), false, 2.0)
+		draw_rect(rb, Color(1, 1, 1, 0.9), false, 2.0)
+	elif _hover_cell.x >= 0 and map.in_bounds(_hover_cell):
+		var r: Rect2 = Rect2(Vector2(_hover_cell) * s, Vector2(s, s))
+		var c: Color = _bridge_color(brush_value)
+		draw_rect(r, Color(c.r, c.g, c.b, 0.22), true)
+		draw_rect(r, Color(1, 1, 1, 0.75), false, 1.5)
+
+
+func _bridge_snapped_end() -> Vector2i:
+	if _bridge_start.x < 0 or _bridge_current.x < 0:
+		return _bridge_start
+	var d: Vector2i = _bridge_current - _bridge_start
+	if absi(d.x) >= absi(d.y):
+		return Vector2i(_bridge_current.x, _bridge_start.y)
+	return Vector2i(_bridge_start.x, _bridge_current.y)
+
+
+## 与 main 的落桥校验保持一致：两端必须是陆地、线内至少一格水、
+## 不穿山/不压静态物件/不与已有桥重叠。
+func _bridge_span_valid(a: Vector2i, b: Vector2i) -> bool:
+	if map == null or bridges == null:
+		return false
+	if not BridgesData.is_straight_span(a, b):
+		return false
+	if not map.in_bounds(a) or not map.in_bounds(b):
+		return false
+	var cells: Array[Vector2i] = BridgesData.span_cells(a, b)
+	if cells.size() < 3:
+		return false
+	for idx in cells.size():
+		var cell: Vector2i = cells[idx]
+		if not map.in_bounds(cell):
+			return false
+		if map.get_mountain(cell) > 0:
+			return false
+		var wet: bool = map.get_water(cell) != GridDefs.Water.NONE
+		if idx == 0 or idx == cells.size() - 1:
+			# 两个桥座：各占一格，必须落在陆地
+			if wet:
+				return false
+		else:
+			# 桥身：只在水上
+			if not wet:
+				return false
+		if props != null:
+			for i in props.count():
+				if props.footprint_at(i).has_point(cell):
+					return false
+	return not bridges.overlaps_span(a, b)
 
 
 func _visible_cell_rect() -> Rect2:
@@ -222,8 +366,11 @@ func _visible_cell_rect() -> Rect2:
 
 ## 静态资源：俯视图里只做识别用——占地范围 + 一张缩小的 PNG + 门柱等阻挡格标记。
 ## 真正的 45° 立牌在 GamePreview 里，这里不按俯角变形；rot 只影响占地和掩码。
+## visual_offset 单位=格，size_bias 只缩放图片，multiplier 只用于阻挡掩码。
 func _draw_asset_icon(asset_id: StringName, origin: Vector2, fp: Vector2i, rot: int,
-		s: float, alpha: float) -> void:
+		s: float, alpha: float, visual_offset: Vector2 = Vector2.ZERO,
+		size_bias: float = 1.0, multiplier: int = 1, tint: Color = Color.WHITE,
+		aspect: float = 1.0, flip: bool = false) -> void:
 	var def: StaticAssetDef = props.asset(asset_id) if props != null else null
 	if def == null:
 		var missing: Rect2 = Rect2(origin, Vector2(fp) * s)
@@ -232,9 +379,10 @@ func _draw_asset_icon(asset_id: StringName, origin: Vector2, fp: Vector2i, rot: 
 		return
 	var rect: Rect2 = Rect2(origin, Vector2(fp) * s)
 	draw_rect(rect, Color(0.95, 0.86, 0.55, 0.10 * alpha), true)
-	_draw_asset_texture(def, origin, fp, s, 0.86 * alpha, rot == 1)
+	_draw_asset_texture(def, origin + visual_offset * s, fp, s, 0.86 * alpha,
+		flip, size_bias, aspect, tint)
 	if def.blocking_mode == StaticAssetDef.Blocking.MASK and s >= 10.0:
-		for local: Vector2i in PropsData.rotated_blocking_cells(def, rot):
+		for local: Vector2i in PropsData.rotated_blocking_cells(def, rot, multiplier):
 			var cellrect: Rect2 = Rect2(origin + Vector2(local) * s, Vector2(s, s))
 			draw_rect(cellrect.grow(-1.0), Color(0.95, 0.30, 0.24, 0.20 * alpha), true)
 			draw_rect(cellrect.grow(-1.0), Color(1.0, 0.42, 0.32, 0.75 * alpha), false, 1.0)
@@ -242,9 +390,10 @@ func _draw_asset_icon(asset_id: StringName, origin: Vector2, fp: Vector2i, rot: 
 
 
 ## 把资源 PNG 按比例塞进占地范围框（不拉伸），作为俯视图图标。
-## flip_x：竖向资源水平镜像缩略图，和 45° 立牌的方向保持一致。
+## flip_x：竖向/个体镜像；size_bias/aspect 只改图片；tint 是植物个体色调。
 func _draw_asset_texture(def: StaticAssetDef, origin: Vector2, fp: Vector2i, s: float,
-		alpha: float, flip_x: bool = false) -> void:
+		alpha: float, flip_x: bool = false, size_bias: float = 1.0,
+		aspect: float = 1.0, tint: Color = Color.WHITE) -> void:
 	var tex: Texture2D = StaticAssetStore.texture_for(def)
 	if tex == null:
 		return
@@ -252,16 +401,19 @@ func _draw_asset_texture(def: StaticAssetDef, origin: Vector2, fp: Vector2i, s: 
 	var tw: float = maxf(float(tex.get_width()), 1.0)
 	var th: float = maxf(float(tex.get_height()), 1.0)
 	var fit: float = minf(rect.size.x * 0.92 / tw, rect.size.y * 0.92 / th)
-	var drawn: Vector2 = Vector2(tw, th) * fit
+	var drawn: Vector2 = Vector2(tw, th) * fit * maxf(size_bias, 0.01)
+	drawn.x *= sqrt(aspect)
+	drawn.y /= sqrt(aspect)
 	if drawn.x < 2.0 or drawn.y < 2.0:
 		return
+	var draw_color: Color = Color(tint.r, tint.g, tint.b, alpha)
 	if flip_x:
 		draw_set_transform(rect.get_center(), 0.0, Vector2(-1.0, 1.0))
-		draw_texture_rect(tex, Rect2(-drawn * 0.5, drawn), false, Color(1, 1, 1, alpha))
+		draw_texture_rect(tex, Rect2(-drawn * 0.5, drawn), false, draw_color)
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	else:
 		draw_texture_rect(tex, Rect2(rect.get_center() - drawn * 0.5, drawn), false,
-			Color(1, 1, 1, alpha))
+			draw_color)
 
 
 func _brush_center() -> Vector2i:
@@ -278,8 +430,10 @@ func _draw_asset_ghost() -> void:
 	if def == null:
 		return
 	var rot: int = prop_asset_rotation
-	var fp: Vector2i = PropsData.rotated_footprint(def.footprint, rot)
-	var blocked: Array[Vector2i] = PropsData.rotated_blocking_cells(def, rot)
+	var scale: int = prop_asset_scale
+	var fp: Vector2i = PropsData.rotated_footprint(
+		Vector2i(def.footprint.x * scale, def.footprint.y * scale), rot)
+	var blocked: Array[Vector2i] = PropsData.rotated_blocking_cells(def, rot, scale)
 	var cell: Vector2i = PropsData.anchor_for(fp, _brush_center())
 	var ok: bool = _asset_placeable(cell, fp)
 	var s: float = step()
@@ -304,16 +458,12 @@ func _draw_asset_ghost() -> void:
 	draw_rect(outer, border, false, 2.0)
 
 
+## 资源落点是否可放：只看地图边界与实例重叠；水面/山体等任何地形都允许
 func _asset_placeable(cell: Vector2i, fp: Vector2i) -> bool:
 	if map == null:
 		return false
-	for y in range(cell.y, cell.y + fp.y):
-		for x in range(cell.x, cell.x + fp.x):
-			var c: Vector2i = Vector2i(x, y)
-			if not map.in_bounds(c):
-				return false
-			if map.get_water(c) != GridDefs.Water.NONE:
-				return false
+	if cell.x < 0 or cell.y < 0 or cell.x + fp.x > map.grid_size.x or cell.y + fp.y > map.grid_size.y:
+		return false
 	if props != null and not props.can_place_fp(fp, cell, map.grid_size):
 		return false
 	return true
@@ -392,6 +542,9 @@ func _rasterize_cell(cell: Vector2i) -> void:
 			var wc: Color = GridDefs.WATER_COLORS.get(water, Color.WHITE)
 			color = Color(color.r * 0.15 + wc.r * 0.85, color.g * 0.15 + wc.g * 0.85,
 				color.b * 0.15 + wc.b * 0.85, 1.0)
+		# 山体是独立遮罩：俯视图用深灰岩石色盖住地面/水面，标记不可通行
+		if map.get_mountain(cell) > 0:
+			color = GridDefs.MOUNTAIN_COLOR
 	var base: int = (cell.y * CACHE_RES * tw + cell.x * CACHE_RES) * 4
 	var r8: int = color.r8
 	var g8: int = color.g8
@@ -404,8 +557,8 @@ func _rasterize_cell(cell: Vector2i) -> void:
 			cachebytes[p + 1] = g8
 			cachebytes[p + 2] = b8
 			cachebytes[p + 3] = 255
-	# 道路内缩块：不透明盖在填色上（纹素 4 时留 1 纹素边距）
-	if not elevation_mode and road != GridDefs.Road.NONE:
+	# 道路内缩块：不透明盖在填色上（纹素 4 时留 1 纹素边距）；山体上不画道路
+	if not elevation_mode and road != GridDefs.Road.NONE and map.get_mountain(cell) <= 0:
 		var rc: Color = GridDefs.ROAD_COLORS.get(road, Color.WHITE)
 		var rr8: int = rc.r8
 		var rg8: int = rc.g8
@@ -418,7 +571,8 @@ func _rasterize_cell(cell: Vector2i) -> void:
 				cachebytes[p + 1] = rg8
 				cachebytes[p + 2] = rb8
 	# 稀疏叠加登记
-	if not elevation_mode and water != GridDefs.Water.NONE and map.get_flow(cell) != GridDefs.Flow.NONE:
+	if not elevation_mode and water != GridDefs.Water.NONE and map.get_flow(cell) != GridDefs.Flow.NONE \
+			and map.get_mountain(cell) <= 0:
 		_flow_cells.append(cell)
 	if map.get_height(cell) > 1.001:
 		_label_cells.append(cell)
@@ -474,6 +628,9 @@ func _draw_cursor_bars() -> void:
 ## 操作预览：资源落点框；大笔刷（>1）的落笔范围框；矩形模式的拖选框
 func _draw_previews() -> void:
 	var s: float = step()
+	if brush_layer == &"bridge":
+		_draw_bridge_preview()
+		return
 	if brush_layer == &"prop" and prop_asset_preview != &"" and _hover_cell.x >= 0 \
 			and not (rect_mode and _rect_dragging):
 		_draw_asset_ghost()
@@ -491,6 +648,9 @@ func _draw_previews() -> void:
 
 func _gui_input(event: InputEvent) -> void:
 	if map == null:
+		return
+	if brush_layer == &"bridge" and (event is InputEventMouseButton or event is InputEventMouseMotion):
+		_handle_bridge_input(event)
 		return
 	if event is InputEventMouseButton and event.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
 		if event.pressed:
@@ -521,6 +681,51 @@ func _gui_input(event: InputEvent) -> void:
 		elif rect_mode and _rect_dragging:
 			_rect_current = _clamped_cell(cell)
 			queue_redraw()
+
+
+## 桥工具：左键拖一条直线；右键删除鼠标下的桥。拖动只沿主导轴吸附，不产生 L 形。
+func _handle_bridge_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton:
+		var mb: InputEventMouseButton = event as InputEventMouseButton
+		var cell: Vector2i = pixel_to_cell(get_local_mouse_position())
+		if mb.button_index == MOUSE_BUTTON_LEFT:
+			if mb.pressed:
+				if map.in_bounds(cell):
+					_bridge_dragging = true
+					_bridge_start = _clamped_cell(cell)
+					_bridge_current = _bridge_start
+					_stroke_active = true
+					stroke_started.emit()
+					queue_redraw()
+				accept_event()
+			else:
+				if _bridge_dragging:
+					_bridge_dragging = false
+					_bridge_current = _clamped_cell(cell)
+					var a: Vector2i = _bridge_start
+					var b: Vector2i = _bridge_snapped_end()
+					if a != b:
+						bridge_committed.emit(a, b, brush_value, false)
+					if _stroke_active:
+						_stroke_active = false
+						stroke_ended.emit()
+					queue_redraw()
+				accept_event()
+		elif mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
+			if bridges != null and map.in_bounds(cell) and bridges.index_at_cell(cell) >= 0:
+				stroke_started.emit()
+				bridge_committed.emit(cell, cell, brush_value, true)
+				stroke_ended.emit()
+				queue_redraw()
+			accept_event()
+	elif event is InputEventMouseMotion:
+		var motion: InputEventMouseMotion = event as InputEventMouseMotion
+		var cell2: Vector2i = pixel_to_cell(get_local_mouse_position())
+		_hover_cell = cell2 if map.in_bounds(cell2) else Vector2i(-1, -1)
+		cell_hovered.emit(_hover_cell)
+		if _bridge_dragging:
+			_bridge_current = _clamped_cell(cell2)
+		queue_redraw()
 
 
 func _paint_under_mouse() -> void:

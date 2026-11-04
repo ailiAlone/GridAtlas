@@ -36,9 +36,9 @@ G 显示格线（确认地面与实体同一套投影）｜R 回到角色。
 | `grid_atlas_demo.gd` | 演示场景：取景、相机跟随、走格、缩放、截图 |
 | `occlusion_test.gd` | 合成山脊的遮挡验证 |
 | `example.gd` / `overlay.gd` | 俯视基础地形寻路示例与覆盖层（只用于验证 `MapRuntime` / A*） |
-| `../GridData/props_data.gd` | 静态资源实例边车；`asset_ids` / `rots` / `cells` |
+| `../GridData/props_data.gd` | 静态资源实例边车；`asset_ids` / `rots` / `cells` / `multipliers` / `visual_offsets` / `size_biases` |
 | `../GridData/static_asset_*.gd` | 静态资源定义/目录/读写：footprint、阻挡掩码、PNG、立牌参数 |
-| `../GridTool/props_tool.*` | 编辑器物件面板（资源库 / 横竖方向 / 清空） |
+| `../GridTool/props_tool.*` | 编辑器物件面板（资源库 / 横竖方向 / 植物倍率 / 清空） |
 | `../RenderView/game_preview.*` | 编辑器 45° 视图：渲染模式大画面 + 编辑模式左上角整图概览（复用这里的运行时与立牌） |
 | `../Assets/TinySwords/` | 示例玩家立牌使用的 `Warrior_Idle.png`（由 `demo_unit.gd` 裁切）；不再作为可放置资源 |
 
@@ -88,29 +88,49 @@ screen = 视口中心 + ppm · ( (P-C)·rt , (P-C)·(-fd)·sin(pitch) - z·cos(p
 
 工具左侧面板滚到“物件”：
 
-- **资源库**来自 `GridData/static_assets/catalog.tres`，每个已导入的资源一个按钮；
+- **资源库**来自 `GridData/static_assets/catalog.tres`，按类型分成建筑 / 树木 / 道具 / 门 / 栅栏 / 其他小节，每个已导入的资源一个按钮；
   点右侧「编辑」弹出资源导入页，保存/删除后关闭，主编辑器会自动重读 catalog（也可点“刷新”）。
 - **方向**：资源库上方的「横向 / 竖向」两个按钮控制下一次放置。竖向会交换占地范围
   （3×1 门变成 1×3），阻挡掩码跟着转，45° 立牌贴图水平镜像（左右 `art_lift` 也换边）。
   鼠标悬停在已放资源上按 **R** 在横/竖之间切换；鼠标不在资源上按 R 只切换待放置方向。
-  越界/压水/与其它实例重叠会拒绝切换，切换进入撤销/重做。
-- **左键放置，右键按占地范围删除**。落点框绿色 = 可放；红色 = 越界 / 压水 / 与已有实例的
+  越界/与其它实例重叠会拒绝切换，切换进入撤销/重做。
+- **左键放置，右键按占地范围删除**。落点框绿色 = 可放；红色 = 越界 / 与已有实例的
   占地范围重叠。
+- **植物倍率**：选中 `category=tree` 的树/竹子后出现「植物倍率 1×~4×」。倍率 2 会把
+  占地、阻挡和图片同时放大 2 倍（1×1 树 → 2×2 占格、2× 参天大树）；倍率只对植物生效。
+- **植物视觉偏置**：每次放置植物会随机写入 ±0.055×倍率 格的位置偏移和 0.92~1.08 的尺寸
+  偏置；只影响 45° 图片、俯视图标和树根草垫，不改变占格/阻挡。
+- **植物个体差异**：同一资源每株按资产 id + 格子坐标派生稳定差异（叶色调、整体大小
+  0.88~1.12、宽高比、树冠形变、约 1/3 镜像），不写存档；旧地图里的树也会自动变得不完全一样。
 - 静态资源按定义里的 `footprint` 占地、按 `blocking_cells` 阻挡 A*（例如 3×1 院门只有两端
-  门柱挡路，中间门洞可通行），落点预览会直接用红/绿格标出。
-- 资源落点以鼠标格为中心（奇数边长正好居中；2×2 时鼠标格是左上角）；不能放在水面上，
-  同一片占地范围不能叠放。
-- **保存地图时同时写 `<地图名>.props.tres`**（例：`second.tres → second.props.tres`）。
-  撤销/重做、改尺寸时裁掉越界物件，都包含物件层（含资源实例的 `asset_ids` / `rots`）。
+  门柱挡路，中间门洞可通行），落点预览会直接用红/绿格标出；植物倍率会同步放大这两者。
+- 资源落点以鼠标格为中心（奇数边长正好居中；2×2 时鼠标格是左上角）；放置不受地形限制，
+  桥/建筑可以直接放在水面上，同一片占地范围不能叠放。
+- **保存地图时同时写 `<地图名>.props.tres`**（例：`first.tres → first.props.tres`）。
+  撤销/重做、改尺寸时裁掉越界物件，都包含物件层（含 `asset_ids` / `rots` / `multipliers` /
+  `visual_offsets` / `size_biases`）。
 
 运行 `grid_atlas_demo.tscn` 会自动加载同名边车：按实例数据生成立牌，并把实际阻挡格写进 A*。
 静态资源实例会读取同一份资源定义，贴图按 `content_rect` 裁切，立牌大小/侧向拉伸/图片偏移
 （`art_size` / `art_lift` / `art_offset`）与导入页看到的一致；立牌脚底用**旋转后占地范围**的中心，
 竖向资源会把贴图水平镜像（左右 `art_lift` 换边），但仍是正面朝向相机。
+建筑等需要贴地的资源用**左右侧拉伸**：`art_lift`（左/右整侧抬升比例）+ `art_size` / `art_offset`
+手动调；它只能让底边贴着一条斜线，不能同时精确命中占地的左/前/右三个角，前面那个角可能需要
+`art_offset` 微调。
 没有边车时显示空地图（不再生成随机林）。
 
 在编辑器里放完物件**不必先保存**，直接切“渲染模式”就能在大画面里看到 45° 立牌；
 保存是为了把物件写进 `.props.tres`，让游戏和 demo 也能读到。
+
+## 桥（独立桥层）
+
+桥不在静态资源库里，也不是贴图立牌，而是独立的 `BridgesData` 边车（`GridData/bridges_data.gd`）。
+
+- 编辑器“道路”面板下方有 **独木桥 / 木桥 / 石桥** 三个按钮。
+- 选中后左键拖两个陆地格作为 **1×1 桥座**：两座之间的整段水面自动成为桥身，长度不限；斜拖会按主导轴吸附，**不能拐弯**。桥座/桥身任一格不合法都会拒绝。
+- 右键删除鼠标下的桥；桥在俯视图里是一条 1 格宽的带子，45° 视图由 `example/procedural_bridge.gd` 现场生成。
+- 桥数据保存在与地图同名的 `<地图名>.bridges.tres`；A* 把桥线格子覆盖为 `surface_cost=0.6`。
+- 游戏 demo 用 `MapRuntime.surface_z()` 放角色，角色会真正站在桥面上；编辑器 45° 预览不建 A*。
 
 编辑器已移除内置物件按钮和立牌缩放滑条：新物件全部来自资源库。内置物件的运行路径也已
 完全移除——旧边车（`kinds/cells/scales` 格式）里的实例在载入时丢弃，不再渲染/阻挡。示例场景的
@@ -119,11 +139,14 @@ screen = 视口中心 + ppm · ( (P-C)·rt , (P-C)·(-fd)·sin(pitch) - z·cos(p
 
 ## 接进自己的游戏
 
+地图数据按地图分文件夹：`GridData/maps/<地图名>/<地图名>.tres`，同目录放
+`<地图名>.props.tres` / `.look.tres` / `.bridges.tres` 边车；边车路径由 `get_basename()` 推导，移动地图时整套一起移动即可。
+
 ```gdscript
 const RUNTIME_SCRIPT = preload("res://example/map_runtime.gd")
 
 var rt = RUNTIME_SCRIPT.new()
-rt.setup(load("res://GridData/maps/second.tres"), load("res://GridData/maps/second.look.tres"))
+rt.setup(load("res://GridData/maps/first/first.tres"), load("res://GridData/maps/first/first.look.tres"))
 $GridAtlas.setup(rt)                     # 地表 + 实体容器就位
 $GridAtlas.set_center_cell(Vector2(32.5, 32.5))
 $GridAtlas.set_zoom(42.0)
@@ -142,7 +165,7 @@ for def in StaticAssetStore.load_all(StaticAssetStore.load_catalog()):
 	asset_defs[def.id] = def
 
 # 物件（可选）：与地图同名的 <map>.props.tres，保存过物件后才会生成
-var props = load("res://GridData/maps/second.props.tres")
+var props = load("res://GridData/maps/level_1_content/level_1_content.props.tres")
 props.set_asset_defs(asset_defs)         # 定义里查 footprint/阻挡格
 rt.apply_props(props)                    # 按资源定义只写实际 blocking_cells
 ```
@@ -150,8 +173,10 @@ rt.apply_props(props)                    # 按资源定义只写实际 blocking_
 约定：`cell_to_screen` / `screen_to_cell` 用的是**格坐标**（0..map_size，格心在
 x+0.5），不是世界像素。`MapRuntime.CELL_SIZE`（16）只服务于旧的俯视示例。
 
-物件数据是并行数组：`asset_ids / rots / cells(交错 x,y)`，读取用
-`props.asset_id_at(i) / props.rotation_at(i) / props.cell_at(i)`。
+物件数据是并行数组：`asset_ids / rots / cells(交错 x,y) / multipliers /
+visual_offsets / size_biases`，读取用
+`props.asset_id_at(i) / props.rotation_at(i) / props.cell_at(i) /
+props.multiplier_at(i) / props.visual_offset_at(i) / props.size_bias_at(i)`。
 旧边车如果只有 `kinds/cells/scales`、没有 `asset_ids`，载入时 `sanitize()` 会整体清空；
 `asset_ids[i]`、`rots[i]`、`cells[2i]` 才是有效数据。占地/阻挡格从
 `GridData/static_assets/defs/<id>.tres` 解析（实例不重复存档）。
@@ -172,6 +197,11 @@ Processed/delivery/<族>/`（最终交付件按分类分中文文件夹、中文
 
 - 1280×720：**4.4 ms/帧**（228 fps）
 - 1920×1080：**9.4 ms/帧**（107 fps）
+
+默认 `project.godot` 设了 `application/run/max_fps=60`，避免编辑器里的 45° 预览
+把 GPU 一直跑满、风扇狂转；`--bench` 会临时关闭这个上限来测理论帧率。
+接触阴影现在是一张共享径向渐变纹理、每个立牌一次 `draw_texture_rect`，
+不再每个立牌画 12 层圆。
 
 地图更大或 GPU 更弱时：
 

@@ -15,10 +15,14 @@ shader_type canvas_item;
 //  6) 细颗粒只做极低幅度抖动，绝不主导画面。
 //  7) 斜角视图：同一套地表着色函数，改为从正交斜视方向对高度场做射线步进，
 //     取第一次命中的地表再着色 —— 遮挡、坡面、边缘侧壁都是真的。
+//  8) 树根草垫：tree 类物件脚底烘一张遮罩，地表先长一圈同色草；立牌着色器
+//     再把贴图自带的草垫草色像素淡出，两者共同消化 AI 图里的烘焙草。
 
 uniform sampler2D u_data : filter_nearest, repeat_disable;     // R=陆地 G=水域 B=道路 A=流向
 uniform sampler2D u_elev : filter_linear, repeat_disable;      // R=高程（原始单位，1 级 = 4 单位）
 uniform sampler2D u_elev_smooth : filter_linear, repeat_disable; // R=平滑高程（0..16 级）
+uniform sampler2D u_mountain : filter_linear, repeat_disable;   // R=山体遮罩（0/1，独立于地面）
+uniform sampler2D u_prop_ground : filter_linear, repeat_disable; // R=树根草垫遮罩（树木脚底）
 uniform sampler2D u_noise : filter_linear, repeat_enable;      // 白噪声，线性采样当值噪声
 uniform sampler2D u_colors : filter_nearest, repeat_disable;   // 15×1 颜色表
 uniform sampler2D u_affinity : filter_nearest, repeat_disable; // 8×8 亲和度矩阵
@@ -52,7 +56,7 @@ uniform float u_flow_speed = 0.5;
 uniform float u_foam_width = 0.5;
 uniform float u_foam_strength = 0.65;
 // ---- 道路 ----
-uniform float u_road_width = 0.30;
+uniform float u_road_width = 0.5;
 uniform float u_road_softness = 0.06;
 uniform float u_road_texture = 0.24;
 uniform float u_road_round = 0.26;   // 转弯/路角的圆角半径（格）
@@ -71,7 +75,7 @@ uniform float u_light_azimuth = 315.0;    // 光的来向（度）：0=北 90=�
 uniform float u_light_elevation = 28.7;   // 光的高度角（度）：0=贴地 90=正上方
 // ---- 斜角视图（正交、从南向北俯看） ----
 uniform float u_oblique = 0.0;          // 0 = 俯视，1 = 斜角
-uniform float u_pitch = 0.93;           // 俯仰角（弧度），约 53°
+uniform float u_pitch = 0.785398;       // 俯仰角（弧度），45°
 uniform float u_height_scale = 2.5;     // 每级高程 = 多少世界格高
 uniform float u_elev_max = 4.0;         // 全图最高高程（级），GDScript 侧更新
 uniform vec2 u_view_size = vec2(1024.0, 1024.0);
@@ -144,8 +148,10 @@ float water_blur(vec2 p) {
 
 // 流向场（有方向=1）的宽核平滑：与 water_blur 同核。
 // 流动的水不该再有往复摆动，潮汐按这个场削弱；宽核让河口/溪岸的削弱是渐变的。
+// Flow.CENTER(5) 表示没有方向，不算流动。
 float flow_at(vec2 p) {
-	return step(0.5, cell_data(floor(p)).a * 255.0);
+	float id = cell_data(floor(p)).a * 255.0;
+	return (id > 0.5 && abs(id - 5.0) > 0.5) ? 1.0 : 0.0;
 }
 float flow_blur(vec2 p) {
 	float r = 1.3;
@@ -206,12 +212,26 @@ float beach_blur(vec2 p) {
 	return s;
 }
 
+// 树根草垫遮罩的软采样：掩码按格放大 2~4 倍烘，9 点取样把格子边摊成约 1.5 格的草垫。
+// 掩码由 MapRuntime.set_ground_props() 按 tree 类物件生成；没有树时整张为 0。
+float prop_ground_at(vec2 p) {
+	return texture(u_prop_ground, p / u_map_size).r;
+}
+
+float root_field(vec2 p) {
+	float s = prop_ground_at(p) * 0.36;
+	s += (prop_ground_at(p + vec2(0.55, 0.0)) + prop_ground_at(p - vec2(0.55, 0.0))
+		+ prop_ground_at(p + vec2(0.0, 0.55)) + prop_ground_at(p - vec2(0.0, 0.55))) * 0.12;
+	s += (prop_ground_at(p + vec2(0.50, 0.50)) + prop_ground_at(p + vec2(-0.50, 0.50))
+		+ prop_ground_at(p + vec2(0.50, -0.50)) + prop_ground_at(p + vec2(-0.50, -0.50))) * 0.07;
+	return s;
+}
+
 // 沼泽指示：该格是不是沼泽（1/0）
 float swamp_ind(vec2 p) {
 	float l = land_of(cell_data(floor(p)));
 	return (l > 4.5 && l < 5.5) ? 1.0 : 0.0;
 }
-
 // 沼泽指示的双线性采样：整格跳变会变成"按格子描边"，必须先插值再扩散
 float swamp_at(vec2 p) {
 	vec2 ip = floor(p);
@@ -277,6 +297,80 @@ float hash21(vec2 p) {
 	return fract(p.x * p.y);
 }
 
+// 像素草丛：0.17 格一个草窝，每窝三根短叶，3×3 邻域防止叶尖在格边被截断。
+// 位置在 tuft 格内大幅抖动，密度由两层低频场控制成簇/留白，避免草窝排成整齐行列。
+// 叶的方向不是地图 y，而是【屏幕上竖直】的方向（相机 forward 在地面的投影）——
+// 地图 y 在 45° 下是斜的，直接沿 y 画会变成一片斜向排线。
+// 返回 x=叶身，y=叶根暗边，z=每根草的颜色随机值，w=叶尖高度比（0=根，1=尖）。
+vec4 grass_tuft(vec2 gp, float clump) {
+	const float TUFT = 0.17;   // 草窝间距（格）
+	vec2 up_dir = vec2(-sin(u_view_yaw), cos(u_view_yaw));   // 屏幕向上的地面方向
+	vec2 side_dir = vec2(-up_dir.y, up_dir.x);
+	vec2 tp = gp / TUFT;
+	vec2 ti = floor(tp);
+	float blade = 0.0;
+	float edge = 0.0;
+	float tone = 0.0;
+	float tip = 0.0;
+	for (int oy = -1; oy <= 1; oy++) {
+		for (int ox = -1; ox <= 1; ox++) {
+			vec2 o = vec2(float(ox), float(oy));
+			vec2 rnd = vec2(hash21(ti + o), hash21(ti + o + vec2(17.1, 4.7)));
+			// 位置/大小用另一组哈希：与密度分开，避免"哪里密、哪里就偏左/偏高"的隐藏相关
+			vec2 prnd = vec2(hash21(ti + o + vec2(31.7, 9.2)),
+				hash21(ti + o + vec2(5.3, 44.1)));
+			// 草窝密度：低频 clump 控制成片/稀疏；阈值接近二值，密处成片、疏处干脆没有。
+			float keep = step(0.72, rnd.x * 0.30 + clump * 0.95);
+			vec2 jitter = prnd - 0.5;
+			vec2 base = (ti + o + 0.5 + jitter * 0.96) * TUFT;
+			vec2 rel = gp - base;
+			float u = dot(rel, side_dir);
+			float v = dot(rel, up_dir);
+			float lean = (prnd.y - 0.5) * 0.85;
+			float size = 0.72 + 0.55 * fract(prnd.x * 13.7 + prnd.y * 7.1);
+			// 第一根：较高，略倾斜；叶尖收窄
+			float h1 = (0.09 + 0.08 * prnd.y) * size;
+			float x1 = u - v * lean;
+			float w1 = mix(0.026, 0.009, clamp(v / h1, 0.0, 1.0)) * size;
+			float b1 = keep * (1.0 - smoothstep(w1 - 0.005, w1 + 0.004, abs(x1)))
+				* step(0.0, v) * (1.0 - smoothstep(h1, h1 + 0.024, v));
+			if (b1 > blade) {
+				blade = b1;
+				tone = prnd.x;
+				tip = clamp(v / h1, 0.0, 1.0);
+			}
+			// 第二根：矮一些，偏到旁边，草窝才像一撮而不是一排
+			float h2 = (0.05 + 0.06 * prnd.x) * size;
+			float x2 = u - 0.024 * size - v * lean * 0.6;
+			float w2 = mix(0.021, 0.008, clamp(v / h2, 0.0, 1.0)) * size;
+			float b2 = keep * (1.0 - smoothstep(w2 - 0.004, w2 + 0.004, abs(x2)))
+				* step(0.0, v) * (1.0 - smoothstep(h2, h2 + 0.024, v));
+			if (b2 > blade) {
+				blade = b2;
+				tone = fract(prnd.y + 0.37);
+				tip = clamp(v / h2, 0.0, 1.0);
+			}
+			// 第三根：只在部分草窝里出现，密处成撮、疏处仍是一两根
+			float h3 = (0.035 + 0.05 * fract(prnd.x * 7.0)) * size;
+			float x3 = u + 0.022 * size + v * lean * 0.5;
+			float w3 = mix(0.017, 0.007, clamp(v / h3, 0.0, 1.0)) * size;
+			float b3 = step(0.40, prnd.x) * keep
+				* (1.0 - smoothstep(w3 - 0.004, w3 + 0.004, abs(x3)))
+				* step(0.0, v) * (1.0 - smoothstep(h3, h3 + 0.024, v));
+			if (b3 > blade) {
+				blade = b3;
+				tone = fract(prnd.x + 0.71);
+				tip = clamp(v / h3, 0.0, 1.0);
+			}
+			// 叶根一团暗色：树贴图里草叶是靠根部/侧面的暗边读出来的
+			float sx = 1.0 - smoothstep(0.030, 0.050, abs(u));
+			float sy = step(-0.018, v) * (1.0 - smoothstep(0.045, 0.075, v));
+			edge = max(edge, keep * sx * sy * (1.0 - max(b1, b2)));
+		}
+	}
+	return vec4(blade, edge, tone, tip);
+}
+
 // 光照用高度：平滑高程 + 一层很轻的低频起伏（约 0.14 格）。
 // 起伏让平直的台阶轮廓自然弯曲，明暗带才不会读成两条云影。
 float elev_relief(vec2 p) {
@@ -289,10 +383,11 @@ float material_pattern(vec2 p, float id) {
 	float n1 = fbm(p * 0.40);                            // 大块（约 2.5 格周期）
 	float n2 = vnoise(p * 1.05 + vec2(3.7, 1.9));        // 中块（约 1 格周期）
 	if (id < 1.5) {
-		// 草地：大块草簇 + 低频纵向草束（不做逐像素散点，那是雪花）
-		float clump = smoothstep(0.42, 0.62, n1);
-		float stroke = vnoise(vec2(p.x * 0.45, p.y * 1.6) + vec2(7.3, 2.1));
-		return 0.975 + 0.045 * clump + 0.025 * stroke;
+		// 草地底色：只留很轻的草簇明暗。大片平滑的"水波"交给贴图立牌会很出戏，
+		// 细碎的像素草叶由 1b 段负责，这里不做长条/羽状图案。
+		float clump = vnoise(p * 1.40 + vec2(5.1, 2.3));
+		float fine = vnoise(p * 4.60 + vec2(1.7, 8.4));
+		return 0.97 + 0.035 * (clump - 0.5) + 0.025 * (fine - 0.5);
 	}
 	if (id < 2.5) {
 		// 沙地：细沙粒 + 柔和沙丘起伏。
@@ -373,6 +468,23 @@ vec2 light_vector_xy() {
 	return normalize(vec2(sin(az), -cos(az)));
 }
 
+// 山体投影：从当前点沿光的方向步进高度场，看山脊是否挡住了光。
+// 只在斜角使用；高度单位=级，射线高度按 tan(光高度角) 上升。
+float sun_shadow(vec2 cf, float h0) {
+	if (u_oblique < 0.5) return 0.0;
+	vec2 ld = light_vector_xy();
+	float el = radians(clamp(u_light_elevation, 8.0, 80.0));
+	float tanel = tan(el);
+	float occ = 0.0;
+	for (int i = 1; i <= 12; i++) {
+		float d = float(i) * 0.55;
+		float h = elev_relief(cf + ld * d);
+		float ray = h0 + d * tanel;
+		occ = max(occ, smoothstep(0.10, 0.55, h - ray));
+	}
+	return occ;
+}
+
 // 地表着色：cf 是格坐标（0..map_size）。俯视时直接由 UV 换算，斜角时由高度场步进得到。
 vec3 shade_surface(vec2 cf) {
 
@@ -388,7 +500,8 @@ vec3 shade_surface(vec2 cf) {
 	float tide = sin(u_time * 0.62 * u_tide_frequency + dot(cf, vec2(0.65, 0.35))) * (0.26 * u_tide_amplitude)
 		+ sin(u_time * 0.34 * u_tide_frequency - dot(cf, vec2(0.25, 0.85)) + 1.7) * (0.16 * u_tide_amplitude);
 	// 有水流方向的水面削弱潮汐：流动的水由流向驱动漂移，不再叠加往复摆动
-	float tide_damp = 1.0 - 0.75 * clamp(flow_blur(cf), 0.0, 1.0);
+	float flow_field = clamp(flow_blur(cf), 0.0, 1.0);
+	float tide_damp = 1.0 - 0.75 * flow_field;
 	float dw = mix(0.10, 0.45, pair_affinity(7.0, 8.0));
 
 	// 陆地类型场（提前取用，岸线潮汐需要它判断"沙地在场"）
@@ -482,9 +595,20 @@ vec3 shade_surface(vec2 cf) {
 	vec2 g = vec2(hx - h0, hy - h0) / d;        // 梯度（高度/格）
 	float slope = length(g);
 	float land_mask = 1.0 - waterness;
-	// 陡壁不画俯视图案：斜角里沿坡会被拉长。这里只算一个“压平图案/草叶”的权重，
-	// 不额外生成立面纹理——陡壁只保留材质底色 + 光照。俯视视图不启用。
+	// 陡壁不画俯视图案：斜角里沿坡会被拉长，这里先压平图案/草叶；
+	// 陡壁的材质由后面的“沿等高线/沿高度”的层理与裂缝接手。俯视视图不启用。
 	float cliff = smoothstep(0.12, 0.30, slope) * land_mask * (u_oblique > 0.5 ? 1.0 : 0.0);
+
+	// ---- 1.6) 树根草垫 ----
+	// 树木贴图底部自带一小片草，固定色与地表程序化草很难完全一致。
+	// 在树的脚底先铺一圈同色、同颗粒的草，贴图草垫的边缘就会落在近似材质上。
+	// 掩码由 MapRuntime 按 tree 类物件烘成 2~4 px/格，噪声把圆形边界打散。
+	float root = root_field(cf);
+	float root_n = fbm(cf * 1.55 + vec2(3.7, 8.9)) - 0.5;
+	float root_n2 = vnoise(cf * 4.2 + vec2(6.3, 1.9)) - 0.5;
+	root = smoothstep(0.05, 0.55, root + root_n * 0.30 + root_n2 * 0.10);
+	root *= 1.0 - clamp(water_cover, 0.0, 1.0);
+	root *= 1.0 - cliff * 0.6;
 
 	// ---- 2) 分材质结构图案 + 微凹凸光照 ----
 	vec2 pf = cf * u_texture_frequency;
@@ -504,38 +628,68 @@ vec3 shade_surface(vec2 cf) {
 	float bump = 1.0 - (grad.x + grad.y) * u_bump * 0.35;
 	col *= mix(1.0, clamp(bump, 0.90, 1.10), 1.0 - water_cover);
 
-	// ---- 1b) 草地：草叶 ----
-	// 草不是一块均匀的颜色，要有"成片的草叶"：细长、带方向、疏密成团。
-	// 叶身提亮、叶间压暗，叶尖偏黄绿 —— 这样 16px/格 下读出短笔触，放大也不糊。
-	// 叶片坐标沿 y 拉长、x 高频，并在低频噪声控制下整体倾斜（一片一片倒向不同方向）。
+	// ---- 1b) 草地：像素草丛 ----
+	// 树贴图里的草是"一团一团"的：暗橄榄底色、成簇的短草叶、黄绿叶尖、叶间深缝。
+	// 程序化草也按这个读法做：像素格上硬边切叶，低频噪声决定草簇疏密，
+	// 不再用大范围平滑渐变 —— 那样在 45° 下会变成一片流动的绿浆。
 	float grass_w = 0.0;
-	if (abs(base_id - 1.0) < 0.5) grass_w = 1.0 - mixw;
-	if (abs(other_id - 1.0) < 0.5) grass_w = max(grass_w, mixw);
+	// 只要本格是草就满权重：草叶不是"两材质混合量"，而是这一格自己的材质细节。
+	// 旧写法用 mixw，纯草格邻接荒地时 mixw 会被推到 1，整片草都被判成没草。
+	if (abs(base_id - 1.0) < 0.5) {
+		grass_w = 1.0;
+	} else if (abs(other_id - 1.0) < 0.5) {
+		grass_w = t;
+	}
 	grass_w *= 1.0 - clamp(water_cover, 0.0, 1.0);
 	grass_w *= 1.0 - cliff;   // 草叶也是俯视笔触，陡壁上会拉长
-	if (grass_w > 0.01) {
-		// 叶片方向：低频噪声控制整片草倒向哪边（约 1~2 格换一次方向）
-		float lean = (vnoise(cf * 0.62 + vec2(4.4, 8.8)) - 0.5) * 2.6;
-		vec2 bq = vec2((cf.x + cf.y * lean * 0.18) * 7.0, cf.y * 4.6);   // 更窄更短
-		// 脊线噪声：等值线附近的窄亮条才是"叶"，比阈值团块更像草
-		float ridge = 1.0 - abs(2.0 * vnoise(bq + vec2(3.1, 7.7)) - 1.0);
-		float body = smoothstep(0.52, 0.86, ridge);
-		// 断叶：两级高频调制把长条打成 0.1~0.25 格的碎叶，缝隙多、不成条
-		float cut1 = smoothstep(0.36, 0.56, vnoise(vec2(cf.x * 5.5, cf.y * 13.0) + vec2(2.7, 5.1)));
-		float cut2 = smoothstep(0.34, 0.58, vnoise(vec2(cf.x * 8.5, cf.y * 19.0) + vec2(1.3, 8.2)));
-		float cut = cut1 * (0.50 + 0.50 * cut2);
-		float blade = body * cut;
-		float shade = (1.0 - smoothstep(0.28, 0.50, ridge)) * cut;   // 叶间暗缝
-		float dens = 0.55 + 0.45 * smoothstep(0.30, 0.72, fbm(cf * 1.15 + vec2(6.1, 3.3)));
-		float vary = 0.70 + 0.60 * vnoise(cf * 3.2 + vec2(8.4, 2.6));   // 叶片逐个参差
-		// 草叶强度跟"纹理强度"联动：调到 0 就是完全平色的草地
+	float root_core = smoothstep(0.10, 0.58, root);
+	// 树根下不一定原本就是草地：裸土上也长一小片草，贴图里的草垫才不会浮在土上
+	if (root_core > 0.002) {
+		float rt = fbm(cf * 2.10 + vec2(2.9, 6.4));
+		vec3 root_col = mix(vec3(0.35, 0.38, 0.15), vec3(0.43, 0.45, 0.18), rt) * tint;
+		col = mix(col, root_col, root_core * 0.58);
+	}
+	float grass_cover = max(grass_w, root_core * 0.92);
+	if (grass_cover > 0.01) {
+		// 草叶坐标直接用世界格：叶片只有 1~2 屏幕像素宽，
+		// 再量化到 20 px/格的网格会把它整根漏掉。
+		vec2 gp = cf;
+		// 草窝密度：两层低频噪声决定哪里成片、哪里稀疏（小团 + 大块）
+		float clump_a = smoothstep(0.36, 0.66, fbm(cf * 1.30 + vec2(6.1, 3.3)));
+		float clump_b = smoothstep(0.30, 0.70, fbm(cf * 0.55 + vec2(2.4, 9.7)));
+		float clump = clamp(clump_a * 0.72 + clump_b * 0.52, 0.0, 1.0);
+		// 低频扭曲草窝网格：否则所有草窝会在地图坐标里排成整齐的斜行
+		vec2 gwarp = vec2(vnoise(cf * 1.7 + vec2(2.3, 5.1)),
+			vnoise(cf * 1.7 + vec2(8.7, 1.4))) - 0.5;
+		vec4 tuft = grass_tuft(gp + gwarp * 0.26, clump);
+		float blade = tuft.x;
+		float edge = tuft.y;
+		float tone = tuft.z;
+		float tip = tuft.w;
 		float gk = clamp(u_texture_strength, 0.0, 2.0);
-		col *= 1.0 + (blade * 0.18 - shade * 0.085) * dens * grass_w * vary * gk;
-		col = mix(col, col * vec3(1.08, 1.03, 0.74), blade * dens * grass_w * 0.45 * gk);   // 叶尖偏黄绿
-		// 高草丛：成簇的偏黄绿草块，在网格尺度上读出来（约 1~2 格一团）
-		float tuft = smoothstep(0.58, 0.76, vnoise(cf * 1.90 + vec2(7.4, 3.8)));
-		col = mix(col, col * vec3(1.10, 1.06, 0.80), tuft * grass_w * 0.35 * gk);
-		col *= 1.0 + (vnoise(cf * 6.5 + vec2(2.2, 5.5)) - 0.5) * 0.04 * grass_w;      // 细粒
+		float w = grass_cover * gk;
+		// 像素底纹：16 个世界像素/格，2~3 档硬边明暗。
+		// 树贴图的草垫不是纯色底，放大看有细碎的深浅块；这层让程序化草也有同样的颗粒。
+		vec2 mp = floor(cf * 16.0) / 16.0;
+		float m1 = vnoise(mp * 4.5 + vec2(3.1, 7.7));
+		float m2 = vnoise(mp * 9.0 + vec2(8.4, 2.6));
+		col *= 0.955 + 0.040 * step(0.45, m1) + 0.025 * step(0.62, m2);
+		col *= 1.0 - 0.030 * step(0.60, 1.0 - m1);
+		// 大一点的暗草簇：树贴图草垫里也有成片的深色草，不让整片草地读成一块平色
+		float dark_clump = smoothstep(0.56, 0.76, fbm(cf * 0.72 + vec2(9.1, 4.3)));
+		col *= 1.0 - dark_clump * grass_cover * 0.09;
+		// 叶身用显式的深橄榄→黄绿叶色，不再只是在底色上加减亮度：
+		// 这样即使地表底色和树贴图草垫有一点差异，叶片本身也会读成同一种草。
+		vec3 blade_col = mix(vec3(0.21, 0.25, 0.09), vec3(0.46, 0.49, 0.17), tip) * tint;
+		blade_col = mix(blade_col, blade_col * vec3(1.10, 1.06, 0.72), tone * 0.35);
+		col = mix(col, blade_col, blade * w * 0.70);
+		// 叶根暗边：贴图草叶根部的一圈深色
+		col = mix(col, col * vec3(0.62, 0.68, 0.46), edge * w * 0.42);
+		// 一丛丛的暗色草窝：让草地有疏密，不是均匀噪点
+		float dark = smoothstep(0.58, 0.80, vnoise(gp * 2.8 + vec2(7.4, 3.8))) * (1.0 - blade);
+		col *= 1.0 - dark * w * 0.10;
+		// 细粒：只做极轻的抖动
+		col *= 1.0 + (vnoise(cf * 9.5 + vec2(2.2, 5.5)) - 0.5) * 0.04 * grass_cover;
 	}
 
 	// ---- 2b) 沼泽湿地：瓣状咬合 + 瓣外湿地，全部由一张连续沼泽场驱动 ----
@@ -610,6 +764,29 @@ vec3 shade_surface(vec2 cf) {
 	col = mix(col, deep_c, deep_cover);
 	col *= 1.0 - 0.02 * clamp(wfield - 1.0, 0.0, 1.0);   // 越深越沉（很轻微）
 
+	// ---- 4b) 山体：独立遮罩 + 独立岩石材质，和可行走地面明确分开 ----
+	// 山体不是地形分类：地面/道路/水域仍按你的笔刷画，山体格只覆盖表面材质并阻挡通行。
+	float mnt = texture(u_mountain, cf / u_map_size).r;
+	float mtn = smoothstep(0.35, 0.65, mnt);
+	if (mtn > 0.001) {
+		// 大块板岩 + 水平层理 + 竖向裂缝；不沿用草地/沙地的笔触
+		float plate_n = fbm(cf * 0.55 + vec2(7.3, 2.8));
+		float strata = 0.5 + 0.5 * sin(h0 * 3.4 + fbm(cf * 0.42 + vec2(2.6, 6.1)) * 6.5);
+		float crack_n = fbm(vec2(cf.x * 2.2, cf.y * 0.75) + vec2(4.3, 1.7));
+		float crack = 1.0 - smoothstep(0.0, 0.06, abs(crack_n - 0.5));
+		float block = smoothstep(0.40, 0.60, fbm(cf * 0.33 + vec2(9.7, 3.1)));
+		vec3 mtn_c = table_color(13) * (0.62 + 0.30 * plate_n + 0.10 * strata);
+		mtn_c *= mix(0.82, 1.06, block);
+		mtn_c *= vec3(0.92, 0.96, 1.05);   // 偏冷的板岩色，和草地/沙地拉开
+		mtn_c *= 1.0 - crack * 0.30;
+		mtn_c *= 0.96 + 0.08 * fbm(cf * 4.2 + vec2(6.1, 2.4));
+		mtn_c *= mix(0.78, 1.0, smoothstep(0.0, 0.45, mnt));
+		col = mix(col, mtn_c, mtn);
+		// 山脚折痕：边界压暗，山体和可行走地面不会粘成一块
+		float edge = 1.0 - smoothstep(0.0, 0.18, abs(mnt - 0.5));
+		col *= 1.0 - edge * 0.35;
+	}
+
 	// ---- 5) 高程浮雕：法线 → 光照方向（方位/高度角见 u_light_*） ----
 	// 平地的法线是竖直的，读数归一为 1；迎光坡变亮、背光坡变暗，由此读出坡向和体量。
 	// 梯度 / 坡度 / land_mask 已在 1.5 段算好（图案与陡壁共用同一份）。
@@ -624,7 +801,7 @@ vec3 shade_surface(vec2 cf) {
 	// 雪线不是一条等高线：用低频噪声把阈值打散成斑块
 	float snow_n = (fbm(cf * 0.55 + vec2(5.3, 2.7)) - 0.5) * 2.4;
 	float snow = smoothstep(snow_line, snow_line + 1.0, h0 + snow_n)
-		* (1.0 - smoothstep(0.26, 0.46, slope)) * land_mask;
+		* (1.0 - smoothstep(0.75, 1.05, slope)) * land_mask;
 	// 以平地（ndl = lgt.z）为零点做对称的明暗：迎光 +，背光 −，
 	// 不用 (ndl-1) 那种写法 —— 背光侧会一直压到黑，坡面就变成一条深沟。
 	float shade = clamp(ndl - lgt.z, -0.45, 0.55);
@@ -638,15 +815,29 @@ vec3 shade_surface(vec2 cf) {
 	float hrel = clamp((h0 - 1.0) / max(u_elev_max - 1.0, 1.0), 0.0, 1.0);
 	col *= 1.0 + hrel * u_elev_bright * 2.0;
 	// 山体覆盖放在打光之后：岩石/雪帽用同一个 lit 明暗，但不再叠加高度提亮。
-	// 俯视颗粒在斜角陡壁上会被拉长；陡壁直接压成平色（只留 lit 明暗）。
+	// 陡壁不再压成平色：用高度层理 + 竖向裂缝给岩壁一个可读的立面材质。
 	if (rock > 0.002 || snow > 0.002) {
-		float grain = 0.86 + 0.26 * fbm(cf * 1.25 + vec2(3.7, 8.1));
-		grain = mix(grain, 0.95, cliff);
+		// 崖壁纹理用“沿等高线 / 沿高度”的二维坐标，避免俯视噪声在坡面上被拉成长条。
+		vec2 contour_dir = normalize(vec2(-g.y, g.x) + vec2(0.0001, 0.0002));
+		float face_u = dot(cf, contour_dir) * 1.80;
+		float face_v = h0 * 1.10;
+		float rock_n = fbm(vec2(face_u * 1.80, face_v * 1.10) + vec2(3.7, 8.1));
+		float strata = 0.5 + 0.5 * sin(face_v * 2.6 + fbm(vec2(face_u * 0.30, face_v * 0.18)) * 7.0);
+		float crack_n = fbm(vec2(face_u * 0.70, face_v * 0.20) + vec2(4.3, 1.7));
+		float crack = 1.0 - smoothstep(0.0, 0.07, abs(crack_n - 0.5));
+		float grain = 0.80 + 0.30 * mix(rock_n, fbm(cf * 2.1 + vec2(2.2, 6.9)), 0.45);
+		grain *= mix(1.0, 0.92 + 0.14 * strata, cliff);
+		grain *= 1.0 - crack * 0.18 * cliff;
 		vec3 rock_c = table_color(13) * grain * clamp(lit, 0.62, 1.32);
-		vec3 snow_c = table_color(14) * clamp(lit, 0.78, 1.16);
+		vec3 snow_c = table_color(14) * (0.94 + 0.12 * fbm(cf * 1.8 + vec2(1.9, 6.4)))
+			* clamp(lit, 0.78, 1.16);
 		col = mix(col, rock_c, rock * 0.92);
 		col = mix(col, snow_c, snow * 0.72);
 	}
+	// 山体自投影：谷地/背坡压暗，山脊才有体量
+	float sun_occ = sun_shadow(cf, h0);
+	col *= mix(1.0, 0.66, sun_occ * land_mask);
+	col *= mix(vec3(1.0), vec3(0.83, 0.89, 1.06), sun_occ * land_mask * 0.65);
 
 	// ---- 6) 水面动效：定向波列（方向跟随流向）+ 波峰高光 + 岸线泡沫 ----
 	if (waterness > 0.01) {
@@ -670,6 +861,30 @@ vec3 shade_surface(vec2 cf) {
 		// 浪尖碎白
 		float chop = vnoise(cf * u_ripple_frequency * 0.9 - fdir * t * u_flow_speed);
 		water += vec3(smoothstep(0.82, 1.0, chop)) * amp * 0.07;
+		// 溪流的方向性水纹：沿流向拉长的亮暗条纹 + 快速漂移的碎白。
+		// 大水面没有画流向时 flow_mask=0，不会变成条纹海。
+		float flow_mask = smoothstep(0.08, 0.55, flow_field);
+		if (flow_mask > 0.01) {
+			float flow_t = u_time * (u_flow_speed * 2.5 + 0.20);
+			float across = dot(cf, sd);
+			float along = dot(cf, md);
+			// 长条泡沫：横跨流向很窄、顺流拉长，向下游快速漂移。
+			// across 先被噪声扭曲，条纹才会弯、会断，不会变成一排平行直线。
+			float warp_a = (vnoise(vec2(along * 1.6, across * 1.1)) - 0.5) * 1.6;
+			float streak_n = fbm(vec2((across + warp_a) * 5.5, along * 0.35 - flow_t * 0.9));
+			float streak = smoothstep(0.56, 0.68, streak_n)
+				- 0.50 * smoothstep(0.38, 0.28, streak_n);
+			water += vec3(0.16) * streak * flow_mask * (0.80 + 0.50 * amp);
+			// 第二层短沫：更宽、更慢，补足溪流中间的碎波
+			float warp_b = (vnoise(vec2(along * 2.2, across * 1.7)) - 0.5) * 1.2;
+			float streak2_n = fbm(vec2((across + warp_b) * 3.0, along * 1.1 - flow_t * 1.6));
+			float streak2 = smoothstep(0.58, 0.70, streak2_n)
+				- 0.45 * smoothstep(0.38, 0.28, streak2_n);
+			water += vec3(0.11) * streak2 * flow_mask;
+			// 碎白：被水流拉碎的亮点
+			float fleck_n = vnoise(vec2(across * 9.0, along * 1.4 - flow_t * 2.2));
+			water += vec3(0.18) * smoothstep(0.80, 0.94, fleck_n) * flow_mask;
+		}
 		// 岸线泡沫
 		float dshore = abs(wfield - 0.55);
 		float foam_mask = 1.0 - smoothstep(0.02, 0.02 + 0.18 * max(u_foam_width, 0.1), dshore);
@@ -868,12 +1083,12 @@ vec3 oblique_color(vec2 uv) {
 	float cot = cp / sp;
 	// 屏幕中心对应 center 这个地面点；沿 fd 退 sy/sp 格就是该像素在 z=0 的落点
 	vec2 base = center + rt * sx + fd * (sy / sp);
-	float step_z = max(zmax / 22.0, 0.05);
+	float step_z = max(zmax / 46.0, 0.02);
 	float z = zmax;
 	float prev_z = zmax + step_z;
 	bool hit = false;
 	bool wall = false;
-	for (int i = 0; i < 24; i++) {
+	for (int i = 0; i < 48; i++) {
 		vec2 p = base - fd * (z * cot);
 		if (p.x >= 0.0 && p.x < W && p.y >= 0.0 && p.y < H) {
 			if (z <= terrain_z(p)) {
@@ -922,7 +1137,7 @@ vec3 oblique_color(vec2 uv) {
 	}
 	vec3 col = shade_surface(surf);
 	// 远景薄雾：越靠北（画面深处）越淡，给纵深
-	float fog = smoothstep(0.0, 1.0, clamp((H - surf.y) / H, 0.0, 1.0)) * 0.20;
+	float fog = smoothstep(0.0, 1.0, clamp((H - surf.y) / H, 0.0, 1.0)) * 0.30;
 	return mix(col, u_sky_bottom, fog);
 }
 

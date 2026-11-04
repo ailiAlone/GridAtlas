@@ -20,7 +20,7 @@ layout_mode = 2
 [node name="AssetTitle" type="Label" parent="VBox/AssetTitleRow" unique_id=597774225]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "资源库"
+text = "资源库（按类型）"
 
 [node name="AssetRefresh" type="Button" parent="VBox/AssetTitleRow" unique_id=1446225579]
 custom_minimum_size = Vector2(0, 22)
@@ -54,7 +54,7 @@ layout_mode = 2
 tooltip_text = "竖向：占地交换宽高，图片水平镜像（90°）"
 text = "竖向"
 
-[node name="Assets" type="HFlowContainer" parent="VBox" unique_id=1706636247]
+[node name="Assets" type="VBoxContainer" parent="VBox" unique_id=1706636247]
 layout_mode = 2
 
 [node name="AssetEmpty" type="Label" parent="VBox" unique_id=945084767]
@@ -73,7 +73,7 @@ text = "当前：无"
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 1, 1, 0.6)
 theme_override_font_sizes/font_size = 11
-text = "左键放置 · 右键删除（按占地范围）· R 切换横竖"
+text = "左键放置 · 右键删除（按占地范围）· R 切换横竖 · 植物可调倍率"
 autowrap_mode = 2
 
 [node name="Count" type="Label" parent="VBox" unique_id=1070540068]

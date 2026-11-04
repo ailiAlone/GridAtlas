@@ -11,7 +11,7 @@ extends Resource
 # ---------- 颜色（编辑器调色板 GridDefs 不受这里影响，两套各管各的） ----------
 
 @export var land_colors: Dictionary = {
-	1: Color(0.42, 0.745, 0.348),
+	1: Color(0.37, 0.40, 0.155),
 	2: Color(0.91, 0.82, 0.54),
 	3: Color(0.58, 0.5, 0.39),
 	4: Color(0.93, 0.95, 0.97),
@@ -54,7 +54,7 @@ extends Resource
 @export var texture_strength: float = 0.68    # 分材质结构图案的强度（1=原样）
 @export var texture_frequency: float = 0.9   # 结构图案的频率倍率
 @export var grain: float = 0.015             # 逐像素细颗粒（只做抖动，别大）
-@export var biome: float = 0.12              # 全图低频色差（避免大片纯色）
+@export var biome: float = 0.07              # 全图低频色差（避免大片纯色）
 @export var bump: float = 0.55               # 材质微凹凸光度（无高程数据也有立体感）
 
 # ---------- 过渡 ----------
@@ -88,7 +88,7 @@ extends Resource
 
 # ---------- 道路 ----------
 
-@export var road_width: float = 0.30
+@export var road_width: float = 0.5
 @export var road_softness: float = 0.06
 @export var road_texture: float = 0.24
 @export var road_round: float = 0.26    # 转弯/路角的圆角半径（格）

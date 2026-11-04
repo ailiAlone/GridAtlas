@@ -21,10 +21,12 @@ extends Control
 @onready var import_view = $ImportOverlay/StaticAssetImportView
 
 const PropsData = preload("res://GridData/props_data.gd")
+const BridgesData = preload("res://GridData/bridges_data.gd")
 const GamePreviewScript = preload("res://RenderView/game_preview.gd")
 
 var map: MapData  # 唯一持有者：所有使用方从这里拿引用
 var props   # 物件层（PropsData，地图边车）：同样由本脚本持有、注入视图
+var bridges # 桥层（BridgesData，地图边车）：独立于静态资源，只由道路面板的桥工具写入
 var asset_defs: Dictionary = {}  # StringName -> StaticAssetDef（资源库，运行时载入）
 var render_mode: bool = false  # false=编辑模式，true=渲染模式
 var grids: Array = []      # 两个编辑视图（大可编辑、小只读镜像）
@@ -33,6 +35,7 @@ var grids: Array = []      # 两个编辑视图（大可编辑、小只读镜像
 var _mini_dirty: Rect2i = Rect2i()
 var _mini_elev_dirty: bool = false
 var _mini_sync_queued: bool = false
+var _mountain_preview_queued: bool = false  # 山体 footprint 变了：需要整图重建程序化高度
 
 # 撤销/重做：整图快照。64×64 时一份约 80KB，60 步上限约 5MB。
 const HISTORY_MAX: int = 60
@@ -45,10 +48,12 @@ func _ready() -> void:
 	grids = [grid_view, grid_mini]
 	map = MapData.create(Vector2i(64, 64))
 	props = PropsData.new()
+	bridges = BridgesData.new()
 	_reload_asset_defs()
 	for view: GridView in grids:
 		view.set_map(map)
 		view.set_props(props)
+		view.set_bridges(bridges)
 	tools.set_map(map)
 	tools.set_prop_count(0)
 	# 交互类信号只接大编辑视图（小面板完全只读）
@@ -57,6 +62,7 @@ func _ready() -> void:
 	tools.brush_size_changed.connect(grid_view.set_brush_size)
 	tools.rect_mode_changed.connect(grid_view.set_rect_mode)
 	tools.prop_rotation_changed.connect(_on_prop_rotation_changed)
+	tools.prop_scale_changed.connect(_on_prop_scale_changed)
 	tools.propstool.clear_requested.connect(_on_props_clear_requested)
 	tools.map_resized.connect(_on_map_resized)
 	tools.map_loaded.connect(_on_map_loaded)
@@ -69,6 +75,7 @@ func _ready() -> void:
 	tools.elevation_view_changed.connect(grid_view.set_elevation_mode)
 	tools.elevation_view_changed.connect(grid_mini.set_elevation_mode)
 	grid_view.area_painted.connect(_on_area_painted)
+	grid_view.bridge_committed.connect(_on_bridge_committed)
 	grid_view.cell_hovered.connect(_on_cell_hovered)
 	grid_view.stroke_started.connect(_push_history)
 	grid_view.stroke_ended.connect(_on_stroke_ended)
@@ -101,7 +108,7 @@ func _on_swap_pressed() -> void:
 		var center: Vector2 = _preview_focus_cell()
 		game_preview.set_preview_mode(false)
 		game_preview.visible = true
-		game_preview.setup(map, rtool.settings, props, center)
+		game_preview.setup(map, rtool.settings, props, bridges, center)
 	else:
 		game_preview.visible = false
 	bigscroll.visible = not render_mode
@@ -126,7 +133,7 @@ func _setup_mini_preview() -> void:
 	_mini_dirty = Rect2i()
 	_mini_elev_dirty = false
 	preview_mini.set_preview_mode(true)
-	preview_mini.setup(map, rtool.settings, props, Vector2(map.grid_size) * 0.5)
+	preview_mini.setup(map, rtool.settings, props, bridges, Vector2(map.grid_size) * 0.5)
 	preview_mini.fit_overview()
 
 
@@ -242,19 +249,17 @@ func _on_area_painted(area: Rect2i, erase: bool) -> void:
 	var half: int = int(area.size.x * 0.5)
 	last_edit_cell = area.position + Vector2i(half, half)
 	var layer: StringName = tools.brush_layer
+	# 山体是独立遮罩：只改材质与通行，不覆盖你画的陆地/道路/水域
+	if layer == &"mountain":
+		_paint_mountains(area, erase)
+		return
 	# 物件是"每笔一个"，不写地图图层，也不动格子缓存
 	if layer == &"prop":
 		_paint_props(area, erase)
 		return
-	# 地形笔刷按径向衰减逐格改高度，和固定值写入不是一回事，单独走
-	if layer == &"terrain":
-		_sculpt_area(area, erase)
-		tools.mark_dirty()
-		for view: GridView in grids:
-			view.sync_cell_area(area)
-		_queue_mini_sync(area, true)
-		print("[绘制] (%d,%d) %d×%d 地形 %s（%s%s）" % [area.position.x, area.position.y, area.size.x, area.size.y,
-			tools.terrain_mode_text(), tools.terrain_param_text(), "，右键压低" if erase else ""])
+	# 高程是整级设定：独立于陆地/水/道路，不被它们覆盖
+	if layer == &"elevation":
+		_paint_elevation(area, erase)
 		return
 	# 陆地没有 NONE：擦除=恢复默认（草地）；水域/道路/流向擦除=0（NONE）
 	var value: int = tools.brush_value
@@ -263,6 +268,7 @@ func _on_area_painted(area: Rect2i, erase: bool) -> void:
 			value = GridDefs.Land.GRASS
 		else:
 			value = 0
+	var carved_mountain: bool = false
 	for y in range(area.position.y, area.end.y):
 		for x in range(area.position.x, area.end.x):
 			var cell: Vector2i = Vector2i(x, y)
@@ -274,11 +280,14 @@ func _on_area_painted(area: Rect2i, erase: bool) -> void:
 					# 陆水互斥：画陆地清掉水域及其流向；擦除只是恢复草地，不动水面
 					map.set_water(cell, GridDefs.Water.NONE)
 					map.set_flow(cell, GridDefs.Flow.NONE)
+					# 在山上画回地面 = 把这块山体挖掉
+					carved_mountain = _carve_mountain(cell) or carved_mountain
 			elif layer == &"water":
 				if value != GridDefs.Water.NONE:
 					# 河床强制是沙地：画水的同时把陆地类型改写为沙
 					map.set_land(cell, GridDefs.Land.SAND)
 					map.set_water(cell, value)
+					carved_mountain = _carve_mountain(cell) or carved_mountain
 				else:
 					map.set_water(cell, GridDefs.Water.NONE)
 					map.set_flow(cell, GridDefs.Flow.NONE)  # 水没了，流向一并清掉
@@ -287,16 +296,86 @@ func _on_area_painted(area: Rect2i, erase: bool) -> void:
 				# 道路只能画在陆地上（水格跳过；擦除不受限）
 				if erase or map.get_water(cell) == GridDefs.Water.NONE:
 					map.set_road(cell, value)
+					if not erase:
+						carved_mountain = _carve_mountain(cell) or carved_mountain
 			elif layer == &"flow":
 				map.set_flow(cell, value)
 	tools.mark_dirty()
 	for view: GridView in grids:
 		view.sync_cell_area(area)
-	_queue_mini_sync(area, false)
+	if carved_mountain:
+		_queue_mountain_preview()
+	else:
+		_queue_mini_sync(area, false)
 	if erase:
 		print("[绘制] (%d,%d) %d×%d 擦除 %s -> %s" % [area.position.x, area.position.y, area.size.x, area.size.y, GridDefs.LAYER_NAMES.get(layer, layer), tools.value_name(layer, value)])
 	else:
 		print("[绘制] (%d,%d) %d×%d %s = %s" % [area.position.x, area.position.y, area.size.x, area.size.y, GridDefs.LAYER_NAMES.get(layer, layer), tools.value_name(layer, tools.brush_value)])
+
+
+## 山体遮罩：左键=画山、右键=清除；山脉格不可通行，但下面的陆地/道路数据不动。
+func _paint_mountains(area: Rect2i, erase: bool) -> void:
+	var value: int = 0 if erase else 1
+	for y in range(area.position.y, area.end.y):
+		for x in range(area.position.x, area.end.x):
+			var cell: Vector2i = Vector2i(x, y)
+			if not map.in_bounds(cell):
+				continue
+			# 水面不画山；擦除不限制
+			if not erase and map.get_water(cell) != GridDefs.Water.NONE:
+				continue
+			map.set_mountain(cell, value)
+	tools.mark_dirty()
+	for view: GridView in grids:
+		view.sync_cell_area(area)
+	_queue_mountain_preview()
+	print("[绘制] (%d,%d) %d×%d 山体 %s" % [
+		area.position.x, area.position.y, area.size.x, area.size.y,
+		"擦除" if erase else "绘制"])
+
+
+## 把一格山体挖掉；返回是否真的挖到了山体。
+func _carve_mountain(cell: Vector2i) -> bool:
+	if map.get_mountain(cell) <= 0:
+		return false
+	map.set_mountain(cell, 0)
+	return true
+
+
+## 高程笔刷：区域内每格直接写入选定整级高度，右键恢复 1 级。
+## 山体高度由最近山脚的基础高程派生，所以有山体时整张 45° 预览要按新基准重建；
+## 没有山体时只同步脏区，拖动大图也不卡。
+func _paint_elevation(area: Rect2i, erase: bool) -> void:
+	var level: int = 1 if erase else tools.brush_value
+	for y in range(area.position.y, area.end.y):
+		for x in range(area.position.x, area.end.x):
+			var cell: Vector2i = Vector2i(x, y)
+			if map.in_bounds(cell):
+				map.set_height(cell, float(level))
+	tools.mark_dirty()
+	for view: GridView in grids:
+		view.sync_cell_area(area)
+	if map.has_mountain():
+		_queue_mountain_preview()
+	else:
+		_queue_mini_sync(area, true)
+	print("[绘制] (%d,%d) %d×%d 高程 %s" % [
+		area.position.x, area.position.y, area.size.x, area.size.y,
+		"恢复 1 级" if erase else "= %d 级" % level])
+
+
+## 山体 footprint 变化会重算整张程序化高度场；小预览整图重建（每帧最多一次）。
+func _queue_mountain_preview() -> void:
+	if _mountain_preview_queued:
+		return
+	_mountain_preview_queued = true
+	_flush_mountain_preview.call_deferred()
+
+
+func _flush_mountain_preview() -> void:
+	_mountain_preview_queued = false
+	if preview_mini != null and preview_mini.visible:
+		_setup_mini_preview()
 
 
 ## 把小预览的脏区攒起来，每帧最多刷新一次：拖动笔刷时不会每个格子都重建纹理。
@@ -334,7 +413,10 @@ func _flush_mini_sync() -> void:
 ## 松手后按新的最高点重算一次整图取景；拖动过程中不缩放，避免镜头抖动。
 func _on_stroke_ended() -> void:
 	if preview_mini != null and preview_mini.visible:
+		preview_mini.flush_ground_mask()
 		preview_mini.fit_overview()
+	if game_preview != null and game_preview.visible:
+		game_preview.flush_ground_mask()
 
 
 # ---------- 物件 ----------
@@ -366,15 +448,26 @@ func _reload_asset_defs(announce: bool = false) -> void:
 ## 资源落笔：在笔刷区域中心放一个静态资源（右键=删除占地范围覆盖该格的物件）。
 ## 笔刷大小 >1 时按区域中心落点，与 GridView 的绿色预览框一致。
 func _paint_props(area: Rect2i, erase: bool) -> void:
-	if props == null:
+	if props == null or tools == null or tools.brush_layer != &"prop":
 		return
 	var half: int = int(area.size.x * 0.5)
 	var center: Vector2i = area.position + Vector2i(half, half)
 	if erase:
+		var idx: int = props.asset_index_at(center)
 		var removed: int = props.remove_at(center)
 		if removed > 0:
 			tools.mark_dirty()
-			_refresh_props()
+			_refresh_prop_views()
+			if removed == 1 and idx >= 0:
+				# 只移除这一张立牌；草垫遮罩留到松手后重算。
+				if preview_mini != null and preview_mini.visible:
+					preview_mini.remove_prop_preview(idx)
+				if game_preview != null and game_preview.visible:
+					game_preview.remove_prop_preview(idx)
+			else:
+				_refresh_props()
+				if game_preview != null and game_preview.visible:
+					game_preview.refresh_props()
 			print("[物件] 删除 %s（%d 个）" % [str(center), removed])
 		return
 	if tools.prop_asset_id == &"":
@@ -389,20 +482,27 @@ func _paint_asset(center: Vector2i) -> void:
 		push_warning("资源定义缺失: " + String(tools.prop_asset_id))
 		return
 	var rot: int = tools.prop_rotation
-	var fp: Vector2i = PropsData.rotated_footprint(def.footprint, rot)
+	var scale: int = tools.current_prop_scale()
+	var fp: Vector2i = PropsData.rotated_footprint(
+		Vector2i(def.footprint.x * scale, def.footprint.y * scale), rot)
 	var anchor: Vector2i = PropsData.anchor_for(fp, center)
-	if not _prop_area_valid(anchor, fp):
-		return
-	if props.add_asset(tools.prop_asset_id, anchor, map.grid_size, rot):
+	# 只校验地图边界与实例重叠；水面/山体等任何地形都允许摆放
+	if props.add_asset(tools.prop_asset_id, anchor, map.grid_size, rot, scale):
 		tools.mark_dirty()
-		_refresh_props()
-		print("[资源] 放置 %s @ %s（占地范围 %d×%d，方向 %s，阻挡 %d 格）" % [
-			def.display_name, str(anchor), fp.x, fp.y,
-			"竖向" if rot == 1 else "横向", def.blocking_count()])
+		# 拖动放置：只追加这一张立牌 + 增量草垫，不重建全部物件。
+		_refresh_prop_views()
+		var idx: int = props.count() - 1
+		if preview_mini != null and preview_mini.visible:
+			preview_mini.add_prop_preview(idx)
+		if game_preview != null and game_preview.visible:
+			game_preview.add_prop_preview(idx)
+		print("[资源] 放置 %s @ %s（占地范围 %d×%d，%d×，方向 %s，阻挡 %d 格）" % [
+			def.display_name, str(anchor), fp.x, fp.y, scale,
+			"竖向" if rot == 1 else "横向", props.blocking_cells_at(idx).size()])
 
 
 ## R 键：鼠标下有资源就在横向/竖向之间切换；否则只切换待放置方向（与方向按钮同一状态）。
-## 原地旋转绕占地中心，越界/压水/与其它实例重叠都会拒绝，避免建筑转半截插进别的格子。
+## 原地旋转绕占地中心；只拒绝越界和与其它实例重叠，水面/山体不影响。
 func _rotate_asset_at(cell: Vector2i) -> void:
 	if props == null:
 		return
@@ -414,13 +514,8 @@ func _rotate_asset_at(cell: Vector2i) -> void:
 	var showname: String = String(props.asset_id_at(idx))
 	if def != null:
 		showname = def.display_name
-	var anchor: Vector2i = props.next_rotation_anchor(idx)
-	var fp: Vector2i = props.next_rotation_footprint(idx)
-	if not _prop_area_valid(anchor, fp):
-		print("[资源] 不能旋转 %s：越界或压水" % showname)
-		return
 	if not props.can_rotate(idx, map.grid_size):
-		print("[资源] 不能旋转 %s：与已有物件重叠" % showname)
+		print("[资源] 不能旋转 %s：越界或与已有物件重叠" % showname)
 		return
 	_push_history()
 	if not props.rotate_instance(idx):
@@ -432,18 +527,6 @@ func _rotate_asset_at(cell: Vector2i) -> void:
 	print("[资源] 旋转 %s -> %s（占地 %d×%d，阻挡 %d 格）" % [
 		showname, "竖向（图片镜像）" if props.rotation_at(idx) == 1 else "横向",
 		new_fp.x, new_fp.y, props.blocking_cells_at(idx).size()])
-
-
-## 物件只能放在地图内、且不压水（浮在水上的树没有意义）
-func _prop_area_valid(cell: Vector2i, fp: Vector2i) -> bool:
-	for y in range(cell.y, cell.y + fp.y):
-		for x in range(cell.x, cell.x + fp.x):
-			var c: Vector2i = Vector2i(x, y)
-			if not map.in_bounds(c):
-				return false
-			if map.get_water(c) != GridDefs.Water.NONE:
-				return false
-	return true
 
 
 ## 只刷新编辑画布与计数（小预览全量 setup 时已经带上物件，避免重建两遍）
@@ -460,9 +543,70 @@ func _refresh_props() -> void:
 		preview_mini.refresh_props()
 
 
+# ---------- 桥（独立桥层，不经过静态资源） ----------
+
+func _on_bridge_committed(start: Vector2i, end: Vector2i, kind: int, erase: bool) -> void:
+	if bridges == null:
+		return
+	if erase:
+		if bridges.remove_at_cell(start) > 0:
+			tools.mark_dirty()
+			_refresh_bridge_views()
+			print("[桥] 删除包含 %s 的桥" % str(start))
+		return
+	if not _bridge_span_allowed(start, end):
+		print("[桥] 无效落桥：两个桥座必须各占一格陆地，桥身必须全部在水上；不能穿山/压物件/重复")
+		return
+	if not bridges.add_bridge(kind, start, end, map.grid_size):
+		print("[桥] 放置失败：斜线、越界或与已有桥重叠")
+		return
+	tools.mark_dirty()
+	last_edit_cell = end
+	_refresh_bridge_views()
+	print("[桥] 放置 %s 桥座 %s / %s，桥身 %d 格" % [
+		BridgesData.kind_name(kind), str(start), str(end),
+		BridgesData.span_cells(start, end).size() - 2])
+
+
+func _bridge_span_allowed(start: Vector2i, end: Vector2i) -> bool:
+	if map == null or bridges == null:
+		return false
+	if not BridgesData.is_straight_span(start, end):
+		return false
+	if not map.in_bounds(start) or not map.in_bounds(end):
+		return false
+	var cells: Array[Vector2i] = BridgesData.span_cells(start, end)
+	if cells.size() < 3:
+		return false
+	for idx in cells.size():
+		var cell: Vector2i = cells[idx]
+		if map.get_mountain(cell) > 0:
+			return false
+		var wet: bool = map.get_water(cell) != GridDefs.Water.NONE
+		if idx == 0 or idx == cells.size() - 1:
+			if wet:
+				return false
+		elif not wet:
+			return false
+		for i in props.count():
+			if props.footprint_at(i).has_point(cell):
+				return false
+	return not bridges.overlaps_span(start, end)
+
+
+func _refresh_bridge_views() -> void:
+	for view: GridView in grids:
+		view.queue_redraw()
+	if preview_mini != null and preview_mini.visible:
+		preview_mini.refresh_bridges()
+	if game_preview != null and game_preview.visible:
+		game_preview.refresh_bridges()
+
+
 func _on_brush_changed(layer: StringName, _value: int) -> void:
 	if layer == &"prop" and tools.prop_asset_id != &"":
-		grid_view.set_asset_preview(tools.prop_asset_id, tools.prop_rotation)
+		grid_view.set_asset_preview(tools.prop_asset_id, tools.prop_rotation,
+			tools.current_prop_scale())
 	else:
 		grid_view.set_asset_preview(&"")
 
@@ -470,7 +614,14 @@ func _on_brush_changed(layer: StringName, _value: int) -> void:
 ## 方向按钮/R 键改变待放置方向：ghost 立即换占地与掩码
 func _on_prop_rotation_changed(rot: int) -> void:
 	if tools.brush_layer == &"prop" and tools.prop_asset_id != &"":
-		grid_view.set_asset_preview(tools.prop_asset_id, rot)
+		grid_view.set_asset_preview(tools.prop_asset_id, rot, tools.current_prop_scale())
+
+
+## 植物倍率改变：落点预览立即变成放大后的占地框
+func _on_prop_scale_changed(_scale: int) -> void:
+	if tools.brush_layer == &"prop" and tools.prop_asset_id != &"":
+		grid_view.set_asset_preview(tools.prop_asset_id, tools.prop_rotation,
+			tools.current_prop_scale())
 
 
 func _on_props_clear_requested() -> void:
@@ -481,55 +632,6 @@ func _on_props_clear_requested() -> void:
 	tools.mark_dirty()
 	_refresh_props()
 	print("[物件] 已清除全部物件")
-
-
-## 地形笔刷：范围内按径向衰减抬升/压低/平滑（右键 = 压低）
-## 平滑读取的是落笔前的原值，避免同一笔里"边算边改"造成方向性拖影。
-## 展平是"设定值"不是雕刻：不走衰减，区域内每格直接写"高度"参数的目标值。
-func _sculpt_area(area: Rect2i, erase: bool) -> void:
-	var mode: StringName = &"lower" if erase else tools.terrain_mode
-	if mode == &"flatten":
-		for y in range(area.position.y, area.end.y):
-			for x in range(area.position.x, area.end.x):
-				var flat_cell: Vector2i = Vector2i(x, y)
-				if map.in_bounds(flat_cell):
-					map.set_height(flat_cell, tools.brush_height)
-		return
-	var strength: float = tools.terrain_strength
-	var center: Vector2 = Vector2(area.position) + Vector2(area.size) * 0.5
-	var radius: float = maxf(float(maxi(area.size.x, area.size.y)) * 0.5, 0.5)
-	var updates: Dictionary = {}
-	for y in range(area.position.y, area.end.y):
-		for x in range(area.position.x, area.end.x):
-			var cell: Vector2i = Vector2i(x, y)
-			if not map.in_bounds(cell):
-				continue
-			var dist: float = (Vector2(x + 0.5, y + 0.5) - center).length() / radius
-			var fall: float = clampf(1.0 - dist, 0.0, 1.0)
-			fall = fall * fall * (3.0 - 2.0 * fall)
-			if fall <= 0.001:
-				continue
-			var height: float = map.get_height(cell)
-			if mode == &"raise":
-				updates[cell] = height + strength * fall
-			elif mode == &"lower":
-				updates[cell] = height - strength * fall
-			else:
-				updates[cell] = lerpf(height, _neighbor_height(cell, height), clampf(strength * fall, 0.0, 1.0))
-	for cell: Vector2i in updates:
-		map.set_height(cell, updates[cell])
-
-
-## 3×3 邻域均值（中心权重 4，四邻各 1）
-func _neighbor_height(cell: Vector2i, own: float) -> float:
-	var total: float = own * 4.0
-	var count: int = 4
-	for offset: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
-		var neighbor: Vector2i = cell + offset
-		if map.in_bounds(neighbor):
-			total += map.get_height(neighbor)
-			count += 1
-	return total / float(count)
 
 
 ## 资源库“编辑”：打开模态导入页。Main.tscn 里只放一个实例，反复开关不重建。
@@ -549,10 +651,39 @@ func _on_import_view_closed() -> void:
 
 
 func _on_cell_hovered(cell: Vector2i) -> void:
+	var suffix: String = _brush_status()
 	if cell.x >= 0:
-		coord_label.text = "当前坐标(%d,%d)" % [cell.x, cell.y]
+		coord_label.text = "当前坐标(%d,%d)%s" % [cell.x, cell.y, suffix]
 	else:
-		coord_label.text = "当前坐标(-,-)"
+		coord_label.text = "当前坐标(-,-)%s" % suffix
+
+
+## 左下角坐标条后面附上当前笔刷，方便一眼确认是否真的退出了资源放置。
+func _brush_status() -> String:
+	if tools == null:
+		return ""
+	match tools.brush_layer:
+		&"prop":
+			var def: StaticAssetDef = props.asset(tools.prop_asset_id) if props != null else null
+			var label: String = " · 资源：%s" % (def.display_name if def != null else "未选中")
+			if def != null and def.category == &"tree":
+				label += "（%d×）" % tools.current_prop_scale()
+			return label
+		&"land":
+			return " · 陆地"
+		&"road":
+			return " · 道路"
+		&"bridge":
+			return " · 桥：%s（两个桥座 + 水面桥身）" % BridgesData.kind_name(tools.brush_value)
+		&"water":
+			return " · 水域"
+		&"flow":
+			return " · 流向"
+		&"mountain":
+			return " · 山体"
+		&"elevation":
+			return " · 高程：%d 级" % tools.brush_value
+	return ""
 
 
 # ---------- 地图与配置事件 ----------
@@ -563,12 +694,16 @@ func _on_map_resized(_size: Vector2i) -> void:
 	if dropped > 0:
 		tools.mark_dirty()
 		print("[物件] 尺寸缩小，丢弃 %d 个越界物件" % dropped)
+	var dropped_bridges: int = bridges.drop_out_of_bounds(map.grid_size)
+	if dropped_bridges > 0:
+		tools.mark_dirty()
+		print("[桥] 尺寸缩小，丢弃 %d 条越界桥" % dropped_bridges)
 	for view: GridView in grids:
 		view.set_map(map)
 	_refresh_prop_views()
 	_setup_mini_preview()
 	if render_mode:
-		game_preview.setup(map, rtool.settings, props,
+		game_preview.setup(map, rtool.settings, props, bridges,
 			game_preview.home_center, game_preview.current_ppm())
 
 
@@ -583,6 +718,7 @@ func _on_map_loaded(data: MapData) -> void:
 		tools.mark_dirty()
 		print("[地图] %d 个水下格子已迁移为沙地河床" % flooded)
 	props = _load_props(tools.current_path)
+	bridges = _load_bridges(tools.current_path)
 	last_edit_cell = Vector2i(-1, -1)
 	undo_stack.clear()
 	redo_stack.clear()
@@ -590,11 +726,12 @@ func _on_map_loaded(data: MapData) -> void:
 	for view: GridView in grids:
 		view.set_map(map)
 		view.set_props(props)
+		view.set_bridges(bridges)
 	_load_look(tools.current_path)
 	_refresh_prop_views()
 	_setup_mini_preview()
 	if render_mode:
-		game_preview.setup(map, rtool.settings, props,
+		game_preview.setup(map, rtool.settings, props, bridges,
 			game_preview.home_center, game_preview.current_ppm())
 
 
@@ -615,7 +752,8 @@ func _apply_look_to_views() -> void:
 
 # ---------- 渲染配置持久化（与地图同名的 .look.tres 边车） ----------
 
-## 边车路径：与地图同目录同名，后缀换成 .look.tres（first.tres -> first.look.tres）
+## 边车路径：与地图同目录同名，后缀换成 .look.tres
+## （maps/first/first.tres -> maps/first/first.look.tres）
 func _look_path(map_path: String) -> String:
 	if map_path.is_empty():
 		return ""
@@ -631,6 +769,13 @@ func _on_map_saved(path: String) -> void:
 			print("[物件] 已保存 %d 个: %s" % [props.count(), side])
 		else:
 			push_warning("物件保存失败(%s): %s" % [error_string(perr), side])
+	var bridge_side: String = BridgesData.sidecar_path(path)
+	if not bridge_side.is_empty():
+		var berr: Error = ResourceSaver.save(bridges, bridge_side)
+		if berr == OK:
+			print("[桥] 已保存 %d 条: %s" % [bridges.count(), bridge_side])
+		else:
+			push_warning("桥保存失败(%s): %s" % [error_string(berr), bridge_side])
 	var look_path: String = _look_path(path)
 	if look_path.is_empty():
 		return
@@ -668,11 +813,30 @@ func _load_props(map_path: String):
 		return data
 	loaded.set_asset_defs(asset_defs)
 	if loaded.sanitize():
-		print("[物件] 旧边车内置实例已清理: " + side)
+		print("[物件] 物件边车已升级/清理: " + side)
 	var dropped: int = loaded.drop_out_of_bounds(map.grid_size)
 	if dropped > 0:
 		push_warning("物件边车有 %d 个越界物件已丢弃: %s" % [dropped, side])
 	print("[物件] 已载入 %d 个: %s" % [loaded.count(), side])
+	return loaded
+
+
+## 桥层边车：与地图同名 .bridges.tres；缺失/损坏时返回空层。
+func _load_bridges(map_path: String):
+	var data = BridgesData.new()
+	var side: String = BridgesData.sidecar_path(map_path)
+	if side.is_empty() or not ResourceLoader.exists(side):
+		return data
+	var loaded = load(side)
+	if loaded == null or loaded.get_script() != BridgesData:
+		push_warning("桥边车不是有效资源: " + side)
+		return data
+	if loaded.sanitize():
+		print("[桥] 旧边车条目已清理: " + side)
+	var dropped: int = loaded.drop_out_of_bounds(map.grid_size)
+	if dropped > 0:
+		push_warning("桥边车有 %d 条越界桥已丢弃: %s" % [dropped, side])
+	print("[桥] 已载入 %d 条: %s" % [loaded.count(), side])
 	return loaded
 
 
@@ -689,7 +853,7 @@ func _push_history() -> void:
 
 
 func _snapshot_state() -> Dictionary:
-	return {"map": _snapshot_map(), "props": props.duplicate_data()}
+	return {"map": _snapshot_map(), "props": props.duplicate_data(), "bridges": bridges.duplicate_data()}
 
 
 func _snapshot_map() -> MapData:
@@ -700,6 +864,7 @@ func _snapshot_map() -> MapData:
 	snap.water = map.water.duplicate()
 	snap.flow = map.flow.duplicate()
 	snap.road = map.road.duplicate()
+	snap.mountain = map.mountain.duplicate()
 	snap.elevation = map.elevation.duplicate()
 	return snap
 
@@ -710,9 +875,12 @@ func _restore_state(snap: Dictionary) -> void:
 	if props != null and snap.has("props"):
 		props.restore_from(snap["props"])
 		_refresh_prop_views()
+	if bridges != null and snap.has("bridges"):
+		bridges.restore_from(snap["bridges"])
+		_refresh_bridge_views()
 	# 地图对象已原地换掉，当前可见的 45° 视图要按新数据重建
 	if render_mode:
-		game_preview.setup(map, rtool.settings, props, game_preview.home_center, game_preview.current_ppm())
+		game_preview.setup(map, rtool.settings, props, bridges, game_preview.home_center, game_preview.current_ppm())
 	else:
 		_setup_mini_preview()
 
@@ -724,6 +892,7 @@ func _restore_map(snap: MapData) -> void:
 	map.water = snap.water.duplicate()
 	map.flow = snap.flow.duplicate()
 	map.road = snap.road.duplicate()
+	map.mountain = snap.mountain.duplicate()
 	map.elevation = snap.elevation.duplicate()
 	tools.set_map(map)
 	for view: GridView in grids:
@@ -757,8 +926,12 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	if import_overlay.visible:
 		return   # 导入页打开时不响应用户在编辑器里的撤销/重做/R
 	if not key.ctrl_pressed:
-		# 编辑模式：R 旋转鼠标下的资源；没有资源就循环待放置方向。
+		# 编辑模式：Esc 强制退出资源放置；R 旋转鼠标下的资源；没有资源就循环待放置方向。
 		# 渲染模式的 R 是“回到初始视角”，由 GamePreview 自己处理。
+		if not render_mode and key.keycode == KEY_ESCAPE and tools.brush_layer == &"prop":
+			tools.exit_prop_mode()
+			get_viewport().set_input_as_handled()
+			return
 		if not render_mode and key.keycode == KEY_R:
 			_rotate_asset_at(grid_view.hover_cell())
 			get_viewport().set_input_as_handled()

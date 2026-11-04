@@ -9,6 +9,8 @@ extends Control
 
 const RUNTIME_SCRIPT: GDScript = preload("res://example/map_runtime.gd")
 const CARD_SCRIPT: GDScript = preload("res://example/actor_card.gd")
+const BRIDGE_SCRIPT: GDScript = preload("res://example/procedural_bridge.gd")
+const GridProj = preload("res://GridData/grid_projection.gd")
 
 const DEFAULT_PPM: float = 42.0
 
@@ -17,21 +19,37 @@ const DEFAULT_PPM: float = 42.0
 
 var runtime
 var props
+var bridges
 var home_center: Vector2 = Vector2.ZERO
 var preview_mode: bool = false   # true=编辑模式左上角的整图概览（只读）
 
 var _panning: bool = false
 var _time: float = 0.0
 var _height_scale: float = -1.0
+var _ground_mask_dirty: bool = false   # 删除树后草垫遮罩需要整张重算，拖拽期间先欠着
 
 
 func _ready() -> void:
 	atlas.yaw = deg_to_rad(135.0)
 	atlas.pitch = deg_to_rad(45.0)
 	atlas.set_zoom(DEFAULT_PPM)
+	_install_style_overlay()
 	visibility_changed.connect(_on_visibility_changed)
 	resized.connect(refresh_view)
 	set_process(visible)
+
+
+## 共享后处理层：只覆盖 45° 画面，Hint 在其上面。
+func _install_style_overlay() -> void:
+	var overlay: ColorRect = ColorRect.new()
+	overlay.name = "StyleOverlay"
+	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var mat: ShaderMaterial = ShaderMaterial.new()
+	mat.shader = load("res://RenderView/style_overlay.gdshader") as Shader
+	overlay.material = mat
+	add_child(overlay)
+	move_child(overlay, hint.get_index())
 
 
 func _on_visibility_changed() -> void:
@@ -70,7 +88,7 @@ func fit_overview() -> void:
 	var sp: float = sin(atlas.pitch)
 	var cp: float = cos(atlas.pitch)
 	# 地形最高点 + 最高立牌（屏幕格换算回世界高度）；资源立牌可能比地形高很多
-	var zmax: float = maxf((runtime.map.max_height() - 1.0) * runtime.look.height_scale, 0.4) \
+	var zmax: float = maxf((runtime.height_max() - 1.0) * runtime.look.height_scale, 0.4) \
 		+ _max_actor_height() / cp + 0.5
 	var u_min: float = INF
 	var u_max: float = -INF
@@ -105,8 +123,10 @@ func refresh_view() -> void:
 ## 重建 45° 视图（切换到渲染模式的大画面，或编辑模式左上角的整图概览）。
 ## center/ppm 只对大画面有意义；预览模式随后会调用 fit_overview() 重新取景。
 ## with_gameplay 固定 false：45° 视图只用地表外观，不建 A*。
-func setup(map_data: MapData, look: RenderSettings, props_data, center: Vector2, ppm: float = 0.0) -> void:
+func setup(map_data: MapData, look: RenderSettings, props_data, bridges_data,
+		center: Vector2, ppm: float = 0.0) -> void:
 	props = props_data
+	bridges = bridges_data
 	runtime = RUNTIME_SCRIPT.new()
 	runtime.setup(map_data, look, false)
 	_height_scale = runtime.look.height_scale
@@ -116,13 +136,15 @@ func setup(map_data: MapData, look: RenderSettings, props_data, center: Vector2,
 	home_center = center
 	atlas.set_center_cell(center)
 	_spawn_props()
+	_spawn_bridges()
 	_update_hint()
 	_time = 0.0
 	atlas.refresh_view()
 	if preview_mode:
 		fit_overview.call_deferred()
-	print("[预览] 45° 中心 %s ppm %.2f 视图 %s 物件 %d" % [
-		str(center), atlas.ppm, str(atlas.size), props.count() if props != null else 0])
+	print("[预览] 45° 中心 %s ppm %.2f 视图 %s 物件 %d 桥 %d" % [
+		str(center), atlas.ppm, str(atlas.size),
+		props.count() if props != null else 0, bridges.count() if bridges != null else 0])
 
 
 ## 地形/水域/道路笔刷后的区域增量刷新：只更新受影响的纹理与立牌脚底。
@@ -132,7 +154,27 @@ func refresh_terrain(area: Rect2i, elev_changed: bool) -> void:
 	runtime.sync_area(area, elev_changed)
 	if elev_changed:
 		_reposition_props(area)
+	if bridges != null and bridges.count() > 0:
+		refresh_bridges()
 	atlas.refresh_view()
+
+
+## 脚底格地形色 → 很淡的环境反射色（均值归一化，避免整体压暗）。
+func _ground_tint_for(cell: Vector2i) -> Color:
+	if runtime == null or runtime.look == null or not runtime.map.in_bounds(cell):
+		return Color.WHITE
+	var c: Color = Color.WHITE
+	var water: int = runtime.map.get_water(cell)
+	if water != GridDefs.Water.NONE:
+		c = runtime.look.water_colors.get(water, Color.WHITE)
+	else:
+		c = runtime.look.land_colors.get(runtime.map.get_land(cell), Color.WHITE)
+	var mean: float = (c.r + c.g + c.b) / 3.0
+	var strength: float = 0.30
+	return Color(
+		clampf(1.0 + (c.r - mean) * strength, 0.88, 1.12),
+		clampf(1.0 + (c.g - mean) * strength, 0.88, 1.12),
+		clampf(1.0 + (c.b - mean) * strength, 0.88, 1.12))
 
 
 ## 物件增删/清空后重建全部立牌（数量少，整批重建比增量维护简单可靠）。
@@ -140,6 +182,7 @@ func refresh_props() -> void:
 	if runtime == null:
 		return
 	_spawn_props()
+	_spawn_bridges()
 	_update_hint()
 
 
@@ -153,6 +196,7 @@ func apply_look(settings: RenderSettings) -> void:
 	if not is_equal_approx(old_scale, settings.height_scale):
 		_height_scale = settings.height_scale
 		_rebase_props()
+		refresh_bridges()
 		if preview_mode:
 			fit_overview.call_deferred()
 
@@ -202,40 +246,134 @@ func _max_actor_height() -> float:
 		var def: StaticAssetDef = props.asset(props.asset_id_at(i))
 		if def == null:
 			continue
-		var top: float = def.art_size.y * (1.0 + maxf(def.art_lift.x, def.art_lift.y)) \
+		var aspect: float = props.variation_aspect_at(i) if props.is_plant(i) else 1.0
+		var indiv: float = props.variation_scale_at(i) if props.is_plant(i) else 1.0
+		var top: float = def.art_size.y * float(props.multiplier_at(i)) \
+			* props.size_bias_at(i) * indiv / sqrt(aspect) \
+			* (1.0 + maxf(def.art_lift.x, def.art_lift.y)) \
 			- def.art_offset.y
 		tallest = maxf(tallest, top)
 	return tallest
 
 
 func _spawn_props() -> void:
+	if runtime != null:
+		# 树下草垫遮罩先于立牌重建：树脚落地时地表已经长好同色草
+		runtime.set_ground_props(props)
+	_ground_mask_dirty = false
 	for child: Node in atlas.actors.get_children():
 		atlas.actors.remove_child(child)
 		child.queue_free()
 	if props == null or runtime == null:
 		return
 	for i in props.count():
-		var fp: Rect2i = props.footprint_at(i)
-		var center: Vector2 = Vector2(props.cell_at(i)) + Vector2(fp.size) * 0.5
-		var ground: Vector2i = Vector2i(floori(center.x), floori(center.y))
-		var z: float = runtime.terrain_z(ground)
-		var def: StaticAssetDef = props.asset(props.asset_id_at(i))
-		if def == null:
+		_spawn_prop_card(i)
+
+
+## 拖动放置时只追加这一张立牌，不重建全部物件节点。
+func add_prop_preview(index: int) -> void:
+	if runtime == null or props == null:
+		return
+	if index < 0 or index >= props.count():
+		return
+	runtime.add_ground_prop(props, index)
+	_spawn_prop_card(index)
+	_update_hint()
+
+
+## 右键拖动删除：只移除对应立牌并把后面的索引前移；草垫遮罩留到松手后重算。
+func remove_prop_preview(index: int) -> void:
+	if runtime == null or props == null or index < 0:
+		return
+	var found: bool = false
+	for child: Node in atlas.actors.get_children():
+		if not child.has_meta("prop_index"):
 			continue
-		var vertical: bool = props.rotation_at(i) == 1
-		var card = CARD_SCRIPT.new()
-		var tex: Texture2D = StaticAssetStore.texture_for(def)
-		if tex != null:
-			card.setup_sprite(atlas, def.art_size, 0.0, tex, def.art_lift, vertical)
-			var offset: Vector2 = def.art_offset
-			if vertical:
-				offset.x = -offset.x   # 镜像后偏移也绕中心翻到另一侧
-			card.art_offset = offset
-		else:
-			# PNG 缺失时退回程序化建筑占位，至少能看到占地位置
-			card.setup(atlas, 4, def.art_size, 0.0)
-		atlas.actors.add_child(card)
-		card.place(center, z)
+		var ci: int = int(child.get_meta("prop_index"))
+		if ci == index:
+			atlas.actors.remove_child(child)
+			child.queue_free()
+			found = true
+		elif ci > index:
+			child.set_meta("prop_index", ci - 1)
+	if not found:
+		refresh_props()
+		return
+	_ground_mask_dirty = true
+	_update_hint()
+
+
+## 拖拽删除结束后重算一次草垫遮罩（比逐格全量重算少一个数量级）。
+func flush_ground_mask() -> void:
+	if not _ground_mask_dirty or runtime == null:
+		return
+	runtime.set_ground_props(props)
+	_ground_mask_dirty = false
+
+
+func _spawn_prop_card(i: int) -> void:
+	var fp: Rect2i = props.footprint_at(i)
+	var center: Vector2 = Vector2(props.cell_at(i)) + Vector2(fp.size) * 0.5
+	var ground: Vector2i = Vector2i(floori(center.x), floori(center.y))
+	var z: float = runtime.terrain_z(ground)
+	var def: StaticAssetDef = props.asset(props.asset_id_at(i))
+	if def == null:
+		return
+	var mult: int = props.multiplier_at(i)
+	var bias: float = props.size_bias_at(i)
+	var plant: bool = def.category == &"tree"
+	var aspect: float = props.variation_aspect_at(i) if plant else 1.0
+	var tint: Color = props.variation_tint_at(i) if plant else Color.WHITE
+	var crown: Vector2 = props.variation_crown_at(i) if plant else Vector2.ZERO
+	var mirror: bool = props.variation_flip_at(i)
+	var indiv: float = props.variation_scale_at(i) if plant else 1.0
+	var art_size: Vector2 = def.art_size * float(mult) * bias * indiv
+	art_size.x *= sqrt(aspect)
+	art_size.y /= sqrt(aspect)
+	var vertical: bool = props.rotation_at(i) == 1
+	var flip: bool = vertical != mirror
+	var card = CARD_SCRIPT.new()
+	var tex: Texture2D = StaticAssetStore.texture_for(def)
+	if tex != null:
+		card.setup_sprite(atlas, art_size, 0.0, tex, def.art_lift, flip)
+		var offset: Vector2 = def.art_offset
+		if flip:
+			offset.x = -offset.x   # 镜像后偏移也绕中心翻到另一侧
+		card.art_offset = offset
+	else:
+		# PNG 缺失时退回程序化建筑占位，至少能看到占地位置
+		card.setup(atlas, 4, art_size, 0.0)
+	card.set_meta("prop_index", i)
+	atlas.actors.add_child(card)
+	card.set_ground_tint(_ground_tint_for(ground))
+	card.set_soft_grass_base(1.0 if plant else 0.0)
+	card.set_variation_tint(tint)
+	card.set_crown_variation(crown.x, crown.y)
+	card.place(center + props.visual_offset_at(i), z)
+
+
+
+func _spawn_bridges() -> void:
+	if bridges == null or runtime == null:
+		return
+	for i in bridges.count():
+		var bridge: Node2D = BRIDGE_SCRIPT.new()
+		bridge.set_meta("is_bridge", true)
+		atlas.actors.add_child(bridge)
+		bridge.setup(atlas, runtime, bridges.kind_at(i),
+			bridges.start_at(i), bridges.end_at(i))
+
+
+## 桥增删/地形改动后只重建桥，不重建建筑立牌。
+func refresh_bridges() -> void:
+	if atlas == null or runtime == null:
+		return
+	for child: Node in atlas.actors.get_children():
+		if child.has_meta("is_bridge"):
+			atlas.actors.remove_child(child)
+			child.queue_free()
+	_spawn_bridges()
+	atlas.refresh_view()
 
 
 func _update_hint() -> void:
@@ -245,8 +383,8 @@ func _update_hint() -> void:
 	var map_name: String = runtime.map.resource_path.get_file()
 	if map_name.is_empty():
 		map_name = "未保存地图"
-	hint.text = "45° 游戏视图 · %s · 物件 %d · 滚轮缩放 / 右键拖动 / G 格线 / R 回到初始视角" % [
-		map_name, props.count() if props != null else 0]
+	hint.text = "45° 游戏视图 · %s · 物件 %d · 桥 %d · 滚轮缩放 / 右键拖动 / G 格线 / R 回到初始视角" % [
+		map_name, props.count() if props != null else 0, bridges.count() if bridges != null else 0]
 
 
 # ---------- 动画与输入 ----------

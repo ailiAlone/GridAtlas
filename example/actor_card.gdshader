@@ -46,7 +46,8 @@ float elev_field_at(vec2 p) {
 float occlusion(vec2 base_cell, float world_z) {
 	float tanp = tan(u_pitch);
 	float occl = 0.0;
-	for (int i = 1; i <= 10; i++) {
+	// 20 步 × 0.55 = 11 格：远处的山脊也能挡住立牌，不会在 5.5 格处截断
+	for (int i = 1; i <= 20; i++) {
 		float d = float(i) * 0.55;
 		vec2 p = base_cell + u_view_dir * d;
 		float tz = max(elev_field_at(p) - 1.0, 0.0) * u_height_scale;

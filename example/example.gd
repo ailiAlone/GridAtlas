@@ -6,7 +6,7 @@ extends Control
 ## 运行：godot res://example/example.tscn
 ## 截图：加 --shot（自动选一段路做演示，存到 %TEMP%/gridatlas_shots/example.png）
 
-const MAP_PATH: String = "res://GridData/maps/second.tres"
+const MAP_PATH: String = "res://GridData/maps/first/first.tres"
 const RUNTIME_SCRIPT: GDScript = preload("res://example/map_runtime.gd")
 const MIN_ZOOM: float = 0.35
 const MAX_ZOOM: float = 12.0

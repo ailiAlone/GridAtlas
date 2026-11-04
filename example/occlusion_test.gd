@@ -94,7 +94,7 @@ func _occl(cell: Vector2, world_z: float) -> float:
 	var dir: Vector2 = -atlas.forward_axis()
 	var tanp: float = tan(atlas.pitch)
 	var occ: float = 0.0
-	for i in range(1, 11):
+	for i in range(1, 21):
 		var d: float = float(i) * 0.55
 		var p: Vector2 = cell + dir * d
 		var ci: Vector2i = Vector2i(floori(p.x), floori(p.y))
@@ -109,7 +109,7 @@ func _print_check(ppos: Vector2, pz: float) -> void:
 		_occl(ppos, pz), _occl(ppos, pz + head),
 		lerpf(1.0, 0.38, _occl(ppos, pz + head)) * 100.0])
 	for i in occluders.size():
-		var card: ColorRect = occluders[i]
+		var card = occluders[i]
 		var cell: Vector2i = Vector2i(floori(card.base_cell.x), floori(card.base_cell.y))
 		var top: float = card.art_size.y / cos(atlas.pitch)
 		print("[遮挡] 立牌%d %s 脚 occ=%.2f 顶 occ=%.2f" % [
