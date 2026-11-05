@@ -5,10 +5,12 @@
 # Local agent/session metadata
 /.zcode/
 
-# Local art assets (Tiny Swords license forbids redistributing raw files)
+# 本地产物不入库：Assets/（美术原图 + 资源定义）与 maps/（编辑器产出的地图）
+# 两个目录本身用 .gitkeep 占位保留，换机/克隆后需要自行回填内容
 /Assets/*
-# 项目自己的资源定义/脚本跟资源放在一起，仍纳入版本管理（不含美术原图）
-!/Assets/static_assets/
+!/Assets/.gitkeep
+/maps/*
+!/maps/.gitkeep
 
 __pycache__/
 *.pyc
