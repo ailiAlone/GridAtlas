@@ -9,6 +9,12 @@
 # 两个目录本身用 .gitkeep 占位保留，换机/克隆后需要自行回填内容
 /Assets/*
 !/Assets/.gitkeep
+# 例外：资产系统的运行时脚本是代码不是美术资源，必须进版本库；
+# 同目录的 catalog.tres / defs/*.tres 仍然排除（保存着手工调好的 art_size/lift/offset）
+!/Assets/static_assets/
+/Assets/static_assets/*
+!/Assets/static_assets/*.gd
+!/Assets/static_assets/*.uid
 /maps/*
 !/maps/.gitkeep
 

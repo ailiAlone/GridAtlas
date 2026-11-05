@@ -50,21 +50,3 @@ static func art_rect(foot: Vector2, art_size: Vector2, art_offset: Vector2,
 	var top: float = -art_size.y * (1.0 + maxf(lift.x, lift.y))
 	return Rect2(foot + art_offset + Vector2(-art_size.x * 0.5, top),
 		Vector2(art_size.x, art_size.y + span))
-
-
-## 立牌四角（单位：格，未缩放/未平移）。顺序：左上、右上、右下、左下。
-## 与 actor_sprite.gdshader 的剪切四边形同一套：
-## 左/右两侧各抬升 lift.x / lift.y，图片本身仍是原比例。
-static func art_quad(foot: Vector2, art_size: Vector2, art_offset: Vector2,
-		lift: Vector2) -> PackedVector2Array:
-	var h: float = art_size.y
-	var w: float = art_size.x
-	var center: Vector2 = foot + art_offset
-	var l_left: float = -lift.x * h
-	var l_right: float = -lift.y * h
-	return PackedVector2Array([
-		Vector2(center.x - w * 0.5, center.y - h + l_left),
-		Vector2(center.x + w * 0.5, center.y - h + l_right),
-		Vector2(center.x + w * 0.5, center.y + l_right),
-		Vector2(center.x - w * 0.5, center.y + l_left),
-	])
