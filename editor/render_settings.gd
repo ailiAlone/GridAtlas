@@ -91,9 +91,10 @@ extends Resource
 @export var road_width: float = 0.5
 @export var road_softness: float = 0.06
 @export var road_texture: float = 0.24
-@export var road_round: float = 0.26    # 转弯/路角的圆角半径（格）
-@export var road_bend: float = 0.14     # 直路蛇行幅度（格，峰-峰的一半）
-@export var road_blend: float = 0.7   # 不同路型交界处的交叉过渡宽度（格）
+@export var road_round: float = 0.38    # 转弯/路角的圆角半径（格）
+@export var road_bend: float = 0.28    # 直路蛇行幅度（格，峰-峰的一半）
+@export var road_blend: float = 1.6   # 不同路型交界处的交叉过渡半宽（格）
+@export var road_grass: float = 0.7   # 路缘草的浓度（0=干净路边，1=草漫上来）
 
 # ---------- 高程光照 ----------
 

@@ -456,14 +456,14 @@ text = "路弯圆角"
 custom_minimum_size = Vector2(150, 20)
 layout_mode = 2
 size_flags_horizontal = 3
-max_value = 0.4
+max_value = 0.5
 step = 0.01
-value = 0.26
+value = 0.38
 
 [node name="Value" type="Label" parent="PanelRoad/VBoxContainer/Rows/road_round"]
 custom_minimum_size = Vector2(42, 0)
 layout_mode = 2
-text = "0.26"
+text = "0.38"
 horizontal_alignment = 2
 
 [node name="road_bend" type="HBoxContainer" parent="PanelRoad/VBoxContainer/Rows"]
@@ -478,14 +478,36 @@ text = "直路微弯"
 custom_minimum_size = Vector2(150, 20)
 layout_mode = 2
 size_flags_horizontal = 3
-max_value = 0.18
+max_value = 0.45
 step = 0.01
-value = 0.14
+value = 0.28
 
 [node name="Value" type="Label" parent="PanelRoad/VBoxContainer/Rows/road_bend"]
 custom_minimum_size = Vector2(42, 0)
 layout_mode = 2
-text = "0.14"
+text = "0.28"
+horizontal_alignment = 2
+
+[node name="road_grass" type="HBoxContainer" parent="PanelRoad/VBoxContainer/Rows"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="PanelRoad/VBoxContainer/Rows/road_grass"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "路缘草"
+
+[node name="Slider" type="HSlider" parent="PanelRoad/VBoxContainer/Rows/road_grass"]
+custom_minimum_size = Vector2(150, 20)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 1.0
+step = 0.05
+value = 0.7
+
+[node name="Value" type="Label" parent="PanelRoad/VBoxContainer/Rows/road_grass"]
+custom_minimum_size = Vector2(42, 0)
+layout_mode = 2
+text = "0.70"
 horizontal_alignment = 2
 
 [node name="road_blend" type="HBoxContainer" parent="PanelRoad/VBoxContainer/Rows"]
@@ -500,14 +522,14 @@ text = "路型过渡"
 custom_minimum_size = Vector2(150, 20)
 layout_mode = 2
 size_flags_horizontal = 3
-max_value = 0.9
-step = 0.02
-value = 0.7
+max_value = 3.0
+step = 0.05
+value = 1.6
 
 [node name="Value" type="Label" parent="PanelRoad/VBoxContainer/Rows/road_blend"]
 custom_minimum_size = Vector2(42, 0)
 layout_mode = 2
-text = "0.70"
+text = "1.60"
 horizontal_alignment = 2
 
 [node name="PanelElev" type="PanelContainer" parent="." unique_id=669838653]

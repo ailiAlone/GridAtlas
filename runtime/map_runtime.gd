@@ -28,7 +28,7 @@ const SCALAR_UNIFORMS: Array[StringName] = [
 	&"tide_frequency", &"tide_amplitude",
 	&"ripple_frequency", &"ripple_speed", &"ripple_strength", &"flow_speed",
 	&"foam_width", &"foam_strength",
-	&"road_width", &"road_softness", &"road_texture", &"road_round", &"road_bend", &"road_blend",
+	&"road_width", &"road_softness", &"road_texture", &"road_round", &"road_bend", &"road_blend", &"road_grass",
 	&"elevation_bright", &"elevation_shadow", &"elevation_rim", &"elevation_shadow_width",
 	&"rock_slope_low", &"rock_slope_high", &"snow_line_ratio", &"snow_line_min",
 	&"light_azimuth", &"light_elevation",

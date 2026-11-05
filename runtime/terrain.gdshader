@@ -59,9 +59,10 @@ uniform float u_foam_strength = 0.65;
 uniform float u_road_width = 0.5;
 uniform float u_road_softness = 0.06;
 uniform float u_road_texture = 0.24;
-uniform float u_road_round = 0.26;   // 转弯/路角的圆角半径（格）
-uniform float u_road_bend = 0.14;    // 直路蛇行幅度（格，峰-峰的一半）
-uniform float u_road_blend = 0.7;   // 土路/石子路/石砖路交界处的交叉过渡宽度（格）
+uniform float u_road_round = 0.38;   // 转弯/路角的圆角半径（格）
+uniform float u_road_bend = 0.28;    // 直路蛇行幅度（格，峰-峰的一半）
+uniform float u_road_blend = 1.6;   // 土路/石子路/石砖路交界处的交叉过渡半宽（格）
+uniform float u_road_grass = 0.7;   // 路缘草的浓度（0=干净的路边，1=草漫上来）
 // ---- 高程 ----
 uniform float u_elev_bright = 0.045;
 uniform float u_elev_shadow = 0.16;
@@ -436,14 +437,118 @@ float rect_dist(vec2 p, vec2 c) {
 	return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0);
 }
 
-// 凸角圆角系数：把内缩后的方角换成半径 rr 的弧，弧心在 (inset+rr, inset+rr)。
-// 弧与两条内缩边相切，所以必须在角方格 [0, inset+rr]² 内才削 —— 否则会削到
-// 直边中段，把整格切成碎边。返回值 1=保留，0=削掉。
-float convex_round(vec2 u, float inset, float rr, float e) {
-	vec2 c = vec2(inset + rr);
-	float keep = 1.0 - smoothstep(rr - e, rr + e, length(u - c));
-	vec2 win = step(u, c);   // u <= c 的分量为 1
-	return mix(1.0, keep, win.x * win.y);
+// 道路区域的距离场（3×3 邻域所有道路格的并集）：d0 < 0 在路内、> 0 在路外。
+// 关键点是这个场在任何格子上都能求值（草格也算），路缘因此可以越过格界，
+// 而不是像"每格画自己那一块"那样被格界裁成直线。
+// 顺带记录最近道路格（取路型用）与最近的另一种路型（路型过渡用）。
+struct RoadField {
+	float d0;     // 到道路区域边界的距离（负 = 路内）
+	float id0;    // 最近道路格的路型
+	vec2 cell0;
+	float d0c;    // 到最近"同型格"的矩形距离（路型过渡用）
+	float d1;     // 到最近"另一种路型格"的矩形距离
+	float id1;
+	vec2 cell1;
+};
+
+// 线段距离（轴对齐，用作道路边界）
+float seg_dist(vec2 p, vec2 a, vec2 b) {
+	vec2 ab = b - a;
+	vec2 ap = p - a;
+	float t = clamp(dot(ap, ab) / max(dot(ab, ab), 1e-6), 0.0, 1.0);
+	return length(ap - ab * t);
+}
+
+// 3×3 路型表：[col][row] = 格 (dc.x + col - 1, dc.y + row - 1)
+mat3 road_ids_3x3(vec2 dc) {
+	mat3 m;
+	for (int j = -1; j <= 1; j++) {
+		for (int i = -1; i <= 1; i++) {
+			m[i + 1][j + 1] = floor(cell_data(dc + vec2(float(i), float(j))).b * 255.0 + 0.5);
+		}
+	}
+	return m;
+}
+
+float road_id_at(mat3 ids, int i, int j) {
+	if (i < -1 || i > 1 || j < -1 || j > 1) { return 0.0; }
+	return ids[i + 1][j + 1];
+}
+
+// 到道路区域边界的有符号距离（负 = 路内）。
+// 边界就是"路格与非路格共享的那些格边"，直接量点到这些线段的距离：
+// 只对矩形做 min 会在相邻格的公共边上退化成 0（内部接缝），每格都塌一次；
+// 量边界线段则处处精确，路宽、直段、拐角都不会有 1 格周期的串珠。
+float road_signed_dist(vec2 p, vec2 dc, mat3 ids) {
+	float best = 64.0;
+	for (int j = -1; j <= 1; j++) {
+		for (int i = -1; i <= 1; i++) {
+			if (ids[i + 1][j + 1] < 0.5) { continue; }
+			vec2 c = dc + vec2(float(i), float(j));
+			if (road_id_at(ids, i - 1, j) < 0.5)
+				best = min(best, seg_dist(p, vec2(c.x, c.y), vec2(c.x, c.y + 1.0)));
+			if (road_id_at(ids, i + 1, j) < 0.5)
+				best = min(best, seg_dist(p, vec2(c.x + 1.0, c.y), vec2(c.x + 1.0, c.y + 1.0)));
+			if (road_id_at(ids, i, j - 1) < 0.5)
+				best = min(best, seg_dist(p, vec2(c.x, c.y), vec2(c.x + 1.0, c.y)));
+			if (road_id_at(ids, i, j + 1) < 0.5)
+				best = min(best, seg_dist(p, vec2(c.x, c.y + 1.0), vec2(c.x + 1.0, c.y + 1.0)));
+		}
+	}
+	best = min(best, 2.0);
+	float inside = floor(cell_data(floor(p)).b * 255.0 + 0.5);
+	return inside > 0.5 ? -best : best;
+}
+
+RoadField road_field(vec2 p, vec2 dc, mat3 ids) {
+	RoadField f;
+	f.d0 = 0.0; f.id0 = 0.0; f.cell0 = dc; f.d0c = 64.0;
+	f.d1 = 64.0; f.id1 = 0.0; f.cell1 = dc;
+	float drawn = 64.0;   // 到最近道路格的距离（选 id/格用）
+	for (int j = -1; j <= 1; j++) {
+		for (int i = -1; i <= 1; i++) {
+			float id = ids[i + 1][j + 1];
+			if (id < 0.5) { continue; }
+			vec2 c = dc + vec2(float(i), float(j));
+			float d = rect_dist(p, c + vec2(0.5));
+			if (d < drawn) {
+				// 被顶替的最近格若路型不同，降级成路型过渡的候选
+				if (f.id0 > 0.5 && abs(f.id0 - id) > 0.5 && drawn < f.d1) {
+					f.d1 = drawn; f.id1 = f.id0; f.cell1 = f.cell0;
+				}
+				drawn = d; f.id0 = id; f.cell0 = c;
+			} else if (abs(id - f.id0) > 0.5 && d < f.d1) {
+				f.d1 = d; f.id1 = id; f.cell1 = c;
+			}
+		}
+	}
+	f.d0c = drawn;
+	f.d0 = road_signed_dist(p, dc, ids);
+	return f;
+}
+
+// 道路蛇行：低频域扭曲，整条路（直段与弯道一起）缓慢摆动。
+// 与"给距离值加噪声"不同，它改的是采样位置 —— 边线的位置和走向都会变，
+// 长直段才会真的拐出 S 形，而不是一条宽度在抖的直线。
+vec2 road_warp(vec2 cf) {
+	vec2 w = (vec2(fbm(cf * 0.075 + vec2(1.7, 9.2)), fbm(cf * 0.075 + vec2(7.4, 3.1))) - 0.5) * 1.30
+		+ (vec2(fbm(cf * 0.210 + vec2(4.8, 2.6)), fbm(cf * 0.210 + vec2(11.3, 6.7))) - 0.5) * 0.70;
+	return w * u_road_bend;
+}
+
+// 路缘噪声：多个尺度的分形起伏 + 成簇的草啃缺口。
+// 只有慢波会读成"一条被柔化的直线"，必须带上 1 格以下的高频毛边，
+// 边界才像被草一点点吃出来的，而不是画笔画的一条光滑曲线。
+float road_edge_noise(vec2 cf) {
+	float n = 0.0;
+	n += (vnoise(cf * 0.18 + vec2(3.3, 8.1)) - 0.5) * 0.080;  // 约 5.5 格的大起伏
+	n += (vnoise(cf * 0.40 + vec2(1.2, 4.7)) - 0.5) * 0.090;  // 约 2.5 格
+	n += (vnoise(cf * 1.35 + vec2(7.7, 2.4)) - 0.5) * 0.045;  // 约 0.75 格
+	n += (vnoise(cf * 3.10 + vec2(2.6, 5.9)) - 0.5) * 0.026;  // 约 0.32 格
+	n += (vnoise(cf * 7.40 + vec2(6.1, 9.4)) - 0.5) * 0.014;  // 约 0.14 格毛边
+	// 单侧缺口：成簇、只往里啃，偶尔凹进一大块，破掉"等宽带子"的读感
+	n += smoothstep(0.60, 0.86, vnoise(cf * 1.55 + vec2(1.9, 6.3))) * 0.11;
+	return n;
 }
 
 // 定向波列：正弦相位 + 两级噪声扭曲（否则是完美平行的直线条纹，很假）
@@ -553,14 +658,21 @@ vec3 road_surface(float road_id, vec2 cf, vec2 dcell) {
 		gcol *= 0.94 + 0.12 * vnoise(cf * 9.0);
 		return mix(gcol * 0.50, gcol, seam * (0.55 + u_road_texture * 1.2));
 	}
-	// ---- 土路：沿走向拉长的车辙 ----
+	// ---- 土路：沿走向拉长的细纹 + 干湿斑 + 碎石点 ----
 	float ew = (cE || cW) ? 1.0 : 0.0;
 	float ns = (cN || cS) ? 1.0 : 0.0;
 	float run_t = ew / max(ew + ns, 1.0);
 	vec2 suv = mix(vec2(cf.x * 2.4, cf.y * 9.0), vec2(cf.x * 9.0, cf.y * 2.4), run_t);
 	float grain = vnoise(cf * 9.0) * 0.6 + vnoise(cf * 3.5 + vec2(2.0, 6.0)) * 0.4;
 	grain = mix(grain, vnoise(suv), 0.55);
-	rcol *= 1.0 - u_road_texture * 0.5 + u_road_texture * grain;
+	// 大块干湿斑：土路不是一块均匀色板
+	float damp = fbm(cf * 0.85 + vec2(7.1, 3.4));
+	// 碎石/土块：暗点 + 少量亮点。阈值化才有颗粒感，平滑噪声只会糊成一片
+	float peb = smoothstep(0.76, 0.92, vnoise(cf * 30.0 + vec2(3.9, 8.2)));
+	float spec = smoothstep(0.84, 0.96, vnoise(cf * 38.0 + vec2(6.7, 2.5)));
+	rcol *= 1.0 - u_road_texture * 0.50 + u_road_texture * grain;
+	rcol *= 0.95 + (damp - 0.5) * 0.18;
+	rcol *= 1.0 - peb * 0.06 + spec * 0.04;
 	return rcol;
 }
 
@@ -973,136 +1085,105 @@ vec3 shade_surface(vec2 cf) {
 		col = mix(col, water, clamp(waterness, 0.0, 1.0));
 	}
 
-	// ---- 7) 道路：按"到道路区域边界的内缩距离"绘制 ----
-	// 以前是每格中心画一条固定宽度的带：单格路好看，但两格宽的路会在两列之间
-	// 留缝（每行补丁之间 0.4 格的小洞，连成一串绿方块）。现在把道路格集合
-	// 当成一个区域，取到最近非道路格的距离，按内缩量裁边：
-	// 任意宽度（1/2/3 格）、任意形状（直路/丁字/十字/广场）都自然连续，
-	// 外凸角自动得到圆角，路宽也只由数据决定。
+	// ---- 7) 道路：连续距离场 + 等值线定边 ----
+	// 旧实现"每个路格只画自己那一格"：路缘最多从格界往里缩，向外的一侧被格子
+	// 裁掉一半，所以长直段永远笔直、转角永远是 90° 折角。现在把 3×3 邻域的
+	// 路格并成一个区域求有符号距离，场在草格上照样有值 —— 路缘可以越界外鼓、
+	// 也可以被草往里啃，位置不再由格界决定。
+	// 角部不做特殊补丁：对距离场做 5 点平均，凸角被磨成圆弧、凹角被填成圆角，
+	// 直段因对称而位置不变（圆头补丁那种在内侧鼓凸包的问题也就不存在了）。
 	vec2 dcell = floor(cf);
-	vec2 dinc = cf - dcell;
-	float road_id = cell_data(dcell).b * 255.0;
-	if (road_id > 0.5) {
-		bool cE = cell_data(dcell + vec2(1.0, 0.0)).b * 255.0 > 0.5;
-		bool cW = cell_data(dcell + vec2(-1.0, 0.0)).b * 255.0 > 0.5;
-		bool cS = cell_data(dcell + vec2(0.0, 1.0)).b * 255.0 > 0.5;
-		bool cN = cell_data(dcell + vec2(0.0, -1.0)).b * 255.0 > 0.5;
-		bool cNE = cell_data(dcell + vec2(1.0, -1.0)).b * 255.0 > 0.5;
-		bool cNW = cell_data(dcell + vec2(-1.0, -1.0)).b * 255.0 > 0.5;
-		bool cSE = cell_data(dcell + vec2(1.0, 1.0)).b * 255.0 > 0.5;
-		bool cSW = cell_data(dcell + vec2(-1.0, 1.0)).b * 255.0 > 0.5;
-		// 直路蛇行：取边界距离前先把局部坐标按低频噪声整体推一点。
-		// 位移场是连续的世界坐标函数，所以相邻格推的方向一致 —— 路带整体平移，
-		// 直段因此缓慢摆动而不是笔直一条；幅度压在 inset 以内，不会顶到格子边界被裁断。
-		vec2 bend = vec2(vnoise(cf * 0.105 + vec2(3.1, 7.7)), vnoise(cf * 0.105 + vec2(11.4, 2.3))) - 0.5;
-		vec2 dww = dinc + bend * (u_road_bend * 2.0);
-		float db = 1.0;   // 到区域边界的距离（格）；四周全路时封顶 1
-		if (!cE) db = min(db, rect_dist(dww, vec2(1.5, 0.5)));
-		if (!cW) db = min(db, rect_dist(dww, vec2(-0.5, 0.5)));
-		if (!cS) db = min(db, rect_dist(dww, vec2(0.5, 1.5)));
-		if (!cN) db = min(db, rect_dist(dww, vec2(0.5, -0.5)));
-		if (!cNE) db = min(db, rect_dist(dww, vec2(1.5, -0.5)));
-		if (!cNW) db = min(db, rect_dist(dww, vec2(-0.5, -0.5)));
-		if (!cSE) db = min(db, rect_dist(dww, vec2(1.5, 1.5)));
-		if (!cSW) db = min(db, rect_dist(dww, vec2(-0.5, 1.5)));
-		float rw = u_road_width;
-		float re = max(u_road_softness, 0.01);
-		float inset = 0.5 - rw;   // 从数据边界向内收多少（0.5 格宽 = 路占满整格）
-		db += (vnoise(dcell + dinc * 0.35 + vec2(1.7, 5.2)) - 0.5) * 0.05;   // 边线不绝对平直
-		float rm = smoothstep(inset - re, inset + re, db);
-		// 角部圆角：阶梯路每格都是 90° 折角，削凸之后读起来是一条连续的弯道。
-		// 只在"真凸角"上做 —— 相邻两侧都是草才削；凹角保留区域边界的自然圆弧，不再补圆
-		// （补圆会在拐弯内侧鼓出一个凸包）。
-		float rr = clamp(u_road_round, 0.0, max(rw - 0.04, 0.0));
-		vec2 uNW = dww;
-		vec2 uNE = vec2(1.0 - dww.x, dww.y);
-		vec2 uSW = vec2(dww.x, 1.0 - dww.y);
-		vec2 uSE = 1.0 - dww;
-		if (!cW && !cN && !cNW) rm *= convex_round(uNW, inset, rr, re);
-		if (!cE && !cN && !cNE) rm *= convex_round(uNE, inset, rr, re);
-		if (!cW && !cS && !cSW) rm *= convex_round(uSW, inset, rr, re);
-		if (!cE && !cS && !cSE) rm *= convex_round(uSE, inset, rr, re);
-			vec3 rcol = road_surface(road_id, cf, dcell);
-			// 不同路型交界：格边两侧各取邻居路型的表面，用带噪声的窄带交叉混合。
-			// 土路→石子路是碎石先零星撒过来，石子路→土路是尘土盖住石缝；
-			// 石砖路同理，过渡带读起来像磨损/修补过的路面，而不是一条硬切线。
-			float blend_w = max(u_road_blend, 0.01);
-			float best_t = 0.0;
-			float best_id = 0.0;
-			vec2 best_cell = dcell;
-			vec2 nc = dcell + vec2(1.0, 0.0);
-			float nid = cell_data(nc).b * 255.0;
-			if (nid > 0.5 && abs(nid - road_id) > 0.5) {
-				float nd = 1.0 - dinc.x + (vnoise(cf * 8.0 + vec2(4.3, 1.7)) - 0.5) * blend_w * 0.9;
-				float t = 1.0 - smoothstep(0.0, blend_w, max(nd, 0.0));
-				if (t > best_t) { best_t = t; best_id = nid; best_cell = nc; }
+	mat3 road_ids = road_ids_3x3(dcell);   // 3×3 路型取一次，距离/平滑/取色共用
+	vec2 pw = cf + road_warp(cf);
+	RoadField rf = road_field(pw, dcell, road_ids);
+	float rw = u_road_width;
+	float re = max(u_road_softness, 0.01);
+	float inset = 0.5 - rw;   // 从数据边界再往里收多少（0.5 格宽 = 路占满整格）
+	float rr = clamp(u_road_round, 0.0, 0.5);
+	if (rr > 0.02 && rf.d0 < 0.85) {
+		vec2 o = vec2(rr);
+		float ds = road_signed_dist(pw + o, dcell, road_ids)
+			+ road_signed_dist(pw - o, dcell, road_ids)
+			+ road_signed_dist(pw + vec2(o.x, -o.y), dcell, road_ids)
+			+ road_signed_dist(pw + vec2(-o.x, o.y), dcell, road_ids);
+		float dsm = (rf.d0 + ds) * 0.2;
+		// 平滑只在路缘附近生效：整格都做平均会把 1 格宽的路中心从 -0.5 磨到 -0.2，
+		// 再叠上边缘噪声就会出现"路面被啃断"的洞。窄路必须保住中心的深度。
+		float wsm = 1.0 - smoothstep(0.22, 0.50, -rf.d0);
+		rf.d0 = mix(rf.d0, dsm, wsm);
+	}
+	float db = rf.d0 + road_edge_noise(cf);
+	float rm = 1.0 - smoothstep(-inset - re, -inset + re, db);
+	// 水下不显路（道路数据仍在陆地层，水退后自动露出来）
+	rm *= 1.0 - clamp(waterness, 0.0, 1.0);
+	// 路外裸土：路肩外侧的地皮被踩秃。用阈值噪声做成稀疏斑块 ——
+	// 一圈均匀的渐变只会让路看起来像贴上去的带子，斑块才读成"这里常有人走"。
+	float apron_n = smoothstep(0.50, 0.74, vnoise(cf * 2.7 + vec2(4.4, 1.6)))
+		* smoothstep(0.36, 0.68, vnoise(cf * 0.90 + vec2(8.2, 3.7)))
+		* (0.55 + 0.45 * smoothstep(0.45, 0.75, vnoise(cf * 3.9 + vec2(7.3, 2.1))));
+	float apron = (1.0 - smoothstep(-inset - 0.02, -inset + 0.30, db)) * apron_n * 0.22;
+	apron *= 1.0 - rm;   // 路内不叠裸土
+	float cover = max(rm, apron);
+	if (cover > 0.002 && rf.id0 > 0.5) {
+		vec3 rcol = road_surface(rf.id0, cf, rf.cell0);
+		// 不同路型交界：按路型 id 固定 A/B，用一个【全局单值】权重交叉。
+		// 旧写法是"本地材质 + 对方比例"：两侧算出的比例相同、底色却相反，
+		// 于是颜色在交界处直接换手 —— 那就是硬切线。
+		// 现在取 f = dB - dA（A 侧为正、B 侧为负、交界为 0），权重只由 f 决定，
+		// 两侧算的是同一个数；再用噪声推交界线，形成互相伸入的舌状，
+		// 过渡带里是完整的两种路面，而不是一层灰泥。
+		if (rf.id1 > 0.5 && rf.d1 < 60.0) {
+			float idA = min(rf.id0, rf.id1);
+			float idB = max(rf.id0, rf.id1);
+			float dA = (abs(rf.id0 - idA) < 0.5) ? rf.d0c : rf.d1;
+			float dB = (abs(rf.id0 - idB) < 0.5) ? rf.d0c : rf.d1;
+			float fsep = dB - dA;
+			float bw = max(u_road_blend, 0.05);
+			if (abs(fsep) < bw * 2.6) {
+				vec2 cellA = (abs(rf.id0 - idA) < 0.5) ? rf.cell0 : rf.cell1;
+				vec2 cellB = (abs(rf.id0 - idB) < 0.5) ? rf.cell0 : rf.cell1;
+				// 噪声只在交界附近起作用，远处（f 大）不再叠 —— 否则整条路都会被染色
+				float near = 1.0 - smoothstep(0.0, bw * 2.0, abs(fsep));
+				float lobe = (fbm(cf * 1.05 + vec2(3.7, 8.4)) - 0.5)
+					+ (vnoise(cf * 2.60 + vec2(9.1, 2.2)) - 0.5) * 0.45;
+				float wB = clamp(0.5 - (fsep + lobe * bw * 1.30 * near) / (2.0 * bw), 0.0, 1.0);
+				// 阈值化：交界处不是"两层各半透明地叠在一起"（那样只会糊成一层灰泥），
+				// 而是整片完整的另一种路面成舌状伸进来；越远舌头越少，密度自然衰减。
+				wB = smoothstep(0.30, 0.70, wB);
+				rcol = mix(road_surface(idA, cf, cellA), road_surface(idB, cf, cellB), wB);
+				// 交界处的细小散落：碎石被带到土面上，越远离石面越稀。
+				// 尺寸压到 3~5 像素、颜色带随机深浅，才读成"小石子"而不是一片灰斑。
+				float nearB = 1.0 - smoothstep(0.0, bw * 1.05, abs(fsep));
+				if (nearB > 0.01 && rf.id0 < 1.5) {
+					float speck = smoothstep(0.78, 0.86, vnoise(cf * 30.0 + vec2(5.4, 3.1)));
+					float st = vnoise(cf * 57.0 + vec2(1.7, 8.8));
+					vec3 pcol = table_color(10) * (0.72 + 0.42 * st);
+					rcol = mix(rcol, pcol, speck * nearB * 0.85);
+				}
 			}
-			nc = dcell + vec2(-1.0, 0.0);
-			nid = cell_data(nc).b * 255.0;
-			if (nid > 0.5 && abs(nid - road_id) > 0.5) {
-				float nd = dinc.x + (vnoise(cf * 8.0 + vec2(4.3, 1.7)) - 0.5) * blend_w * 0.9;
-				float t = 1.0 - smoothstep(0.0, blend_w, max(nd, 0.0));
-				if (t > best_t) { best_t = t; best_id = nid; best_cell = nc; }
-			}
-			nc = dcell + vec2(0.0, 1.0);
-			nid = cell_data(nc).b * 255.0;
-			if (nid > 0.5 && abs(nid - road_id) > 0.5) {
-				float nd = 1.0 - dinc.y + (vnoise(cf * 8.0 + vec2(4.3, 1.7)) - 0.5) * blend_w * 0.9;
-				float t = 1.0 - smoothstep(0.0, blend_w, max(nd, 0.0));
-				if (t > best_t) { best_t = t; best_id = nid; best_cell = nc; }
-			}
-			nc = dcell + vec2(0.0, -1.0);
-			nid = cell_data(nc).b * 255.0;
-			if (nid > 0.5 && abs(nid - road_id) > 0.5) {
-				float nd = dinc.y + (vnoise(cf * 8.0 + vec2(4.3, 1.7)) - 0.5) * blend_w * 0.9;
-				float t = 1.0 - smoothstep(0.0, blend_w, max(nd, 0.0));
-				if (t > best_t) { best_t = t; best_id = nid; best_cell = nc; }
-			}
-			// 斜角路口：路型在角上相接时也要有过渡，否则只剩一个硬角点
-			nc = dcell + vec2(1.0, -1.0);
-			nid = cell_data(nc).b * 255.0;
-			if (nid > 0.5 && abs(nid - road_id) > 0.5) {
-				float nd = max(1.0 - dinc.x, dinc.y) + (vnoise(cf * 8.0 + vec2(4.3, 1.7)) - 0.5) * blend_w * 0.9;
-				float t = 1.0 - smoothstep(0.0, blend_w, max(nd, 0.0));
-				if (t > best_t) { best_t = t; best_id = nid; best_cell = nc; }
-			}
-			nc = dcell + vec2(-1.0, -1.0);
-			nid = cell_data(nc).b * 255.0;
-			if (nid > 0.5 && abs(nid - road_id) > 0.5) {
-				float nd = max(dinc.x, dinc.y) + (vnoise(cf * 8.0 + vec2(4.3, 1.7)) - 0.5) * blend_w * 0.9;
-				float t = 1.0 - smoothstep(0.0, blend_w, max(nd, 0.0));
-				if (t > best_t) { best_t = t; best_id = nid; best_cell = nc; }
-			}
-			nc = dcell + vec2(1.0, 1.0);
-			nid = cell_data(nc).b * 255.0;
-			if (nid > 0.5 && abs(nid - road_id) > 0.5) {
-				float nd = max(1.0 - dinc.x, 1.0 - dinc.y) + (vnoise(cf * 8.0 + vec2(4.3, 1.7)) - 0.5) * blend_w * 0.9;
-				float t = 1.0 - smoothstep(0.0, blend_w, max(nd, 0.0));
-				if (t > best_t) { best_t = t; best_id = nid; best_cell = nc; }
-			}
-			nc = dcell + vec2(-1.0, 1.0);
-			nid = cell_data(nc).b * 255.0;
-			if (nid > 0.5 && abs(nid - road_id) > 0.5) {
-				float nd = max(dinc.x, 1.0 - dinc.y) + (vnoise(cf * 8.0 + vec2(4.3, 1.7)) - 0.5) * blend_w * 0.9;
-				float t = 1.0 - smoothstep(0.0, blend_w, max(nd, 0.0));
-				if (t > best_t) { best_t = t; best_id = nid; best_cell = nc; }
-			}
-			if (best_t > 0.001) {
-				// 格边处固定 50%：两侧同色，切线消失；离开格边后用噪声做斑驳的碎石/尘土过渡。
-				float patch = smoothstep(0.35, 0.65, vnoise(cf * 10.5 + vec2(1.3, 9.2)));
-				float mixw = best_t * (0.5 + (patch - 0.5) * 0.35 * (1.0 - best_t));
-				rcol = mix(rcol, road_surface(best_id, cf, best_cell), clamp(mixw, 0.0, 1.0));
-			}
-			// 路边一圈压暗：让路"嵌"进地面，而不是贴上去
-		float rim = rm * (1.0 - smoothstep(inset, inset + re * 5.0, db));
+		}
+		// 路肩压暗：跟着噪声位移后的真实边缘走，宽度再抖一抖，不是一圈定宽描边
+		float rim_n = 0.65 + 0.70 * vnoise(cf * 3.1 + vec2(5.5, 7.2));
+		float rim = smoothstep(-inset - 0.18, -inset, db) * (1.0 - smoothstep(-inset, -inset + 0.06, db)) * rim_n;
 		rcol *= 1.0 - rim * 0.16;
 		// 与地形共用同一套坡面明暗：山坡上的路才不会像贴纸
 		rcol *= lit_c;
-		// 水下不显路（道路数据仍在陆地层，水退后自动露出来）
-		rm *= 1.0 - clamp(waterness, 0.0, 1.0);
-		col = mix(col, rcol, rm);
+		// 路外裸土更暗、更脏（踩实的土混着腐殖质），和路面拉出层次
+		vec3 acol = rcol * 0.76;
+		col = mix(col, mix(acol, rcol, smoothstep(0.0, 0.45, rm)), clamp(cover, 0.0, 1.0));
+		// 路缘草：草叶跨过边界漫上来一点。只做颜色过渡的话，路会读成一条贴上去的
+		// 色带；有草真的长在边上，才是"被人踩出来的路"。
+		// 用 db（不是 rm）取带：rm 的过渡只有 0.03 格宽，草叶根本落不进去。
+		float egrass = smoothstep(-inset - 0.30, -inset - 0.02, db)
+			* (1.0 - smoothstep(-inset + 0.02, -inset + 0.20, db));
+		egrass *= clamp(grass_cover, 0.0, 1.0);
+		if (egrass > 0.02) {
+			float eclump = smoothstep(0.50, 0.72, fbm(cf * 0.95 + vec2(6.1, 2.8)));
+			vec4 et = grass_tuft(cf + vec2(0.37, 0.11), 0.62);
+			vec3 ecol = mix(vec3(0.21, 0.25, 0.09), vec3(0.46, 0.49, 0.17), et.w) * tint;
+			col = mix(col, ecol, et.x * egrass * u_road_grass * eclump);
+		}
 	}
-
 	// ---- 8) 细颗粒：只做极低幅度抖动，防止色带 ----
 	col *= 1.0 + (vnoise(cf * 7.3 + vec2(0.5, 3.1)) - 0.5) * u_grain;
 
