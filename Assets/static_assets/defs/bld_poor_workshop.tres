@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="StaticAssetDef" format=3]
+
+[ext_resource type="Script" path="res://Assets/static_assets/static_asset_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"bld_poor_workshop"
+display_name = "豆腐坊"
+category = &"building"
+texture_path = "res://Assets/Generated/GridAtlas/diversity/build/bld_poor_workshop/bld_poor_workshop_noshadow.png"
+content_rect = Rect2i(0, 0, 247, 240)
+art_size = Vector2(3.65, 4.467807)
+art_offset = Vector2(-0.098533005, 1.495101)
+footprint = Vector2i(3, 3)

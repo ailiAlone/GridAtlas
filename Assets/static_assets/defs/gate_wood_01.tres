@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="StaticAssetDef" format=3]
+
+[ext_resource type="Script" path="res://Assets/static_assets/static_asset_def.gd" id="1_7hebe"]
+
+[resource]
+script = ExtResource("1_7hebe")
+id = &"gate_wood_01"
+display_name = "木门"
+category = &"gate"
+texture_path = "res://Assets/ChineseVillage/Processed/delivery/围栏墙门/木栅栏_门.png"
+content_rect = Rect2i(7, 7, 250, 120)
+art_size = Vector2(0.7, 0.336)
+art_lift = Vector2(0.73743385, -0.9520502)

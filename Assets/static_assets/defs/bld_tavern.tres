@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="StaticAssetDef" format=3]
+
+[ext_resource type="Script" path="res://Assets/static_assets/static_asset_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"bld_tavern"
+display_name = "酒肆"
+category = &"building"
+texture_path = "res://Assets/Generated/GridAtlas/diversity/build/bld_tavern/bld_tavern_noshadow.png"
+content_rect = Rect2i(0, 0, 223, 240)
+art_size = Vector2(6.36, 9.719677)
+art_offset = Vector2(0.2242895, 2.2943416)
+footprint = Vector2i(5, 4)

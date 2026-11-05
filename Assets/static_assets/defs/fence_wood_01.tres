@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="StaticAssetDef" format=3]
+
+[ext_resource type="Script" path="res://Assets/static_assets/static_asset_def.gd" id="1_ehola"]
+
+[resource]
+script = ExtResource("1_ehola")
+id = &"fence_wood_01"
+display_name = "栅栏"
+category = &"fence"
+texture_path = "res://Assets/ChineseVillage/Processed/delivery/围栏墙门/木栅栏_直段.png"
+content_rect = Rect2i(7, 7, 136, 120)
+art_size = Vector2(0.65, 0.5735294)
+art_lift = Vector2(0.44980466, -0.9875458)

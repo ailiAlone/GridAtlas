@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="StaticAssetDef" format=3]
+
+[ext_resource type="Script" path="res://Assets/static_assets/static_asset_def.gd" id="1_dyufi"]
+
+[resource]
+script = ExtResource("1_dyufi")
+id = &"prop_haystack_01"
+display_name = "草垛"
+texture_path = "res://Assets/ChineseVillage/Processed/delivery/农副/草垛_款式1.png"
+content_rect = Rect2i(6, 6, 70, 100)
+art_size = Vector2(0.75, 1.0714285)
+art_offset = Vector2(0, 0.25)

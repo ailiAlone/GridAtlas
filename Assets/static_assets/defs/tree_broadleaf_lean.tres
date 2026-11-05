@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="StaticAssetDef" format=3]
+
+[ext_resource type="Script" path="res://Assets/static_assets/static_asset_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"tree_broadleaf_lean"
+display_name = "阔叶树·斜冠"
+category = &"tree"
+variant_group = &"broadleaf"
+variant_primary = false
+texture_path = "res://Assets/Generated/GridAtlas/trees/broadleaf/final/lean.png"
+content_rect = Rect2i(0, 0, 811, 1024)
+art_size = Vector2(2.8519, 3.6)
+art_offset = Vector2(0.3296, 0.288)
+footprint = Vector2i(1, 1)

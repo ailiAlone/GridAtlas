@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="StaticAssetDef" format=3]
+
+[ext_resource type="Script" path="res://Assets/static_assets/static_asset_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"bld_earth_temple"
+display_name = "土地庙"
+category = &"building"
+texture_path = "res://Assets/Generated/GridAtlas/diversity/build/bld_earth_temple/bld_earth_temple_noshadow.png"
+content_rect = Rect2i(0, 0, 242, 240)
+art_size = Vector2(4.1, 5.5299172)
+art_lift = Vector2(0.11830332, 0)
+art_offset = Vector2(0.108973436, 1.6583952)
+footprint = Vector2i(3, 2)

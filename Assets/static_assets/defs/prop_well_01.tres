@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="StaticAssetDef" format=3]
+
+[ext_resource type="Script" path="res://Assets/static_assets/static_asset_def.gd" id="1_8mc4g"]
+
+[resource]
+script = ExtResource("1_8mc4g")
+id = &"prop_well_01"
+display_name = "水井"
+texture_path = "res://Assets/ChineseVillage/Processed/delivery/农副/水井_款式1.png"
+content_rect = Rect2i(6, 6, 85, 100)
+art_size = Vector2(1.05, 1.7911764)
+art_lift = Vector2(-0.0034893267, -0.02421019)
+art_offset = Vector2(0, 0.4)

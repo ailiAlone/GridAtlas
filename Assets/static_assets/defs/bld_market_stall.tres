@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="StaticAssetDef" format=3]
+
+[ext_resource type="Script" path="res://Assets/static_assets/static_asset_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"bld_market_stall"
+display_name = "集市"
+category = &"building"
+texture_path = "res://Assets/Generated/GridAtlas/diversity/build/bld_market_stall/bld_market_stall_noshadow.png"
+content_rect = Rect2i(0, 0, 205, 240)
+art_size = Vector2(2.83, 4.3071218)
+art_offset = Vector2(0, 1.0908422)
+footprint = Vector2i(2, 2)

@@ -1,0 +1,712 @@
+[gd_scene format=3 uid="uid://duqxx0801a83k"]
+
+[ext_resource type="Script" uid="uid://cukkums4ce3kf" path="res://editor/grid_tools.gd" id="1_qcoyp"]
+[ext_resource type="PackedScene" path="res://editor/props_tool.tscn" id="2_props"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_grass_n"]
+bg_color = Color(0.42, 0.745, 0.348, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_grass_p"]
+bg_color = Color(0.344, 0.611, 0.285, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_grass_h"]
+bg_color = Color(0.49, 0.776, 0.426, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_sand_n"]
+bg_color = Color(0.91, 0.82, 0.54, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_sand_p"]
+bg_color = Color(0.746, 0.672, 0.443, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_sand_h"]
+bg_color = Color(0.921, 0.842, 0.595, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_waste_n"]
+bg_color = Color(0.58, 0.5, 0.39, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_waste_p"]
+bg_color = Color(0.476, 0.41, 0.32, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_waste_h"]
+bg_color = Color(0.63, 0.56, 0.463, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_mtn_n"]
+bg_color = Color(0.27, 0.27, 0.30, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_mtn_p"]
+bg_color = Color(0.18, 0.18, 0.21, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_mtn_h"]
+bg_color = Color(0.35, 0.35, 0.39, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_snow_n"]
+bg_color = Color(0.93, 0.95, 0.97, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_snow_p"]
+bg_color = Color(0.763, 0.779, 0.795, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_snow_h"]
+bg_color = Color(0.938, 0.956, 0.974, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_swamp_n"]
+bg_color = Color(0.33, 0.42, 0.25, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_swamp_p"]
+bg_color = Color(0.271, 0.344, 0.205, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_swamp_h"]
+bg_color = Color(0.41, 0.49, 0.34, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ice_n"]
+bg_color = Color(0.66, 0.847, 0.91, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ice_p"]
+bg_color = Color(0.541, 0.695, 0.746, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ice_h"]
+bg_color = Color(0.701, 0.865, 0.921, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_dirt_n"]
+bg_color = Color(0.65, 0.486, 0.32, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_dirt_p"]
+bg_color = Color(0.533, 0.399, 0.262, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_dirt_h"]
+bg_color = Color(0.692, 0.548, 0.402, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_gravel_n"]
+bg_color = Color(0.65, 0.65, 0.65, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_gravel_p"]
+bg_color = Color(0.533, 0.533, 0.533, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_gravel_h"]
+bg_color = Color(0.692, 0.692, 0.692, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_stone_n"]
+bg_color = Color(0.44, 0.486, 0.522, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_stone_p"]
+bg_color = Color(0.361, 0.399, 0.428, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_stone_h"]
+bg_color = Color(0.507, 0.548, 0.579, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_shallow_n"]
+bg_color = Color(0.43, 0.776, 0.91, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_shallow_p"]
+bg_color = Color(0.353, 0.636, 0.746, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_shallow_h"]
+bg_color = Color(0.498, 0.803, 0.921, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_deep_n"]
+bg_color = Color(0.17, 0.38, 0.6, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_deep_p"]
+bg_color = Color(0.139, 0.312, 0.492, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_deep_h"]
+bg_color = Color(0.27, 0.454, 0.648, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[node name="GridTools" type="VBoxContainer" unique_id=493391614]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("1_qcoyp")
+
+[node name="PanelContainer" type="PanelContainer" parent="." unique_id=956039822]
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="PanelContainer" unique_id=2000796441]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="PanelContainer/VBoxContainer" unique_id=1274529647]
+layout_mode = 2
+text = "陆地类型"
+horizontal_alignment = 1
+
+[node name="HFlowContainer" type="HFlowContainer" parent="PanelContainer/VBoxContainer" unique_id=295157270]
+layout_mode = 2
+
+[node name="Grass" type="Button" parent="PanelContainer/VBoxContainer/HFlowContainer" unique_id=906407021]
+custom_minimum_size = Vector2(36, 30)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_colors/font_focus_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_colors/font_pressed_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_colors/font_hover_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_grass_n")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_grass_p")
+theme_override_styles/hover = SubResource("StyleBoxFlat_grass_h")
+text = "草地"
+
+[node name="Sand" type="Button" parent="PanelContainer/VBoxContainer/HFlowContainer" unique_id=46053489]
+custom_minimum_size = Vector2(36, 30)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_colors/font_focus_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_colors/font_pressed_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_colors/font_hover_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_sand_n")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_sand_p")
+theme_override_styles/hover = SubResource("StyleBoxFlat_sand_h")
+text = "沙地"
+
+[node name="Wasteland" type="Button" parent="PanelContainer/VBoxContainer/HFlowContainer" unique_id=1033602332]
+custom_minimum_size = Vector2(36, 30)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_waste_n")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_waste_p")
+theme_override_styles/hover = SubResource("StyleBoxFlat_waste_h")
+text = "荒地"
+
+[node name="Snow" type="Button" parent="PanelContainer/VBoxContainer/HFlowContainer" unique_id=818809523]
+custom_minimum_size = Vector2(36, 30)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_colors/font_focus_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_colors/font_pressed_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_colors/font_hover_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_snow_n")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_snow_p")
+theme_override_styles/hover = SubResource("StyleBoxFlat_snow_h")
+text = "雪地"
+
+[node name="Swamp" type="Button" parent="PanelContainer/VBoxContainer/HFlowContainer" unique_id=166027978]
+custom_minimum_size = Vector2(36, 30)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_swamp_n")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_swamp_p")
+theme_override_styles/hover = SubResource("StyleBoxFlat_swamp_h")
+text = "沼泽"
+
+[node name="Ice" type="Button" parent="PanelContainer/VBoxContainer/HFlowContainer" unique_id=1616421702]
+custom_minimum_size = Vector2(36, 30)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_colors/font_focus_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_colors/font_pressed_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_colors/font_hover_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_ice_n")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_ice_p")
+theme_override_styles/hover = SubResource("StyleBoxFlat_ice_h")
+text = "冰面"
+
+[node name="Mountain" type="Button" parent="PanelContainer/VBoxContainer/HFlowContainer"]
+custom_minimum_size = Vector2(36, 30)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_mtn_n")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_mtn_p")
+theme_override_styles/hover = SubResource("StyleBoxFlat_mtn_h")
+tooltip_text = "山体：独立岩石材质，不可通行；右键擦除"
+text = "山体"
+
+[node name="PanelContainer4" type="PanelContainer" parent="." unique_id=2132772999]
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="PanelContainer4" unique_id=72526648]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="PanelContainer4/VBoxContainer" unique_id=1865984291]
+layout_mode = 2
+text = "道路类型"
+horizontal_alignment = 1
+
+[node name="HFlowContainer" type="HFlowContainer" parent="PanelContainer4/VBoxContainer" unique_id=1279541181]
+layout_mode = 2
+
+[node name="None" type="Button" parent="PanelContainer4/VBoxContainer/HFlowContainer"]
+custom_minimum_size = Vector2(36, 30)
+layout_mode = 2
+text = "无"
+
+[node name="Dirt" type="Button" parent="PanelContainer4/VBoxContainer/HFlowContainer" unique_id=1372146605]
+custom_minimum_size = Vector2(36, 30)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_dirt_n")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_dirt_p")
+theme_override_styles/hover = SubResource("StyleBoxFlat_dirt_h")
+text = "土路"
+
+[node name="Gravel" type="Button" parent="PanelContainer4/VBoxContainer/HFlowContainer" unique_id=1148960727]
+custom_minimum_size = Vector2(36, 30)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_colors/font_focus_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_colors/font_pressed_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_colors/font_hover_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_gravel_n")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_gravel_p")
+theme_override_styles/hover = SubResource("StyleBoxFlat_gravel_h")
+text = "碎石路"
+
+[node name="StoneBrick" type="Button" parent="PanelContainer4/VBoxContainer/HFlowContainer" unique_id=1412748885]
+custom_minimum_size = Vector2(36, 30)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_stone_n")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_stone_p")
+theme_override_styles/hover = SubResource("StyleBoxFlat_stone_h")
+text = "石砖路"
+
+
+[node name="BridgeLabel" type="Label" parent="PanelContainer4/VBoxContainer"]
+layout_mode = 2
+text = "桥（拖两个桥座，中间成桥身）"
+horizontal_alignment = 1
+
+[node name="BridgeFlow" type="HFlowContainer" parent="PanelContainer4/VBoxContainer"]
+layout_mode = 2
+
+[node name="LogBridge" type="Button" parent="PanelContainer4/VBoxContainer/BridgeFlow"]
+custom_minimum_size = Vector2(48, 30)
+layout_mode = 2
+tooltip_text = "独木桥：拖两个陆地格作桥座，中间水面自动成桥身"
+text = "独木桥"
+
+[node name="WoodBridge" type="Button" parent="PanelContainer4/VBoxContainer/BridgeFlow"]
+custom_minimum_size = Vector2(48, 30)
+layout_mode = 2
+tooltip_text = "木桥：拖两个陆地格作桥座，中间水面自动成桥身"
+text = "木桥"
+
+[node name="StoneBridge" type="Button" parent="PanelContainer4/VBoxContainer/BridgeFlow"]
+custom_minimum_size = Vector2(48, 30)
+layout_mode = 2
+tooltip_text = "石桥：拖两个陆地格作桥座，中间水面自动成桥身"
+text = "石桥"
+
+[node name="PanelContainer2" type="PanelContainer" parent="." unique_id=565109135]
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="PanelContainer2" unique_id=33113842]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="PanelContainer2/VBoxContainer" unique_id=779011018]
+layout_mode = 2
+text = "水域"
+horizontal_alignment = 1
+
+[node name="HBoxContainer" type="HBoxContainer" parent="PanelContainer2/VBoxContainer" unique_id=1734572218]
+layout_mode = 2
+
+[node name="ShallowWater" type="Button" parent="PanelContainer2/VBoxContainer/HBoxContainer" unique_id=1623864930]
+custom_minimum_size = Vector2(0, 51.505)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme_override_colors/font_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_colors/font_focus_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_colors/font_pressed_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_colors/font_hover_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_shallow_n")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_shallow_p")
+theme_override_styles/hover = SubResource("StyleBoxFlat_shallow_h")
+text = "浅水"
+
+[node name="DeepWater" type="Button" parent="PanelContainer2/VBoxContainer/HBoxContainer" unique_id=1667955423]
+custom_minimum_size = Vector2(0, 51.505)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_deep_n")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_deep_p")
+theme_override_styles/hover = SubResource("StyleBoxFlat_deep_h")
+text = "深水"
+
+[node name="GridContainer" type="GridContainer" parent="PanelContainer2/VBoxContainer/HBoxContainer" unique_id=1535752133]
+layout_mode = 2
+size_flags_horizontal = 6
+columns = 3
+
+[node name="NW" type="Button" parent="PanelContainer2/VBoxContainer/HBoxContainer/GridContainer" unique_id=1087811273]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+text = "↖"
+
+[node name="N" type="Button" parent="PanelContainer2/VBoxContainer/HBoxContainer/GridContainer" unique_id=1146308397]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+text = "↑"
+
+[node name="NE" type="Button" parent="PanelContainer2/VBoxContainer/HBoxContainer/GridContainer" unique_id=1007115333]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+text = "↗"
+
+[node name="W" type="Button" parent="PanelContainer2/VBoxContainer/HBoxContainer/GridContainer" unique_id=1993449272]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+text = "←"
+
+[node name="Center" type="Button" parent="PanelContainer2/VBoxContainer/HBoxContainer/GridContainer" unique_id=1685600439]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+text = "•"
+
+[node name="E" type="Button" parent="PanelContainer2/VBoxContainer/HBoxContainer/GridContainer" unique_id=887811425]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+text = "→"
+
+[node name="SW" type="Button" parent="PanelContainer2/VBoxContainer/HBoxContainer/GridContainer" unique_id=1087425746]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+text = "↙"
+
+[node name="S" type="Button" parent="PanelContainer2/VBoxContainer/HBoxContainer/GridContainer" unique_id=1863715312]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+text = "↓"
+
+[node name="SE" type="Button" parent="PanelContainer2/VBoxContainer/HBoxContainer/GridContainer" unique_id=1132433606]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+text = "↘"
+
+[node name="PanelTerrain" type="PanelContainer" parent="." unique_id=780239577]
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="PanelTerrain" unique_id=897037543]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="PanelTerrain/VBoxContainer" unique_id=124985758]
+layout_mode = 2
+text = "地形视图"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Button" type="Button" parent="PanelTerrain/VBoxContainer/Label" unique_id=101672978]
+layout_mode = 1
+anchors_preset = 6
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -56.0
+offset_top = -11.5
+offset_bottom = 13.5
+grow_horizontal = 0
+grow_vertical = 2
+theme_override_font_sizes/font_size = 12
+text = "高程视图"
+
+[node name="LabelElevation" type="Label" parent="PanelTerrain/VBoxContainer" unique_id=700000001]
+layout_mode = 2
+text = "高程"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="HFlowContainerElevation" type="HFlowContainer" parent="PanelTerrain/VBoxContainer" unique_id=700000002]
+layout_mode = 2
+
+[node name="Button1" type="Button" parent="PanelTerrain/VBoxContainer/HFlowContainerElevation" unique_id=700000003]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+tooltip_text = "左键把笔刷区域设为 1 级高程，右键恢复 1 级"
+text = "1"
+
+[node name="Button2" type="Button" parent="PanelTerrain/VBoxContainer/HFlowContainerElevation" unique_id=700000004]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+tooltip_text = "左键把笔刷区域设为 2 级高程，右键恢复 1 级"
+text = "2"
+
+[node name="Button3" type="Button" parent="PanelTerrain/VBoxContainer/HFlowContainerElevation" unique_id=700000005]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+tooltip_text = "左键把笔刷区域设为 3 级高程，右键恢复 1 级"
+text = "3"
+
+[node name="ButtonPlus" type="Button" parent="PanelTerrain/VBoxContainer/HFlowContainerElevation" unique_id=700000006]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+tooltip_text = "新增一个更高的高程等级"
+text = "+"
+
+[node name="PanelContainerBrush" type="PanelContainer" parent="." unique_id=1720444445]
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="PanelContainerBrush" unique_id=812671991]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="PanelContainerBrush/VBoxContainer" unique_id=1468111450]
+layout_mode = 2
+text = "笔刷"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="HFlowContainer" type="HFlowContainer" parent="PanelContainerBrush/VBoxContainer" unique_id=151225533]
+layout_mode = 2
+
+[node name="Button1" type="Button" parent="PanelContainerBrush/VBoxContainer/HFlowContainer" unique_id=1443303570]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+text = "1"
+
+[node name="Button2" type="Button" parent="PanelContainerBrush/VBoxContainer/HFlowContainer" unique_id=942740451]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+text = "2"
+
+[node name="Button3" type="Button" parent="PanelContainerBrush/VBoxContainer/HFlowContainer" unique_id=688405523]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+text = "3"
+
+[node name="ButtonPlus" type="Button" parent="PanelContainerBrush/VBoxContainer/HFlowContainer" unique_id=93388219]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+text = "+"
+
+[node name="ButtonRect" type="Button" parent="PanelContainerBrush/VBoxContainer" unique_id=1788314460]
+layout_mode = 2
+text = "矩形填充"
+
+[node name="PropsTool" parent="." instance=ExtResource("2_props")]
+layout_mode = 2
+
+[node name="PanelContainer5" type="PanelContainer" parent="." unique_id=1829918086]
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="PanelContainer5" unique_id=894868254]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="PanelContainer5/VBoxContainer" unique_id=706041487]
+layout_mode = 2
+text = "数据"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Button" type="Button" parent="PanelContainer5/VBoxContainer/Label" unique_id=1277325394]
+layout_mode = 1
+anchors_preset = 6
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -28.0
+offset_top = -11.0
+offset_bottom = 11.0
+grow_horizontal = 0
+grow_vertical = 2
+theme_override_font_sizes/font_size = 10
+text = "读取"
+
+[node name="HBoxContainer" type="HBoxContainer" parent="PanelContainer5/VBoxContainer" unique_id=1001972703]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="PanelContainer5/VBoxContainer/HBoxContainer" unique_id=1332607437]
+layout_mode = 2
+text = "文件名"
+
+[node name="Button" type="Button" parent="PanelContainer5/VBoxContainer/HBoxContainer" unique_id=1721024413]
+layout_mode = 2
+size_flags_horizontal = 10
+text = "保存*"
+
+[node name="Label" type="Label" parent="PanelContainer5/VBoxContainer/HBoxContainer/Button" unique_id=6153134]
+visible = false
+layout_mode = 0
+offset_left = 50.0
+offset_top = 4.0
+offset_right = 244.0
+offset_bottom = 27.0
+text = "当你看见 * 时，请注意保存"
+
+[node name="Label2" type="Label" parent="PanelContainer5/VBoxContainer" unique_id=337358557]
+layout_mode = 2
+text = "尺寸设置："
+
+[node name="HBoxContainer2" type="HBoxContainer" parent="PanelContainer5/VBoxContainer" unique_id=1500442231]
+layout_mode = 2
+
+[node name="SpinBox" type="SpinBox" parent="PanelContainer5/VBoxContainer/HBoxContainer2" unique_id=2106179911]
+layout_mode = 2
+min_value = 1.0
+max_value = 1024.0
+value = 64.0
+
+[node name="Label2" type="Label" parent="PanelContainer5/VBoxContainer/HBoxContainer2" unique_id=1479129695]
+layout_mode = 2
+text = "X"
+
+[node name="SpinBox2" type="SpinBox" parent="PanelContainer5/VBoxContainer/HBoxContainer2" unique_id=1871545316]
+layout_mode = 2
+min_value = 1.0
+max_value = 1024.0
+value = 64.0
+
+[node name="FileDialog" type="FileDialog" parent="PanelContainer5" unique_id=2055138101]
+oversampling_override = 1.0
+position = Vector2i(0, 36)
+filters = PackedStringArray("*.tres")

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="StaticAssetDef" format=3]
+
+[ext_resource type="Script" path="res://Assets/static_assets/static_asset_def.gd" id="1_ga26s"]
+
+[resource]
+script = ExtResource("1_ga26s")
+id = &"tree_broadleaf_dark_01"
+display_name = "深色阔叶树"
+category = &"tree"
+variant_group = &"broadleaf"
+variant_primary = false
+texture_path = "res://Assets/Generated/GridAtlas/seedream/processed/tree_camphor.png"
+content_rect = Rect2i(0, 0, 728, 899)
+art_size = Vector2(2.8, 3.4)
+art_offset = Vector2(0, 0.34)

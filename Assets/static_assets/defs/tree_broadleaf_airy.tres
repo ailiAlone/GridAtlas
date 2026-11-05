@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="StaticAssetDef" format=3]
+
+[ext_resource type="Script" path="res://Assets/static_assets/static_asset_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"tree_broadleaf_airy"
+display_name = "阔叶树·疏冠"
+category = &"tree"
+variant_group = &"broadleaf"
+variant_primary = false
+texture_path = "res://Assets/Generated/GridAtlas/trees/broadleaf/final/airy.png"
+content_rect = Rect2i(0, 0, 765, 1024)
+art_size = Vector2(2.8402, 3.8)
+art_offset = Vector2(-0.0025, 0.304)
+footprint = Vector2i(1, 1)

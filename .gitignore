@@ -6,4 +6,9 @@
 /.zcode/
 
 # Local art assets (Tiny Swords license forbids redistributing raw files)
-/Assets/
+/Assets/*
+# 项目自己的资源定义/脚本跟资源放在一起，仍纳入版本管理（不含美术原图）
+!/Assets/static_assets/
+
+__pycache__/
+*.pyc

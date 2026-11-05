@@ -1,0 +1,85 @@
+[gd_scene format=3 uid="uid://chsxgqghfu75p"]
+
+[ext_resource type="Script" uid="uid://ckqta3jiubuv4" path="res://editor/props_tool.gd" id="1_props"]
+
+[node name="PropsTool" type="PanelContainer" unique_id=231442489]
+script = ExtResource("1_props")
+
+[node name="VBox" type="VBoxContainer" parent="." unique_id=2095385888]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="VBox" unique_id=1107892726]
+layout_mode = 2
+text = "物件"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="AssetTitleRow" type="HBoxContainer" parent="VBox" unique_id=1384403287]
+layout_mode = 2
+
+[node name="AssetTitle" type="Label" parent="VBox/AssetTitleRow" unique_id=597774225]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "资源库（按类型）"
+
+[node name="AssetRefresh" type="Button" parent="VBox/AssetTitleRow" unique_id=1446225579]
+custom_minimum_size = Vector2(0, 22)
+layout_mode = 2
+tooltip_text = "重新读取 Assets/static_assets 下的资源定义"
+text = "刷新"
+
+[node name="AssetEdit" type="Button" parent="VBox/AssetTitleRow" unique_id=1389405880]
+custom_minimum_size = Vector2(0, 22)
+layout_mode = 2
+tooltip_text = "打开资源导入页：新建 / 导入 PNG / 编辑占地范围与阻挡格"
+text = "编辑"
+
+[node name="RotationRow" type="HBoxContainer" parent="VBox" unique_id=1369781774]
+layout_mode = 2
+
+[node name="RotationTitle" type="Label" parent="VBox/RotationRow" unique_id=1826589934]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "待放方向"
+
+[node name="Rot0" type="Button" parent="VBox/RotationRow" unique_id=1511311477]
+custom_minimum_size = Vector2(64, 26)
+layout_mode = 2
+tooltip_text = "横向：原始占地与图片（0°）"
+text = "横向"
+
+[node name="Rot90" type="Button" parent="VBox/RotationRow" unique_id=179697238]
+custom_minimum_size = Vector2(64, 26)
+layout_mode = 2
+tooltip_text = "竖向：占地交换宽高，图片水平镜像（90°）"
+text = "竖向"
+
+[node name="Assets" type="VBoxContainer" parent="VBox" unique_id=1706636247]
+layout_mode = 2
+
+[node name="AssetEmpty" type="Label" parent="VBox" unique_id=945084767]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 0.5)
+theme_override_font_sizes/font_size = 11
+text = "暂无资源：在资源导入页保存定义"
+
+[node name="Selected" type="Label" parent="VBox" unique_id=108481452]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 0.75)
+theme_override_font_sizes/font_size = 11
+text = "当前：无"
+
+[node name="Hint" type="Label" parent="VBox" unique_id=617705643]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 0.6)
+theme_override_font_sizes/font_size = 11
+text = "左键放置 · 右键删除（按占地范围）· R 切换横竖 · 植物可调倍率"
+autowrap_mode = 2
+
+[node name="Count" type="Label" parent="VBox" unique_id=1070540068]
+layout_mode = 2
+text = "物件 0 个"
+
+[node name="Clear" type="Button" parent="VBox" unique_id=1324639082]
+layout_mode = 2
+text = "清除全部"

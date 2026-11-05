@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="StaticAssetDef" format=3]
+
+[ext_resource type="Script" path="res://Assets/static_assets/static_asset_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"bld_poor_cottage_stone_base"
+display_name = "石基屋"
+category = &"building"
+texture_path = "res://Assets/Generated/GridAtlas/diversity/build/bld_poor_cottage_stone_base/bld_poor_cottage_stone_base_noshadow.png"
+content_rect = Rect2i(0, 0, 219, 240)
+art_size = Vector2(4.85, 5.882987)
+art_lift = Vector2(0.08157895, 0.0028462606)
+art_offset = Vector2(0.10634866, 1.9269986)
+footprint = Vector2i(4, 3)

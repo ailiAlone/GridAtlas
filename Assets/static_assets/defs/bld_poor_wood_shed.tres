@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="StaticAssetDef" format=3]
+
+[ext_resource type="Script" path="res://Assets/static_assets/static_asset_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"bld_poor_wood_shed"
+display_name = "柴房"
+category = &"building"
+texture_path = "res://Assets/Generated/GridAtlas/diversity/build/bld_poor_wood_shed/bld_poor_wood_shed_v2.png"
+content_rect = Rect2i(0, 0, 244, 240)
+art_size = Vector2(4.1, 5.4039345)
+art_lift = Vector2(-0.01045242, -0.04306675)
+art_offset = Vector2(-0.14556232, 1.3448606)
+footprint = Vector2i(3, 3)

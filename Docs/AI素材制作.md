@@ -139,7 +139,7 @@ cropped, front elevation only, long cast shadow
 6. **在编辑器登记**：打开 GridAtlas，左侧「物件 → 资源库」右侧点「编辑」弹出导入页：
    - 选择透明 PNG，导入页自动检测 alpha、裁出内容区；
    - 设置占地范围、实际阻挡格、立牌宽度与高度拉伸、图片偏移；
-   - 保存为 `GridData/static_assets/defs/<id>.tres`，catalog 自动更新。
+   - 保存为 `Assets/static_assets/defs/<id>.tres`，catalog 自动更新。
    不需要维护固定按钮列表，也不需要往 `props_tool.tscn` 加按钮：资源按钮由 catalog 动态生成。
 7. **进工具验证**：打开地图 → 选资源 → 放置 → “切换渲染”；
    - `G` 看格线，确认底边落在格心、脚不悬空；

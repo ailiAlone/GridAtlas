@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="RenderSettings" format=3]
+
+[ext_resource type="Script" path="res://editor/render_settings.gd" id="1_fy4hr"]
+
+[resource]
+script = ExtResource("1_fy4hr")
+tide_amplitude = 1.2
+ripple_speed = 0.71
+flow_speed = 0.55
+road_width = 0.31
+road_round = 0.21

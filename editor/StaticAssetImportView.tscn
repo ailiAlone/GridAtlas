@@ -1,0 +1,629 @@
+[gd_scene format=3 uid="uid://b6u1u60pthv1q"]
+
+[ext_resource type="Script" path="res://editor/StaticAssetImportView.gd" id="1_view"]
+[ext_resource type="Script" path="res://editor/asset_mask_editor.gd" id="2_mask"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_root"]
+bg_color = Color(0.075, 0.08, 0.09, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(1, 1, 1, 0.08)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_card"]
+bg_color = Color(0.115, 0.12, 0.135, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(1, 1, 1, 0.05)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[node name="StaticAssetImportView" type="PanelContainer"]
+custom_minimum_size = Vector2(1160, 780)
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -580.0
+offset_top = -390.0
+offset_right = 580.0
+offset_bottom = 390.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_root")
+script = ExtResource("1_view")
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
+
+[node name="RootVBox" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Header" type="HBoxContainer" parent="Margin/RootVBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="Margin/RootVBox/Header"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "静态资源导入"
+
+[node name="Subtitle" type="Label" parent="Margin/RootVBox/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 1, 1, 0.48)
+theme_override_font_sizes/font_size = 12
+text = "透明 PNG → 占地范围 / 阻挡掩码 / 45° 立牌"
+vertical_alignment = 1
+
+[node name="CloseButton" type="Button" parent="Margin/RootVBox/Header"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(76, 30)
+layout_mode = 2
+text = "关闭"
+
+[node name="HSeparator" type="HSeparator" parent="Margin/RootVBox"]
+layout_mode = 2
+
+[node name="Body" type="HBoxContainer" parent="Margin/RootVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 14
+
+[node name="Sidebar" type="PanelContainer" parent="Margin/RootVBox/Body"]
+custom_minimum_size = Vector2(240, 0)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_card")
+
+[node name="SideMargin" type="MarginContainer" parent="Margin/RootVBox/Body/Sidebar"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="SideVBox" type="VBoxContainer" parent="Margin/RootVBox/Body/Sidebar/SideMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="SideHeader" type="HBoxContainer" parent="Margin/RootVBox/Body/Sidebar/SideMargin/SideVBox"]
+layout_mode = 2
+
+[node name="ListTitle" type="Label" parent="Margin/RootVBox/Body/Sidebar/SideMargin/SideVBox/SideHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 14
+text = "资源库"
+
+[node name="ListCount" type="Label" parent="Margin/RootVBox/Body/Sidebar/SideMargin/SideVBox/SideHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 0.45)
+theme_override_font_sizes/font_size = 11
+text = "0 个"
+vertical_alignment = 1
+
+[node name="AssetList" type="ItemList" parent="Margin/RootVBox/Body/Sidebar/SideMargin/SideVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="SideButtons" type="HBoxContainer" parent="Margin/RootVBox/Body/Sidebar/SideMargin/SideVBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="NewButton" type="Button" parent="Margin/RootVBox/Body/Sidebar/SideMargin/SideVBox/SideButtons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "新建"
+
+[node name="ImportButton" type="Button" parent="Margin/RootVBox/Body/Sidebar/SideMargin/SideVBox/SideButtons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "导入 PNG"
+
+[node name="Center" type="PanelContainer" parent="Margin/RootVBox/Body"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_card")
+
+[node name="CenterMargin" type="MarginContainer" parent="Margin/RootVBox/Body/Center"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="CenterVBox" type="VBoxContainer" parent="Margin/RootVBox/Body/Center/CenterMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="CenterHeader" type="HBoxContainer" parent="Margin/RootVBox/Body/Center/CenterMargin/CenterVBox"]
+layout_mode = 2
+
+[node name="MaskTitle" type="Label" parent="Margin/RootVBox/Body/Center/CenterMargin/CenterVBox/CenterHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 14
+text = "占地与立牌"
+
+[node name="MaskLegend" type="Label" parent="Margin/RootVBox/Body/Center/CenterMargin/CenterVBox/CenterHeader"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 0.45)
+theme_override_font_sizes/font_size = 11
+text = "红 = 阻挡 · 绿 = 通行"
+vertical_alignment = 1
+
+[node name="MaskHint" type="Label" parent="Margin/RootVBox/Body/Center/CenterMargin/CenterVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.78, 0.82, 0.88, 0.65)
+theme_override_font_sizes/font_size = 11
+text = "点击格子切换阻挡/通行 · 左右侧边中点单侧拉伸（最多 1 倍高度） · 右键拖动图片"
+autowrap_mode = 2
+
+[node name="MaskScroll" type="ScrollContainer" parent="Margin/RootVBox/Body/Center/CenterMargin/CenterVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="MaskEditor" type="Control" parent="Margin/RootVBox/Body/Center/CenterMargin/CenterVBox/MaskScroll"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(420, 400)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("2_mask")
+
+[node name="MaskButtons" type="HBoxContainer" parent="Margin/RootVBox/Body/Center/CenterMargin/CenterVBox"]
+layout_mode = 2
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
+
+[node name="AllSolid" type="Button" parent="Margin/RootVBox/Body/Center/CenterMargin/CenterVBox/MaskButtons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "全部阻挡"
+
+[node name="AllPass" type="Button" parent="Margin/RootVBox/Body/Center/CenterMargin/CenterVBox/MaskButtons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "全部通行"
+
+[node name="Invert" type="Button" parent="Margin/RootVBox/Body/Center/CenterMargin/CenterVBox/MaskButtons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "反转"
+
+[node name="ResetLift" type="Button" parent="Margin/RootVBox/Body/Center/CenterMargin/CenterVBox/MaskButtons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "重置拉伸"
+
+[node name="ResetOffset" type="Button" parent="Margin/RootVBox/Body/Center/CenterMargin/CenterVBox/MaskButtons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "重置位置"
+
+[node name="MaskSummary" type="Label" parent="Margin/RootVBox/Body/Center/CenterMargin/CenterVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 0.55)
+theme_override_font_sizes/font_size = 11
+text = "占地范围 1×1 · 阻挡 1 格 · 通行 0 格"
+
+[node name="FormPanel" type="PanelContainer" parent="Margin/RootVBox/Body"]
+custom_minimum_size = Vector2(370, 0)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_card")
+
+[node name="FormMargin" type="MarginContainer" parent="Margin/RootVBox/Body/FormPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="FormVBox" type="VBoxContainer" parent="Margin/RootVBox/Body/FormPanel/FormMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="FormTitle" type="Label" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "资源定义"
+
+[node name="FormScroll" type="ScrollContainer" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="FormContent" type="VBoxContainer" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="BasicTitle" type="Label" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.62, 0.76, 0.95, 1)
+theme_override_font_sizes/font_size = 12
+text = "基本"
+
+[node name="BasicGrid" type="GridContainer" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent"]
+layout_mode = 2
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 4
+columns = 2
+
+[node name="IDLabel" type="Label" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent/BasicGrid"]
+custom_minimum_size = Vector2(78, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.78, 0.8, 0.84, 0.8)
+theme_override_font_sizes/font_size = 12
+text = "ID"
+horizontal_alignment = 2
+
+[node name="IDEdit" type="LineEdit" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent/BasicGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "cv_gate_single_arch_4x1"
+
+[node name="NameLabel" type="Label" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent/BasicGrid"]
+custom_minimum_size = Vector2(78, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.78, 0.8, 0.84, 0.8)
+theme_override_font_sizes/font_size = 12
+text = "名称"
+horizontal_alignment = 2
+
+[node name="NameEdit" type="LineEdit" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent/BasicGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="CategoryLabel" type="Label" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent/BasicGrid"]
+custom_minimum_size = Vector2(78, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.78, 0.8, 0.84, 0.8)
+theme_override_font_sizes/font_size = 12
+text = "分类"
+horizontal_alignment = 2
+
+[node name="CategoryOption" type="OptionButton" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent/BasicGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TierLabel" type="Label" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent/BasicGrid"]
+custom_minimum_size = Vector2(78, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.78, 0.8, 0.84, 0.8)
+theme_override_font_sizes/font_size = 12
+text = "层级"
+horizontal_alignment = 2
+
+[node name="TierSpin" type="SpinBox" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent/BasicGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+max_value = 8.0
+
+[node name="BasicSep" type="HSeparator" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent"]
+layout_mode = 2
+
+[node name="ImageTitle" type="Label" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.62, 0.76, 0.95, 1)
+theme_override_font_sizes/font_size = 12
+text = "图片"
+
+[node name="ImageGrid" type="GridContainer" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent"]
+layout_mode = 2
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 4
+columns = 2
+
+[node name="PathLabel" type="Label" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent/ImageGrid"]
+custom_minimum_size = Vector2(78, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.78, 0.8, 0.84, 0.8)
+theme_override_font_sizes/font_size = 12
+text = "PNG"
+horizontal_alignment = 2
+
+[node name="PathRow" type="HBoxContainer" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent/ImageGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="PathEdit" type="LineEdit" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent/ImageGrid/PathRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 11
+placeholder_text = "res://Assets/...png"
+
+[node name="BrowseButton" type="Button" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent/ImageGrid/PathRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "浏览"
+
+[node name="ContentLabel" type="Label" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent/ImageGrid"]
+custom_minimum_size = Vector2(78, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.78, 0.8, 0.84, 0.8)
+theme_override_font_sizes/font_size = 12
+text = "内容区"
+horizontal_alignment = 2
+
+[node name="ContentRectLabel" type="Label" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent/ImageGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 1, 1, 0.6)
+theme_override_font_sizes/font_size = 11
+text = "-"
+autowrap_mode = 2
+
+[node name="ImageSep" type="HSeparator" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent"]
+layout_mode = 2
+
+[node name="FootTitle" type="Label" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.62, 0.76, 0.95, 1)
+theme_override_font_sizes/font_size = 12
+text = "占地与阻挡"
+
+[node name="FootGrid" type="GridContainer" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent"]
+layout_mode = 2
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 4
+columns = 2
+
+[node name="FootLabel" type="Label" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent/FootGrid"]
+custom_minimum_size = Vector2(78, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.78, 0.8, 0.84, 0.8)
+theme_override_font_sizes/font_size = 12
+text = "占地范围"
+horizontal_alignment = 2
+
+[node name="FootRow" type="HBoxContainer" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent/FootGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="FootW" type="SpinBox" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent/FootGrid/FootRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 1.0
+max_value = 32.0
+value = 1.0
+allow_greater = false
+
+[node name="Times" type="Label" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent/FootGrid/FootRow"]
+layout_mode = 2
+text = "×"
+
+[node name="FootH" type="SpinBox" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent/FootGrid/FootRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 1.0
+max_value = 32.0
+value = 1.0
+allow_greater = false
+
+[node name="BlockingLabel" type="Label" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent/FootGrid"]
+custom_minimum_size = Vector2(78, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.78, 0.8, 0.84, 0.8)
+theme_override_font_sizes/font_size = 12
+text = "阻挡"
+horizontal_alignment = 2
+
+[node name="BlockingOption" type="OptionButton" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent/FootGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="FootSep" type="HSeparator" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent"]
+layout_mode = 2
+
+[node name="ArtTitle" type="Label" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.62, 0.76, 0.95, 1)
+theme_override_font_sizes/font_size = 12
+text = "立牌"
+
+[node name="ArtGrid" type="GridContainer" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent"]
+layout_mode = 2
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 4
+columns = 2
+
+[node name="WidthLabel" type="Label" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent/ArtGrid"]
+custom_minimum_size = Vector2(78, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.78, 0.8, 0.84, 0.8)
+theme_override_font_sizes/font_size = 12
+text = "宽度"
+horizontal_alignment = 2
+
+[node name="WidthRow" type="HBoxContainer" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent/ArtGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="WidthSlider" type="HSlider" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent/ArtGrid/WidthRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.5
+max_value = 10.0
+step = 0.05
+value = 1.0
+
+[node name="WidthSpin" type="SpinBox" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent/ArtGrid/WidthRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(76, 0)
+layout_mode = 2
+min_value = 0.1
+max_value = 64.0
+step = 0.05
+update_on_text_changed = false
+value = 1.0
+
+[node name="YStretchLabel" type="Label" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent/ArtGrid"]
+custom_minimum_size = Vector2(78, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.78, 0.8, 0.84, 0.8)
+theme_override_font_sizes/font_size = 12
+text = "高度拉伸"
+horizontal_alignment = 2
+
+[node name="YStretchRow" type="HBoxContainer" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent/ArtGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="YStretch" type="HSlider" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent/ArtGrid/YStretchRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.5
+max_value = 2.0
+step = 0.01
+value = 1.0
+
+[node name="StretchSpin" type="SpinBox" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent/ArtGrid/YStretchRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(76, 0)
+layout_mode = 2
+min_value = 0.25
+max_value = 3.0
+step = 0.01
+update_on_text_changed = false
+value = 1.0
+
+[node name="SizeLabel" type="Label" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent/ArtGrid"]
+custom_minimum_size = Vector2(78, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.78, 0.8, 0.84, 0.8)
+theme_override_font_sizes/font_size = 12
+text = "实际尺寸"
+horizontal_alignment = 2
+
+[node name="SizeInfo" type="Label" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent/ArtGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 0.62)
+theme_override_font_sizes/font_size = 11
+text = "1.00 × 1.00 格"
+
+[node name="OffsetLabel" type="Label" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent/ArtGrid"]
+custom_minimum_size = Vector2(78, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.78, 0.8, 0.84, 0.8)
+theme_override_font_sizes/font_size = 12
+text = "图片偏移"
+horizontal_alignment = 2
+
+[node name="OffsetRow" type="HBoxContainer" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent/ArtGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="OffX" type="SpinBox" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent/ArtGrid/OffsetRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = -32.0
+max_value = 32.0
+step = 0.05
+
+[node name="Comma" type="Label" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent/ArtGrid/OffsetRow"]
+layout_mode = 2
+text = ","
+
+[node name="OffY" type="SpinBox" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/FormScroll/FormContent/ArtGrid/OffsetRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = -32.0
+max_value = 32.0
+step = 0.05
+
+[node name="Status" type="Label" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.86, 1, 1)
+theme_override_font_sizes/font_size = 11
+autowrap_mode = 2
+
+[node name="Actions" type="HBoxContainer" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="SaveButton" type="Button" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "保存为新资源"
+
+[node name="DeleteButton" type="Button" parent="Margin/RootVBox/Body/FormPanel/FormMargin/FormVBox/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+disabled = true
+text = "删除"
+
+[node name="FileDialog" type="FileDialog" parent="."]
+unique_name_in_owner = true
+title = "选择透明 PNG"
+size = Vector2i(900, 600)
+file_mode = 0
+access = 0
+filters = PackedStringArray("*.png ; PNG 图片")
+current_dir = "res://Assets/ChineseVillage/Processed/delivery"
+
+[node name="ConfirmDialog" type="ConfirmationDialog" parent="."]
+unique_name_in_owner = true
+title = "删除资源"
+size = Vector2i(440, 180)
+ok_button_text = "删除"
+cancel_button_text = "取消"
