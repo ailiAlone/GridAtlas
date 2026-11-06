@@ -1,36 +1,44 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=3 uid="uid://2v73mrwodvtl"]
 
-[ext_resource type="Script" path="res://editor/ui/file_bar.gd" id="1_filebar"]
+[ext_resource type="Script" uid="uid://8tvi31ragu2g" path="res://editor/ui/file_bar.gd" id="1_filebar"]
 
-[node name="FileBar" type="PanelContainer"]
+[node name="FileBar" type="PanelContainer" unique_id=1787914490]
 script = ExtResource("1_filebar")
 
-[node name="HBox" type="HBoxContainer" parent="."]
+[node name="HBox" type="HBoxContainer" parent="." unique_id=688813688]
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="MapName" type="Label" parent="HBox"]
+[node name="MapName" type="Label" parent="HBox" unique_id=909899057]
 layout_mode = 2
 size_flags_horizontal = 3
-clip_text = true
 text = "未命名"
+clip_text = true
 
-[node name="DirtyDot" type="Label" parent="HBox"]
+[node name="DirtyDot" type="Label" parent="HBox" unique_id=1650990077]
 layout_mode = 2
-theme_type_variation = "Accent"
+theme_type_variation = &"Accent"
 text = "○"
 
-[node name="SaveButton" type="Button" parent="HBox"]
+[node name="OpenButton" type="Button" parent="HBox" unique_id=660135779]
+layout_mode = 2
+tooltip_text = "打开已有地图—— Ctrl+O"
+text = "打开"
+
+[node name="SaveButton" type="Button" parent="HBox" unique_id=660135778]
 layout_mode = 2
 tooltip_text = "保存地图与全部边车（外观/物件/桥/着色器副本）—— Ctrl+S"
 text = "保存"
 
-[node name="MenuButton" type="MenuButton" parent="HBox"]
+[node name="MenuButton" type="MenuButton" parent="HBox" unique_id=2037673136]
 layout_mode = 2
-tooltip_text = "地图文件操作"
-text = "▾"
+tooltip_text = "更多文件操作：新建 / 另存为"
+text = "▼"
+theme_override_font_sizes/font_size = 10
 
-[node name="PopupMenu" type="PopupMenu" parent="HBox/MenuButton"]
+[node name="PopupMenu" type="PopupMenu" parent="HBox/MenuButton" unique_id=632906689]
+oversampling_override = 1.0
+size = Vector2i(118, 100)
 item_count = 3
 item_0/text = "新建地图…"
 item_0/id = 0

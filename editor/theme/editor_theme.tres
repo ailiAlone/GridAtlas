@@ -1,4 +1,4 @@
-[gd_resource type="Theme" format=3]
+[gd_resource type="Theme" format=3 uid="uid://d2rp2auepyccs"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_sphan"]
 content_margin_left = 10.0

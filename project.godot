@@ -11,9 +11,9 @@ config_version=5
 [application]
 
 config/name="GridAtlas"
+run/main_scene="res://editor/Main.tscn"
 config/features=PackedStringArray("4.6", "GL Compatibility")
 run/max_fps=60
-run/main_scene="res://editor/Main.tscn"
 config/icon="res://icon.svg"
 
 [display]

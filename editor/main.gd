@@ -107,6 +107,7 @@ func _ready() -> void:
 	bigscroll.resized.connect(_refresh_views)
 	# 文件条（两模式常驻）：保存/新建/打开/另存为都从这里进，脏状态由 tools 广播
 	filebar.save_requested.connect(func(): tools.save_map())
+	filebar.open_requested.connect(_on_open_map_requested)
 	filebar.menu_new_requested.connect(_on_new_map_requested)
 	filebar.menu_open_requested.connect(_on_open_map_requested)
 	filebar.menu_save_as_requested.connect(func(): tools.save_as_map())

@@ -1,20 +1,23 @@
 extends PanelContainer
 ## FileBar —— 左栏顶部的常驻文件条（编辑/渲染两模式都可见）。
-## 解决"保存按钮在渲染模式不可见"的跨模式断裂：地图名 + 脏状态圆点 + 保存 + 文件菜单。
+## 解决"保存按钮在渲染模式不可见"的跨模式断裂：地图名 + 脏状态圆点 + 打开 + 保存 + 文件菜单。
 ## 只发信号不做业务，编排（真正的保存/新建/打开/另存为）全在 main.gd。
 
 signal save_requested
+signal open_requested
 signal menu_new_requested
 signal menu_open_requested
 signal menu_save_as_requested
 
 @onready var mapname: Label = $"HBox/MapName"
 @onready var dirtydot: Label = $"HBox/DirtyDot"
+@onready var openbutton: Button = $"HBox/OpenButton"
 @onready var savebutton: Button = $"HBox/SaveButton"
 @onready var menubutton: MenuButton = $"HBox/MenuButton"
 
 
 func _ready() -> void:
+	openbutton.pressed.connect(func(): open_requested.emit())
 	savebutton.pressed.connect(func(): save_requested.emit())
 	menubutton.get_popup().index_pressed.connect(_on_menu_index)
 
