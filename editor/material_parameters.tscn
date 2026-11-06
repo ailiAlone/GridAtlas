@@ -997,8 +997,8 @@ context_menu_enabled = false
 scroll_fit_content_height = true
 
 [node name="Button" type="Button" parent="HBoxContainer/VBoxContainer" unique_id=556416497]
+custom_minimum_size = Vector2(0, 34)
 layout_mode = 2
-theme_override_font_sizes/font_size = 36
 text = "关闭"
 
 [node name="ColorPicker" type="ColorPicker" parent="HBoxContainer" unique_id=1607170463]

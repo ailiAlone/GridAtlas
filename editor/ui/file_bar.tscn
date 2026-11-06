@@ -1,0 +1,40 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://editor/ui/file_bar.gd" id="1_filebar"]
+
+[node name="FileBar" type="PanelContainer"]
+script = ExtResource("1_filebar")
+
+[node name="HBox" type="HBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="MapName" type="Label" parent="HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+clip_text = true
+text = "未命名"
+
+[node name="DirtyDot" type="Label" parent="HBox"]
+layout_mode = 2
+theme_type_variation = "Accent"
+text = "○"
+
+[node name="SaveButton" type="Button" parent="HBox"]
+layout_mode = 2
+tooltip_text = "保存地图与全部边车（外观/物件/桥/着色器副本）—— Ctrl+S"
+text = "保存"
+
+[node name="MenuButton" type="MenuButton" parent="HBox"]
+layout_mode = 2
+tooltip_text = "地图文件操作"
+text = "▾"
+
+[node name="PopupMenu" type="PopupMenu" parent="HBox/MenuButton"]
+item_count = 3
+item_0/text = "新建地图…"
+item_0/id = 0
+item_1/text = "打开地图…"
+item_1/id = 1
+item_2/text = "另存为…"
+item_2/id = 2

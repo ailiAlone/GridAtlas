@@ -14,15 +14,27 @@ extends Control
 @onready var grid_mini: GridView = $HBoxContainer/VBoxContainer/Panel/GridViewMini
 @onready var preview_mini: GamePreviewScript = $HBoxContainer/VBoxContainer/Panel/GamePreviewMini
 @onready var swapbutton: Button = $HBoxContainer/VBoxContainer/Panel/Button
-@onready var coord_label: Label = $HBoxContainer/VBoxContainer2/Panel2/HBoxContainer/Label
+@onready var filebar: Control = $HBoxContainer/VBoxContainer/FileBar
+@onready var status_hint: Label = $HBoxContainer/VBoxContainer2/Panel2/HBoxContainer/StatusHint
+@onready var status_hover: Label = $HBoxContainer/VBoxContainer2/Panel2/HBoxContainer/StatusHover
+@onready var status_zoom: Label = $HBoxContainer/VBoxContainer2/Panel2/HBoxContainer/StatusZoom
 @onready var smallpanel: Panel = $HBoxContainer/VBoxContainer/Panel
 @onready var bigscroll: ScrollContainer = $HBoxContainer/VBoxContainer2/Panel/ScrollContainer
 @onready var import_overlay: Control = $ImportOverlay
 @onready var import_view = $ImportOverlay/StaticAssetImportView
+@onready var _reset_confirm: ConfirmationDialog = $ShaderResetConfirm
+@onready var _unsaved_confirm: ConfirmationDialog = $UnsavedConfirm
+@onready var _newmap_dialog: AcceptDialog = $NewMapDialog
+@onready var _newmap_w: SpinBox = $NewMapDialog/VBox/HBoxSize/SpinBoxW
+@onready var _newmap_h: SpinBox = $NewMapDialog/VBox/HBoxSize/SpinBoxH
+@onready var map_browser: Window = $MapBrowser
 
 const PropsData = preload("res://data/props_data.gd")
 const BridgesData = preload("res://data/bridges_data.gd")
+const MapSidecars = preload("res://data/map_sidecars.gd")
 const GamePreviewScript = preload("res://editor/game_preview.gd")
+const EditorTheme = preload("res://editor/theme/editor_theme.gd")
+const Toast = preload("res://editor/ui/toast.gd")
 
 var map: MapData  # 唯一持有者：所有使用方从这里拿引用
 var props   # 物件层（PropsData，地图边车）：同样由本脚本持有、注入视图
@@ -42,9 +54,14 @@ const HISTORY_MAX: int = 60
 var undo_stack: Array[Dictionary] = []
 var redo_stack: Array[Dictionary] = []
 var last_edit_cell: Vector2i = Vector2i(-1, -1)  # 最近一次落笔位置：切到 45° 预览时从那里看
+var _pending_flow: StringName = &""   # 未保存确认之后要执行的动作（new/open/quit）
+var _quit_after_save: bool = false    # 走另存对话框保存成功后自动退出
+var _suppress_dirty: bool = false     # 载入 look / 新建地图时抑制 settings_changed 点脏
+var _erase_miss_toasted: bool = false # 本次落笔是否已提示过"没删到物件"
 
 
 func _ready() -> void:
+	theme = EditorTheme.build()   # 全编辑器统一深色主题（子场景自动继承）
 	grids = [grid_view, grid_mini]
 	map = MapData.create(Vector2i(64, 64))
 	props = PropsData.new()
@@ -81,11 +98,33 @@ func _ready() -> void:
 	grid_view.stroke_ended.connect(_on_stroke_ended)
 	rtool.settings_changed.connect(_on_render_settings_changed)
 	rtool.material_params_requested.connect(_on_material_params_requested)
+	rtool.shader_open_requested.connect(_on_shader_open_requested)
+	rtool.shader_reload_requested.connect(_on_shader_reload_requested)
+	rtool.shader_reset_requested.connect(_on_shader_reset_requested)
+	_reset_confirm.confirmed.connect(_on_shader_reset_confirmed)
 	material_params.connect("settings_changed", _on_material_params_changed)
 	material_params.visibility_changed.connect(_on_material_params_visibility)
 	swapbutton.pressed.connect(_on_swap_pressed)
 	smallpanel.resized.connect(_refresh_views)
 	bigscroll.resized.connect(_refresh_views)
+	# 文件条（两模式常驻）：保存/新建/打开/另存为都从这里进，脏状态由 tools 广播
+	filebar.save_requested.connect(func(): tools.save_map())
+	filebar.menu_new_requested.connect(_on_new_map_requested)
+	filebar.menu_open_requested.connect(_on_open_map_requested)
+	filebar.menu_save_as_requested.connect(func(): tools.save_as_map())
+	tools.dirty_state_changed.connect(filebar.set_dirty)
+	tools.map_path_changed.connect(filebar.set_map_path)
+	# 关窗保护：连接 close_requested 后引擎不再自动退出，由这里决定退不退
+	get_window().close_requested.connect(_on_close_requested)
+	_unsaved_confirm.confirmed.connect(_on_unsaved_confirmed)      # 保存后继续
+	_unsaved_confirm.add_button("不保存，直接继续", true, &"discard_go")
+	_unsaved_confirm.custom_action.connect(_on_unsaved_custom)    # 丢弃并继续
+	_newmap_dialog.confirmed.connect(_on_new_map_confirmed)
+	for preset: Button in _newmap_dialog.find_children("Preset*", "Button", true, false):
+		preset.pressed.connect(_on_newmap_preset.bind(int(preset.text)))
+	map_browser.map_chosen.connect(_open_map_chosen)
+	map_browser.new_requested.connect(func(): _newmap_dialog.popup_centered())
+	map_browser.browse_requested.connect(func(): tools.open_map_dialog())
 	# 静态初始化两个编辑画布的面板模式（此后不再变化）
 	grid_view.set_panel_mode(true)
 	grid_mini.set_panel_mode(false)
@@ -121,7 +160,8 @@ func _on_swap_pressed() -> void:
 		_setup_mini_preview()
 	tools.visible = not render_mode
 	rtool.visible = render_mode
-	coord_label.text = "当前坐标(-,-)"
+	status_hover.text = "(-,-)"
+	_update_status_hint()
 	swapbutton.text = "切换编辑" if render_mode else "切换渲染"
 	print("[视图] %s" % ("渲染模式（45° 游戏视图）" if render_mode else "编辑模式"))
 
@@ -320,7 +360,7 @@ func _on_area_painted(area: Rect2i, erase: bool) -> void:
 		print("[绘制] (%d,%d) %d×%d %s = %s" % [area.position.x, area.position.y, area.size.x, area.size.y, GridDefs.LAYER_NAMES.get(layer, layer), tools.value_name(layer, tools.brush_value)])
 
 
-## 山体遮罩：左键=画山、右键=清除；山脉格不可通行，但下面的陆地/道路数据不动。
+## 山体遮罩：左键=画山、Shift+左键=清除；山脉格不可通行，但下面的陆地/道路数据不动。
 func _paint_mountains(area: Rect2i, erase: bool) -> void:
 	var value: int = 0 if erase else 1
 	for y in range(area.position.y, area.end.y):
@@ -349,7 +389,7 @@ func _carve_mountain(cell: Vector2i) -> bool:
 	return true
 
 
-## 高程笔刷：区域内每格直接写入选定整级高度，右键恢复 1 级。
+## 高程笔刷：区域内每格直接写入选定整级高度，Shift+左键恢复 1 级。
 ## 山体高度由最近山脚的基础高程派生，所以有山体时整张 45° 预览要按新基准重建；
 ## 没有山体时只同步脏区，拖动大图也不卡。
 func _paint_elevation(area: Rect2i, erase: bool) -> void:
@@ -419,6 +459,7 @@ func _flush_mini_sync() -> void:
 
 ## 松手后按新的最高点重算一次整图取景；拖动过程中不缩放，避免镜头抖动。
 func _on_stroke_ended() -> void:
+	_erase_miss_toasted = false   # 下一次落笔重新允许"没删到"提示
 	if preview_mini != null and preview_mini.visible:
 		preview_mini.flush_ground_mask()
 		preview_mini.fit_overview()
@@ -452,7 +493,7 @@ func _reload_asset_defs(announce: bool = false) -> void:
 	print("[资源] 已载入 %d 个定义%s" % [asset_defs.size(), "（刷新）" if announce else ""])
 
 
-## 资源落笔：在笔刷区域中心放一个静态资源（右键=删除占地范围覆盖该格的物件）。
+## 资源落笔：在笔刷区域中心放一个静态资源（Shift+左键=删除占地范围覆盖该格的物件）。
 ## 笔刷大小 >1 时按区域中心落点，与 GridView 的绿色预览框一致。
 func _paint_props(area: Rect2i, erase: bool) -> void:
 	if props == null or tools == null or tools.brush_layer != &"prop":
@@ -476,6 +517,9 @@ func _paint_props(area: Rect2i, erase: bool) -> void:
 				if game_preview != null and game_preview.visible:
 					game_preview.refresh_props()
 			print("[物件] 删除 %s（%d 个）" % [str(center), removed])
+		elif not _erase_miss_toasted:
+			_erase_miss_toasted = true   # 一次落笔只提示一次，拖动连续擦除不刷屏
+			Toast.show(self, "该位置没有可删除的物件")
 		return
 	if tools.prop_asset_id == &"":
 		return
@@ -506,6 +550,9 @@ func _paint_asset(center: Vector2i) -> void:
 		print("[资源] 放置 %s @ %s（占地范围 %d×%d，%d×，方向 %s，阻挡 %d 格）" % [
 			def.display_name, str(anchor), fp.x, fp.y, scale,
 			"竖向" if rot == 1 else "横向", props.blocking_cells_at(idx).size()])
+	else:
+		var reason: String = "越界" if not props.can_place_fp(fp, anchor, map.grid_size) else "与已有物件重叠"
+		Toast.show(self, "无法放置 %s：%s" % [def.display_name, reason], true)
 
 
 ## R 键：鼠标下有资源就在横向/竖向之间切换；否则只切换待放置方向（与方向按钮同一状态）。
@@ -522,6 +569,7 @@ func _rotate_asset_at(cell: Vector2i) -> void:
 	if def != null:
 		showname = def.display_name
 	if not props.can_rotate(idx, map.grid_size):
+		Toast.show(self, "不能旋转 %s：越界或与已有物件重叠" % showname, true)
 		print("[资源] 不能旋转 %s：越界或与已有物件重叠" % showname)
 		return
 	_push_history()
@@ -562,9 +610,11 @@ func _on_bridge_committed(start: Vector2i, end: Vector2i, kind: int, erase: bool
 			print("[桥] 删除包含 %s 的桥" % str(start))
 		return
 	if not _bridge_span_allowed(start, end):
+		Toast.show(self, "无效落桥：桥座各占一格陆地，桥身全部在水上，不能穿山/压物件/重复", true)
 		print("[桥] 无效落桥：两个桥座必须各占一格陆地，桥身必须全部在水上；不能穿山/压物件/重复")
 		return
 	if not bridges.add_bridge(kind, start, end, map.grid_size):
+		Toast.show(self, "放置失败：斜线、越界或与已有桥重叠", true)
 		print("[桥] 放置失败：斜线、越界或与已有桥重叠")
 		return
 	tools.mark_dirty()
@@ -616,6 +666,7 @@ func _on_brush_changed(layer: StringName, _value: int) -> void:
 			tools.current_prop_scale())
 	else:
 		grid_view.set_asset_preview(&"")
+	_update_status_hint()
 
 
 ## 方向按钮/R 键改变待放置方向：ghost 立即换占地与掩码
@@ -657,12 +708,53 @@ func _on_import_view_closed() -> void:
 	print("[资源] 导入页已关闭，资源库已刷新")
 
 
+## 悬停信息（状态栏中区）：坐标 · 地形 · 高程 · 物件名——Shift+左键删除前先知道会删到什么
 func _on_cell_hovered(cell: Vector2i) -> void:
-	var suffix: String = _brush_status()
-	if cell.x >= 0:
-		coord_label.text = "当前坐标(%d,%d)%s" % [cell.x, cell.y, suffix]
+	if cell.x < 0:
+		status_hover.text = "(-,-)"
+		return
+	var parts: PackedStringArray = ["(%d,%d)" % [cell.x, cell.y]]
+	if map.is_mountain(cell):
+		parts.append("山体")
+	elif map.get_water(cell) != GridDefs.Water.NONE:
+		parts.append(String(GridDefs.WATER_NAMES.get(map.get_water(cell), "水")))
 	else:
-		coord_label.text = "当前坐标(-,-)%s" % suffix
+		parts.append(String(GridDefs.LAND_NAMES.get(map.get_land(cell), "?")))
+	var road: int = map.get_road(cell)
+	if road != GridDefs.Road.NONE:
+		parts.append(String(GridDefs.ROAD_NAMES.get(road, "路")))
+	parts.append("高 %s" % GridDefs.height_text(map.get_height(cell)))
+	if props != null:
+		var index: int = props.asset_index_at(cell)
+		if index >= 0:
+			var def: StaticAssetDef = props.asset(props.asset_id_at(index))
+			parts.append(def.display_name if def != null else String(props.asset_id_at(index)))
+	status_hover.text = " · ".join(parts)
+
+
+## 状态栏左区：随模式和当前笔刷变化的上下文操作提示
+func _update_status_hint() -> void:
+	if render_mode:
+		status_hint.text = "滚轮缩放 · 右键/中键拖动 · G 格线 · R 复位视角 · Ctrl+S 保存"
+		return
+	match tools.brush_layer:
+		&"prop":
+			var def: StaticAssetDef = props.asset(tools.prop_asset_id) if props != null else null
+			var name: String = def.display_name if def != null else "未选中"
+			status_hint.text = "放置 %s · 左键放置 · Shift+左键删除 · R 旋转 · Esc 退出" % name
+		_:
+			status_hint.text = "左键绘制 · Shift+左键擦除 · 右键拖动平移 · 滚轮缩放 · Ctrl+Z 撤销" + _brush_status()
+
+
+## 状态栏右区：编辑模式显示缩放百分比，渲染模式显示像素/格（值没变不重写）
+func _process(_delta: float) -> void:
+	var text: String
+	if render_mode:
+		text = "%d px/格" % roundi(game_preview.current_ppm())
+	else:
+		text = "%d%%" % roundi(grid_view.zoom * 100.0)
+	if text != status_zoom.text:
+		status_zoom.text = text
 
 
 ## 左下角坐标条后面附上当前笔刷，方便一眼确认是否真的退出了资源放置。
@@ -735,6 +827,8 @@ func _on_map_loaded(data: MapData) -> void:
 		view.set_props(props)
 		view.set_bridges(bridges)
 	_load_look(tools.current_path)
+	rtool.set_shader_context(tools.current_path)
+	Toast.show(self, "已打开 %s（%d×%d）" % [tools.current_path.get_file(), map.grid_size.x, map.grid_size.y])
 	_refresh_prop_views()
 	_setup_mini_preview()
 	if render_mode:
@@ -742,8 +836,11 @@ func _on_map_loaded(data: MapData) -> void:
 			game_preview.home_center, game_preview.current_ppm())
 
 
-## 渲染配置面板任何改动：即时注入左上角 45° 预览与 45° 游戏预览
+## 渲染配置面板任何改动：即时注入两个 45° 预览；look 也是地图状态的一部分，点亮脏标记。
+## 载入边车 / 新建地图时的 set_settings 走 _suppress_dirty，不算用户改动。
 func _on_render_settings_changed() -> void:
+	if not _suppress_dirty:
+		tools.mark_dirty()
 	_apply_look_to_views()
 	if material_params.visible:
 		material_params.call("set_settings", rtool.settings)
@@ -784,13 +881,21 @@ func _on_map_saved(path: String) -> void:
 		else:
 			push_warning("桥保存失败(%s): %s" % [error_string(berr), bridge_side])
 	var look_path: String = _look_path(path)
-	if look_path.is_empty():
-		return
-	var err: Error = ResourceSaver.save(rtool.settings, look_path)
-	if err == OK:
-		print("[渲染] 配置已保存: %s" % look_path)
-	else:
-		push_warning("渲染配置保存失败(%s): %s" % [error_string(err), look_path])
+	if not look_path.is_empty():
+		var err: Error = ResourceSaver.save(rtool.settings, look_path)
+		if err == OK:
+			print("[渲染] 配置已保存: %s" % look_path)
+		else:
+			push_warning("渲染配置保存失败(%s): %s" % [error_string(err), look_path])
+	# 地表着色器边车：首存拷一份母版给这张图（已存在则不动），面板状态随之刷新
+	var shader_copy: String = MapSidecars.ensure_terrain_copy(path)
+	if not shader_copy.is_empty():
+		print("[渲染] 着色器副本就绪: %s" % shader_copy)
+	rtool.set_shader_context(path)
+	Toast.show(self, "已保存 %s" % path.get_file())
+	if _quit_after_save and not tools.dirty:
+		_quit_after_save = false
+		get_tree().quit()
 
 
 ## 打开地图时，若存在同名边车就载入；没有则保持当前外观
@@ -802,8 +907,60 @@ func _load_look(map_path: String) -> void:
 	if loaded == null:
 		push_warning("渲染配置不是有效资源: " + look_path)
 		return
+	_suppress_dirty = true
 	rtool.set_settings(loaded)
+	_suppress_dirty = false
+	tools.clear_dirty()   # 载入边车不算用户改动：清掉可能被点亮的脏标记
 	print("[渲染] 已载入配置: %s" % look_path)
+
+
+# ---------- 地表着色器的按图副本（打开/重载/从母版重置） ----------
+
+## 在资源管理器中定位地图专属着色器：副本不存在先物化（拷母版），
+## 两个 45° 预览随即换用副本，保证所见即所编。
+func _on_shader_open_requested() -> void:
+	var map_path: String = tools.current_path
+	var shader_copy: String = MapSidecars.ensure_terrain_copy(map_path)
+	if shader_copy.is_empty():
+		return
+	OS.shell_show_in_file_manager(ProjectSettings.globalize_path(shader_copy))
+	_reload_shader_views()
+	rtool.set_shader_context(map_path)
+	print("[渲染] 已定位着色器: %s" % shader_copy)
+
+
+## 外部编辑器改完着色器后手动重载：两个 45° 预览原地换新，画面不闪
+func _on_shader_reload_requested() -> void:
+	_reload_shader_views()
+	Toast.show(self, "着色器已重载：%s" % _live_shader_path().get_file())
+	print("[渲染] 着色器已重载: %s" % _live_shader_path())
+
+
+## 用母版覆盖地图副本（先确认——会抹掉这张图里定制过的着色器代码）
+func _on_shader_reset_requested() -> void:
+	var shader_copy: String = MapSidecars.terrain_shader_path(tools.current_path)
+	if shader_copy.is_empty():
+		return
+	_reset_confirm.dialog_text = "用母版 runtime/terrain.gdshader 覆盖\n%s？\n\n这张图里定制过的着色器代码会被抹掉。" % shader_copy.get_file()
+	_reset_confirm.popup_centered()
+
+
+func _on_shader_reset_confirmed() -> void:
+	if not MapSidecars.reset_terrain_copy(tools.current_path):
+		return
+	_reload_shader_views()
+	print("[渲染] 着色器已从母版重置: %s" % MapSidecars.terrain_shader_path(tools.current_path))
+
+
+func _reload_shader_views() -> void:
+	preview_mini.reload_shader()
+	game_preview.reload_shader()
+
+
+## 当前预览实际在用的着色器文件（两个预览同源，取其一即可）
+func _live_shader_path() -> String:
+	var runtime = preview_mini.runtime
+	return runtime.shader_path if runtime != null else MapSidecars.MASTER_TERRAIN_SHADER
 
 
 ## 物件边车：与地图同目录同名；缺失/损坏时返回空层，不阻塞地图打开。
@@ -910,6 +1067,7 @@ func _restore_map(snap: MapData) -> void:
 
 func _undo() -> void:
 	if undo_stack.is_empty():
+		Toast.show(self, "没有可撤销的操作")
 		return
 	redo_stack.append(_snapshot_state())
 	var snap: Dictionary = undo_stack.pop_back()
@@ -919,6 +1077,7 @@ func _undo() -> void:
 
 func _redo() -> void:
 	if redo_stack.is_empty():
+		Toast.show(self, "没有可重做的操作")
 		return
 	undo_stack.append(_snapshot_state())
 	var snap: Dictionary = redo_stack.pop_back()
@@ -943,15 +1102,143 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			_rotate_asset_at(grid_view.hover_cell())
 			get_viewport().set_input_as_handled()
 		return
-	if key.keycode == KEY_Z:
-		if key.shift_pressed:
+	# Ctrl 系快捷键：文件操作 + 撤销/重做 + 着色器重载
+	match key.keycode:
+		KEY_S:
+			if key.shift_pressed:
+				tools.save_as_map()
+			else:
+				tools.save_map()
+			get_viewport().set_input_as_handled()
+		KEY_R:
+			if render_mode:
+				_on_shader_reload_requested()
+				get_viewport().set_input_as_handled()
+		KEY_N:
+			_on_new_map_requested()
+			get_viewport().set_input_as_handled()
+		KEY_O:
+			_on_open_map_requested()
+			get_viewport().set_input_as_handled()
+		KEY_Z:
+			if key.shift_pressed:
+				_redo()
+			else:
+				_undo()
+			get_viewport().set_input_as_handled()
+		KEY_Y:
 			_redo()
+			get_viewport().set_input_as_handled()
+
+
+# ---------- 文件工作流（文件条 / 快捷键共用入口） ----------
+
+## 统一的未保存确认流：OK=保存后继续，自定义按钮=不保存直接继续，取消=留在编辑器。
+## _pending_flow 记住确认完要去干什么（new / open / quit）。
+func _request_after_unsaved(flow: StringName, ok_text: String) -> void:
+	_pending_flow = flow
+	_unsaved_confirm.dialog_text = "当前地图有未保存的修改。"
+	_unsaved_confirm.ok_button_text = ok_text
+	_unsaved_confirm.popup_centered()
+
+
+func _on_unsaved_confirmed() -> void:
+	tools.save_map()   # 有路径直接存；没路径弹另存对话框，用户取消则流程自然中止
+	if _pending_flow == &"quit":
+		if not tools.dirty:
+			get_tree().quit()
 		else:
-			_undo()
-		get_viewport().set_input_as_handled()
-	elif key.keycode == KEY_Y:
-		_redo()
-		get_viewport().set_input_as_handled()
+			_quit_after_save = true   # 走另存对话框：_on_map_saved 里退
+	else:
+		_proceed_pending_flow()
+
+
+func _on_unsaved_custom(_action: StringName) -> void:
+	_unsaved_confirm.hide()
+	_proceed_pending_flow()
+
+
+func _proceed_pending_flow() -> void:
+	match _pending_flow:
+		&"new":
+			_newmap_dialog.popup_centered()
+		&"open":
+			_open_map_after_confirm()
+		&"quit":
+			get_tree().quit()
+	_pending_flow = &""
+
+
+## 新建地图：脏状态先确认，再弹尺寸对话框
+func _on_new_map_requested() -> void:
+	if tools.dirty:
+		_request_after_unsaved(&"new", "保存后新建")
+		return
+	_newmap_dialog.popup_centered()
+
+
+func _on_newmap_preset(size: int) -> void:
+	_newmap_w.set_value_no_signal(size)
+	_newmap_h.set_value_no_signal(size)
+
+
+func _on_new_map_confirmed() -> void:
+	_apply_new_map(Vector2i(int(_newmap_w.value), int(_newmap_h.value)))
+
+
+## 新地图本体：换 MapData/边车层/外观默认值，全部视图重灌（与打开地图同一套流程）
+func _apply_new_map(size: Vector2i) -> void:
+	map = MapData.create(size)
+	props = PropsData.new()
+	props.set_asset_defs(asset_defs)
+	bridges = BridgesData.new()
+	last_edit_cell = Vector2i(-1, -1)
+	undo_stack.clear()
+	redo_stack.clear()
+	_suppress_dirty = true
+	rtool.set_settings(RenderSettings.new())
+	_suppress_dirty = false
+	tools.reset_file_state()
+	tools.set_map(map)
+	for view: GridView in grids:
+		view.set_map(map)
+		view.set_props(props)
+		view.set_bridges(bridges)
+	_refresh_prop_views()
+	_setup_mini_preview()
+	if render_mode:
+		game_preview.setup(map, rtool.settings, props, bridges, Vector2(map.grid_size) * 0.5)
+	Toast.show(self, "新建地图 %d×%d（未保存）" % [size.x, size.y])
+	print("[地图] 新建地图 %d×%d（未保存）" % [size.x, size.y])
+
+
+## 打开地图：脏状态先确认；列表弹窗（maps/ 没图时回退 FileDialog）
+func _on_open_map_requested() -> void:
+	if tools.dirty:
+		_request_after_unsaved(&"open", "保存后打开")
+		return
+	_open_map_after_confirm()
+
+
+func _open_map_after_confirm() -> void:
+	if map_browser.available():
+		map_browser.popup_centered()
+	else:
+		tools.open_map_dialog()
+
+
+func _open_map_chosen(path: String) -> void:
+	tools.open_map(path)
+
+
+# ---------- 关窗保护 ----------
+
+## 关窗：干净直接退；有修改弹"保存 / 不保存直接继续 / 取消"
+func _on_close_requested() -> void:
+	if not tools.dirty:
+		get_tree().quit()
+		return
+	_request_after_unsaved(&"quit", "保存并关闭")
 
 
 ## 点“材质参数”：打开大面板里的材质浮窗（颜色/过渡矩阵），并把它的改动接回重渲

@@ -1,15 +1,14 @@
-[gd_scene format=3 uid="uid://vtukrdbwmpd0"]
+[gd_scene load_steps=11 format=3]
 
-[ext_resource type="PackedScene" uid="uid://duqxx0801a83k" path="res://editor/grid_tools.tscn" id="2_uu6xs"]
+[ext_resource type="PackedScene" path="res://editor/grid_tools.tscn" id="2_uu6xs"]
 [ext_resource type="Script" uid="uid://bg63e3d0c11ss" path="res://editor/main.gd" id="3_main"]
 [ext_resource type="PackedScene" uid="uid://bt54rkajpdso1" path="res://editor/grid_view.tscn" id="4_gview"]
 [ext_resource type="PackedScene" uid="uid://dxiuobwm7qm4b" path="res://editor/render_tool.tscn" id="7_rtool"]
 [ext_resource type="PackedScene" path="res://editor/game_preview.tscn" id="8_gpreview"]
 [ext_resource type="PackedScene" uid="uid://1y80if473x7a" path="res://editor/material_parameters.tscn" id="9_mparams"]
 [ext_resource type="PackedScene" uid="uid://b6u1u60pthv1q" path="res://editor/StaticAssetImportView.tscn" id="10_import"]
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_glv2v"]
-bg_color = Color(1, 1, 1, 0.14117648)
+[ext_resource type="PackedScene" path="res://editor/ui/file_bar.tscn" id="11_filebar"]
+[ext_resource type="PackedScene" path="res://editor/ui/map_browser.tscn" id="12_browser"]
 
 [node name="Main" type="Control" unique_id=1225227347]
 layout_mode = 3
@@ -30,17 +29,21 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+theme_override_constants/separation = 8
 metadata/_edit_lock_ = true
 
 [node name="VBoxContainer" type="VBoxContainer" parent="HBoxContainer" unique_id=1660017475]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_constants/separation = 8
 metadata/_edit_lock_ = true
+
+[node name="FileBar" parent="HBoxContainer/VBoxContainer" instance=ExtResource("11_filebar")]
+layout_mode = 2
 
 [node name="Panel" type="Panel" parent="HBoxContainer/VBoxContainer" unique_id=447031656]
 custom_minimum_size = Vector2(240, 240)
 layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_glv2v")
 
 [node name="GamePreviewMini" parent="HBoxContainer/VBoxContainer/Panel" unique_id=2071377717 instance=ExtResource("8_gpreview")]
 layout_mode = 1
@@ -91,6 +94,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_stretch_ratio = 3.5
 mouse_filter = 2
+theme_override_constants/separation = 8
 metadata/_edit_lock_ = true
 
 [node name="Panel" type="Panel" parent="HBoxContainer/VBoxContainer2" unique_id=452600714]
@@ -133,18 +137,30 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_constants/separation = 16
 
-[node name="Label2" type="Label" parent="HBoxContainer/VBoxContainer2/Panel2/HBoxContainer" unique_id=1883174500]
+[node name="StatusHint" type="Label" parent="HBoxContainer/VBoxContainer2/Panel2/HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.88, 0.92, 0.98, 0.78)
-theme_override_font_sizes/font_size = 13
-text = "Ctrl+Z 撤销 · Ctrl+Shift+Z / Ctrl+Y 重做 · 编辑：左键绘制 / 右键擦除 / 滚轮缩放 / 空格+左键拖动 / R 切换资源横竖 · 渲染：滚轮缩放 / 右键/中键拖动 / G 格线 / R 复位"
+theme_type_variation = "Dim"
+clip_text = true
+text = "左键绘制 · Shift+左键擦除 · 右键拖动平移 · 滚轮缩放"
 vertical_alignment = 1
 
-[node name="Label" type="Label" parent="HBoxContainer/VBoxContainer2/Panel2/HBoxContainer" unique_id=482572023]
+[node name="StatusHover" type="Label" parent="HBoxContainer/VBoxContainer2/Panel2/HBoxContainer"]
 layout_mode = 2
-text = "当前坐标(-,-)"
+custom_minimum_size = Vector2(280, 0)
+clip_text = true
+text = "(-,-)"
+vertical_alignment = 1
+horizontal_alignment = 1
+
+[node name="StatusZoom" type="Label" parent="HBoxContainer/VBoxContainer2/Panel2/HBoxContainer"]
+layout_mode = 2
+theme_type_variation = "Dim"
+text = "100%"
+vertical_alignment = 1
+horizontal_alignment = 2
 
 [node name="ImportOverlay" type="Control" parent="." unique_id=1226961433]
 visible = false
@@ -170,11 +186,82 @@ layout_mode = 0
 anchors_preset = 0
 anchor_left = 0.0
 anchor_top = 0.0
-anchor_right = 0.0
-anchor_bottom = 0.0
-offset_left = 0.0
-offset_top = 0.0
 offset_right = 1160.0
 offset_bottom = 780.0
 grow_horizontal = 1
 grow_vertical = 1
+
+[node name="ShaderResetConfirm" type="ConfirmationDialog" parent="."]
+ok_button_text = "覆盖"
+
+[node name="UnsavedConfirm" type="ConfirmationDialog" parent="."]
+dialog_text = "当前地图有未保存的修改。"
+ok_button_text = "保存"
+
+[node name="MapBrowser" parent="." instance=ExtResource("12_browser")]
+
+[node name="NewMapDialog" type="AcceptDialog" parent="."]
+title = "新建地图"
+ok_button_text = "创建"
+
+[node name="VBox" type="VBoxContainer" parent="NewMapDialog"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 4.0
+offset_top = 4.0
+offset_right = -4.0
+offset_bottom = -4.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 8
+
+[node name="Hint" type="Label" parent="NewMapDialog/VBox"]
+layout_mode = 2
+theme_type_variation = "Dim"
+text = "预设或自定义尺寸（格），全图草地 / 高程 1 级"
+
+[node name="Presets" type="HBoxContainer" parent="NewMapDialog/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Preset64" type="Button" parent="NewMapDialog/VBox/Presets"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "64"
+
+[node name="Preset96" type="Button" parent="NewMapDialog/VBox/Presets"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "96"
+
+[node name="Preset128" type="Button" parent="NewMapDialog/VBox/Presets"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "128"
+
+[node name="HBoxSize" type="HBoxContainer" parent="NewMapDialog/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="LabelW" type="Label" parent="NewMapDialog/VBox/HBoxSize"]
+layout_mode = 2
+text = "宽"
+
+[node name="SpinBoxW" type="SpinBox" parent="NewMapDialog/VBox/HBoxSize"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 8.0
+max_value = 1024.0
+value = 64.0
+
+[node name="LabelH" type="Label" parent="NewMapDialog/VBox/HBoxSize"]
+layout_mode = 2
+text = "高"
+
+[node name="SpinBoxH" type="SpinBox" parent="NewMapDialog/VBox/HBoxSize"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 8.0
+max_value = 1024.0
+value = 64.0

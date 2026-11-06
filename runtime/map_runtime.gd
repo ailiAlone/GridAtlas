@@ -1,11 +1,15 @@
 extends RefCounted
 
 const BridgesData = preload("res://data/bridges_data.gd")
+const MapSidecars = preload("res://data/map_sidecars.gd")
 ## 游戏端地图运行时：把 MapData + RenderSettings 变成两样东西
 ##   1) 一套直接喂给地表着色器的纹理与材质（外观）
 ##   2) 一套玩法查询：可通行 / 移动代价 / 高程 / 水域 / 寻路（玩法）
 ## 工具（GamePreview）和游戏共用同一份 .tres 与同一份 look 参数，
 ## 所以地图外观和玩法规则不会各说各话。
+##
+## 地表着色器按图取用（MapSidecars）：maps/<图>/<图>.terrain.gdshader 副本优先、
+## 母版 runtime/terrain.gdshader 兜底，所以每张图可以有自己的着色器代码。
 ##
 ## 用法：
 ##   var rt: RefCounted = preload("res://runtime/map_runtime.gd").new()
@@ -13,27 +17,11 @@ const BridgesData = preload("res://data/bridges_data.gd")
 ##   terrain.material = rt.material
 ##   rt.find_path(from_cell, to_cell)
 
-const SHADER_PATH: String = "res://runtime/terrain.gdshader"
 const NOISE_SIZE: int = 256
 const COLOR_COUNT: int = 15
 const ELEV_BLUR: Array[int] = [1, 4, 6, 4, 1]
 const ELEV_SMOOTH_MAX: float = 32.0
 const CELL_SIZE: float = 16.0   # 世界像素/格（和工具画布一致，实体与点击都用它换算）
-
-# 与 RenderSettings 的属性一一对应；照抄工具里的清单，外观才不会漂移
-const SCALAR_UNIFORMS: Array[StringName] = [
-	&"texture_strength", &"texture_frequency", &"grain", &"biome", &"bump",
-	&"band_hard", &"band_soft", &"edge_jitter", &"coast_warp",
-	&"crease_width", &"crease_dark", &"relief",
-	&"tide_frequency", &"tide_amplitude",
-	&"ripple_frequency", &"ripple_speed", &"ripple_strength", &"flow_speed",
-	&"foam_width", &"foam_strength",
-	&"road_width", &"road_softness", &"road_texture", &"road_round", &"road_bend", &"road_blend", &"road_grass",
-	&"elevation_bright", &"elevation_shadow", &"elevation_rim", &"elevation_shadow_width",
-	&"rock_slope_low", &"rock_slope_high", &"snow_line_ratio", &"snow_line_min",
-	&"light_azimuth", &"light_elevation",
-	&"height_scale",
-]
 
 # ---------- 移动代价（越小越快，0 = 不可通行） ----------
 # 数值是"每格耗时"的相对值，游戏里乘以一个基础速度即可换算成秒
@@ -58,6 +46,7 @@ const SLOPE_COST: float = 0.03          # 每高一级的额外代价
 var map: MapData
 var look: RenderSettings
 var material: ShaderMaterial
+var shader_path: String = MapSidecars.MASTER_TERRAIN_SHADER   # 实际使用的着色器文件（副本或母版）
 var astar: AStarGrid2D
 
 var data_img: Image
@@ -109,9 +98,40 @@ func setup(data: MapData, look_settings: RenderSettings, with_gameplay: bool = t
 
 func _build_material() -> void:
 	material = ShaderMaterial.new()
-	material.shader = load(SHADER_PATH) as Shader
-	for prop: StringName in SCALAR_UNIFORMS:
-		material.set_shader_parameter("u_" + String(prop), look.get(prop))
+	var shader: Shader = MapSidecars.load_terrain_shader(map.resource_path)
+	shader_path = shader.resource_path
+	material.shader = shader
+	_inject_uniforms()
+
+
+## 把 RenderSettings 的参数注进着色器：遍历着色器实际声明的 uniform，名字去掉
+## u_ 前缀后能在 look 里找到同名属性就写入。不维护固定清单——地图专属着色器
+## 增/删/改名 uniform 时这份逻辑零改动（新增 uniform 吃着色器里的默认值，
+## 删掉的 uniform 不再注入；u_time / 相机 / 纹理 uniform 这里不碰，由各自主人写）。
+func _inject_uniforms() -> void:
+	if material == null or material.shader == null:
+		return
+	for u: Dictionary in material.shader.get_shader_uniform_list():
+		if u.type == TYPE_OBJECT:
+			continue   # sampler（数据纹理），不是标量参数
+		var prop: String = String(u.name).trim_prefix("u_")
+		var value = look.get(prop)
+		if value != null:
+			material.set_shader_parameter(String(u.name), value)
+
+
+## 外部编辑器改了着色器文件后原地换新：同一个 ShaderMaterial 实例只换 shader 引用，
+## 纹理、u_time、相机 uniform 都在材质上原样保留，视图不重建、画面不闪。
+func reload_shader() -> bool:
+	if material == null:
+		return false
+	var shader: Shader = MapSidecars.load_terrain_shader(map.resource_path)
+	if shader == null:
+		return false
+	shader_path = shader.resource_path
+	material.shader = shader
+	_inject_uniforms()
+	return true
 
 
 func _build_textures() -> void:
@@ -271,8 +291,7 @@ func apply_look(settings: RenderSettings) -> void:
 	if settings == null or material == null:
 		return
 	look = settings
-	for prop: StringName in SCALAR_UNIFORMS:
-		material.set_shader_parameter("u_" + String(prop), look.get(prop))
+	_inject_uniforms()
 	_bake_noise()
 	_bake_colors()
 	_bake_affinity()

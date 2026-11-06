@@ -787,20 +787,25 @@ func _gui_input(event: InputEvent) -> void:
 			_zoom_at_cursor(mb.button_index)
 			accept_event()
 			return
+		# 右键拖动 = 平移（与 45° 预览一致）；空格+左键是旧习惯，继续保留
+		if big_panel and mb.button_index == MOUSE_BUTTON_RIGHT:
+			_panning = mb.pressed
+			mouse_default_cursor_shape = Control.CURSOR_DRAG if _panning else Control.CURSOR_ARROW
+			if _panning:
+				_abort_stroke()
+			accept_event()
+			return
 		if big_panel and mb.button_index == MOUSE_BUTTON_LEFT and Input.is_key_pressed(KEY_SPACE):
 			_panning = mb.pressed
 			mouse_default_cursor_shape = Control.CURSOR_DRAG if _panning else Control.CURSOR_ARROW
 			if _panning:
-				_dragging = false
-				_stroke_active = false
-				_bridge_dragging = false
-				_rect_dragging = false
+				_abort_stroke()
 			accept_event()
 			return
 	if brush_layer == &"bridge" and (event is InputEventMouseButton or event is InputEventMouseMotion):
 		_handle_bridge_input(event)
 		return
-	if event is InputEventMouseButton and event.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
 			# 只在地图内的按下才算一次落笔；快照在真正修改之前交给 main
 			_stroke_active = map.in_bounds(pixel_to_cell(get_local_mouse_position()))
@@ -810,7 +815,7 @@ func _gui_input(event: InputEvent) -> void:
 			_handle_rect_button(event)
 		elif event.pressed:
 			_dragging = true
-			_erasing = event.button_index == MOUSE_BUTTON_RIGHT
+			_erasing = (event as InputEventMouseButton).shift_pressed   # Shift+左键 = 擦除
 			_last_cell = Vector2i(-1, -1)
 			_paint_under_mouse()
 		else:
@@ -822,8 +827,9 @@ func _gui_input(event: InputEvent) -> void:
 	elif event is InputEventMouseMotion:
 		var motion: InputEventMouseMotion = event as InputEventMouseMotion
 		if _panning:
-			scroll.scroll_horizontal -= int(round(motion.relative.x))
-			scroll.scroll_vertical -= int(round(motion.relative.y))
+			if scroll != null:
+				scroll.scroll_horizontal -= int(round(motion.relative.x))
+				scroll.scroll_vertical -= int(round(motion.relative.y))
 			accept_event()
 			return
 		var cell: Vector2i = pixel_to_cell(get_local_mouse_position())
@@ -837,13 +843,33 @@ func _gui_input(event: InputEvent) -> void:
 			queue_redraw()
 
 
-## 桥工具：左键拖一条直线；右键删除鼠标下的桥。拖动只沿主导轴吸附，不产生 L 形。
+## 平移开始时中止进行中的落笔/拖拽，避免鼠标被"抢走"后留下半截笔画
+func _abort_stroke() -> void:
+	_dragging = false
+	_rect_dragging = false
+	_bridge_dragging = false
+	if _stroke_active:
+		_stroke_active = false
+		stroke_ended.emit()
+
+
+## 桥工具：左键拖一条直线（桥座→桥座）；Shift+左键点桥身删除。
+## 拖动只沿主导轴吸附，不产生 L 形。
 func _handle_bridge_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		var mb: InputEventMouseButton = event as InputEventMouseButton
 		var cell: Vector2i = pixel_to_cell(get_local_mouse_position())
 		if mb.button_index == MOUSE_BUTTON_LEFT:
 			if mb.pressed:
+				# Shift+左键：删除鼠标下的桥（与地形擦除同一个修饰键）
+				if mb.shift_pressed:
+					if bridges != null and map.in_bounds(cell) and bridges.index_at_cell(cell) >= 0:
+						stroke_started.emit()
+						bridge_committed.emit(cell, cell, brush_value, true)
+						stroke_ended.emit()
+						queue_redraw()
+					accept_event()
+					return
 				if map.in_bounds(cell):
 					_bridge_dragging = true
 					_bridge_start = _clamped_cell(cell)
@@ -865,13 +891,6 @@ func _handle_bridge_input(event: InputEvent) -> void:
 						stroke_ended.emit()
 					queue_redraw()
 				accept_event()
-		elif mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
-			if bridges != null and map.in_bounds(cell) and bridges.index_at_cell(cell) >= 0:
-				stroke_started.emit()
-				bridge_committed.emit(cell, cell, brush_value, true)
-				stroke_ended.emit()
-				queue_redraw()
-			accept_event()
 	elif event is InputEventMouseMotion:
 		var motion: InputEventMouseMotion = event as InputEventMouseMotion
 		var cell2: Vector2i = pixel_to_cell(get_local_mouse_position())
@@ -906,7 +925,7 @@ func _emit_area(anchor: Vector2i) -> void:
 func _handle_rect_button(event: InputEventMouseButton) -> void:
 	if event.pressed:
 		_rect_dragging = true
-		_erasing = event.button_index == MOUSE_BUTTON_RIGHT
+		_erasing = event.shift_pressed   # Shift+左键拖框 = 擦除填充
 		_rect_anchor = _clamped_cell(pixel_to_cell(get_local_mouse_position()))
 		_rect_current = _rect_anchor
 		queue_redraw()

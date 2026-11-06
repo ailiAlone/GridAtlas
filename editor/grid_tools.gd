@@ -1,6 +1,7 @@
 extends VBoxContainer
 
 const BridgesData = preload("res://data/bridges_data.gd")
+const EditorTheme = preload("res://editor/theme/editor_theme.gd")
 ## GridTools —— 编辑器左侧工具面板。
 ## 负责：笔刷选择（陆地/山体/道路/水域/流向/高程）、地图尺寸、保存/打开。
 ## 状态变化通过信号通知外部，由 main.gd 负责把笔刷和地图接到 GridView 上。
@@ -22,29 +23,28 @@ signal brush_size_changed(size: int)
 signal rect_mode_changed(on: bool)
 signal prop_rotation_changed(rot: int)
 signal prop_scale_changed(scale: int)
+signal dirty_state_changed(on: bool)   # 文件条（FileBar）据此显示 ●/○
+signal map_path_changed(path: String)  # 文件条据此显示地图名
 
 
-# ---------- 节点引用 ----------
+# ---------- 节点引用（分节为 FoldSection 实例，内容挂在 Content/Body 下） ----------
 
-@onready var landscontainer:HFlowContainer = $"PanelContainer/VBoxContainer/HFlowContainer"
-@onready var mountainbutton:Button = $"PanelContainer/VBoxContainer/HFlowContainer/Mountain"
-@onready var roadscontainer:HFlowContainer = $"PanelContainer4/VBoxContainer/HFlowContainer"
-@onready var bridgescontainer:HFlowContainer = $"PanelContainer4/VBoxContainer/BridgeFlow"
-@onready var waterscontainer:HBoxContainer = $"PanelContainer2/VBoxContainer/HBoxContainer"
-@onready var directionscontainer:GridContainer = $"PanelContainer2/VBoxContainer/HBoxContainer/GridContainer"
-@onready var elevationviewbutton:Button = $"PanelTerrain/VBoxContainer/Label/Button"
-@onready var elevationcontainer:HFlowContainer = $"PanelTerrain/VBoxContainer/HFlowContainerElevation"
-@onready var elevationplusbutton:Button = $"PanelTerrain/VBoxContainer/HFlowContainerElevation/ButtonPlus"
-@onready var brushcontainer:HFlowContainer = $"PanelContainerBrush/VBoxContainer/HFlowContainer"
-@onready var brushplusbutton:Button = $"PanelContainerBrush/VBoxContainer/HFlowContainer/ButtonPlus"
-@onready var brushrectbutton:Button = $"PanelContainerBrush/VBoxContainer/ButtonRect"
-@onready var savebutton:Button = $"PanelContainer5/VBoxContainer/HBoxContainer/Button"
-@onready var loadbutton:Button = $"PanelContainer5/VBoxContainer/Label/Button"
-@onready var filenamelabel:Label = $"PanelContainer5/VBoxContainer/HBoxContainer/Label"
-@onready var filedialog:FileDialog = $"PanelContainer5/FileDialog"
-@onready var widthbox:SpinBox = $"PanelContainer5/VBoxContainer/HBoxContainer2/SpinBox"
-@onready var heightbox:SpinBox = $"PanelContainer5/VBoxContainer/HBoxContainer2/SpinBox2"
-@onready var propstool: PanelContainer = $"PropsTool"
+@onready var landscontainer:HFlowContainer = $"SectionLand/VBox/Content/Body/HFlowContainer"
+@onready var mountainbutton:Button = $"SectionLand/VBox/Content/Body/HFlowContainer/Mountain"
+@onready var roadscontainer:HFlowContainer = $"SectionRoad/VBox/Content/Body/HFlowContainer"
+@onready var bridgescontainer:HFlowContainer = $"SectionRoad/VBox/Content/Body/BridgeFlow"
+@onready var waterscontainer:HBoxContainer = $"SectionWater/VBox/Content/Body/HBoxWater"
+@onready var directionscontainer:GridContainer = $"SectionWater/VBox/Content/Body/HBoxFlow/GridContainer"
+@onready var elevationviewbutton:Button = $"SectionTerrain/VBox/Content/Body/HBoxView/ElevationView"
+@onready var elevationcontainer:HFlowContainer = $"SectionTerrain/VBox/Content/Body/HFlowContainerElevation"
+@onready var elevationplusbutton:Button = $"SectionTerrain/VBox/Content/Body/HFlowContainerElevation/ButtonPlus"
+@onready var brushcontainer:HFlowContainer = $"SectionBrush/VBox/Content/Body/HFlowContainer"
+@onready var brushplusbutton:Button = $"SectionBrush/VBox/Content/Body/HFlowContainer/ButtonPlus"
+@onready var brushrectbutton:Button = $"SectionBrush/VBox/Content/Body/ButtonRect"
+@onready var filedialog:FileDialog = $"FileDialog"
+@onready var widthbox:SpinBox = $"SectionData/VBox/Content/Body/HBoxContainer2/SpinBox"
+@onready var heightbox:SpinBox = $"SectionData/VBox/Content/Body/HBoxContainer2/SpinBox2"
+@onready var propstool: VBoxContainer = $"PropsTool"
 
 
 
@@ -107,9 +107,38 @@ var _last_edit_value: int = GridDefs.Land.GRASS
 var current_path: String = ""
 var dirty: bool = false
 var _saving_via_dialog: bool = false
+# 每类笔刷一个互斥组：当前笔刷在面板上始终可见（选中 = 金描边）
+var land_group: ButtonGroup = ButtonGroup.new()
+var road_group: ButtonGroup = ButtonGroup.new()
+var water_group: ButtonGroup = ButtonGroup.new()
+var bridge_group: ButtonGroup = ButtonGroup.new()
+var flow_group: ButtonGroup = ButtonGroup.new()
 
 
 func _ready() -> void:
+	# 陆地/道路/水域按钮程序化配色：GridDefs 是唯一色源，不再在 tscn 里手写 StyleBox
+	for name: String in LAND_BUTTONS:
+		_tint_toggle(landscontainer.get_node(name) as Button,
+			GridDefs.LAND_COLORS[LAND_BUTTONS[name]], land_group)
+	_tint_toggle(mountainbutton, GridDefs.MOUNTAIN_COLOR, land_group)
+	for name: String in ROAD_BUTTONS:
+		var button: Button = roadscontainer.get_node(name) as Button
+		button.toggle_mode = true
+		button.button_group = road_group
+		if GridDefs.ROAD_COLORS.has(ROAD_BUTTONS[name]):
+			_tint_toggle(button, GridDefs.ROAD_COLORS[ROAD_BUTTONS[name]], road_group)
+	for name: String in WATER_BUTTONS:
+		_tint_toggle(waterscontainer.get_node(name) as Button,
+			GridDefs.WATER_COLORS[WATER_BUTTONS[name]], water_group)
+	for name: String in DIRECTION_BUTTONS:
+		var dirbutton: Button = directionscontainer.get_node(name) as Button
+		dirbutton.toggle_mode = true
+		dirbutton.button_group = flow_group
+	for name: String in BRIDGE_BUTTONS:
+		var bridgebutton: Button = bridgescontainer.get_node(name) as Button
+		bridgebutton.toggle_mode = true
+		bridgebutton.button_group = bridge_group
+
 	_connect_group(landscontainer, LAND_BUTTONS, _on_land_button)
 	mountainbutton.pressed.connect(_on_mountain_button)
 	_connect_group(roadscontainer, ROAD_BUTTONS, _on_road_button)
@@ -124,16 +153,74 @@ func _ready() -> void:
 	brushplusbutton.pressed.connect(_on_brush_plus)
 	brushrectbutton.toggle_mode = true
 	brushrectbutton.toggled.connect(_on_rect_toggled)
-	savebutton.pressed.connect(_on_save_pressed)
-	loadbutton.pressed.connect(_on_load_pressed)
 	filedialog.file_selected.connect(_on_file_selected)
 	widthbox.value_changed.connect(_on_width_changed)
 	heightbox.value_changed.connect(_on_height_changed)
 	propstool.asset_selected.connect(_on_asset_selected)
 	propstool.rotation_selected.connect(_on_rotation_selected)
 	propstool.scale_selected.connect(_on_scale_selected)
+	_refresh_brush_buttons()
 	_update_save_button()
 	_update_file_label()
+
+
+## 颜色按钮：互斥 toggle + 按地形色生成的三态样式。
+## 选中态 = 原色加深 + 金描边，文字色按底色亮度自动黑白。
+func _tint_toggle(button: Button, color: Color, group: ButtonGroup) -> void:
+	button.toggle_mode = true
+	button.button_group = group
+	var text_color: Color = Color(0.12, 0.12, 0.12) if color.get_luminance() > 0.55 else Color(1, 1, 1)
+	for state: String in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+		button.add_theme_color_override(state, text_color)
+	var normal := StyleBoxFlat.new()
+	normal.bg_color = color
+	var hover := StyleBoxFlat.new()
+	hover.bg_color = color.lightened(0.10)
+	var pressed := StyleBoxFlat.new()
+	pressed.bg_color = color.darkened(0.22)
+	pressed.border_color = EditorTheme.ACCENT_LINE
+	pressed.set_border_width_all(2)
+	for box: StyleBoxFlat in [normal, hover, pressed]:
+		box.set_corner_radius_all(4)
+		box.content_margin_left = 8.0
+		box.content_margin_right = 8.0
+		box.content_margin_top = 4.0
+		box.content_margin_bottom = 4.0
+	button.add_theme_stylebox_override("normal", normal)
+	button.add_theme_stylebox_override("hover", hover)
+	button.add_theme_stylebox_override("pressed", pressed)
+	button.add_theme_stylebox_override("hover_pressed", pressed)
+
+
+## 把面板按钮的选中态同步成当前笔刷（外部切笔刷/退出放置时也保持一致）
+func _refresh_brush_buttons() -> void:
+	for group: ButtonGroup in [land_group, road_group, water_group, bridge_group, flow_group]:
+		for b: BaseButton in group.get_buttons():
+			b.set_pressed_no_signal(false)
+	match brush_layer:
+		&"land":
+			_press_by_value(LAND_BUTTONS, brush_value, landscontainer)
+		&"mountain":
+			mountainbutton.set_pressed_no_signal(true)
+		&"road":
+			_press_by_value(ROAD_BUTTONS, brush_value, roadscontainer)
+		&"water":
+			_press_by_value(WATER_BUTTONS, brush_value, waterscontainer)
+		&"bridge":
+			_press_by_value(BRIDGE_BUTTONS, brush_value, bridgescontainer)
+		&"flow":
+			var dir: Vector2i = GridDefs.flow_vector(brush_value)
+			for name: String in DIRECTION_BUTTONS:
+				if DIRECTION_BUTTONS[name] == dir:
+					(directionscontainer.get_node(name) as Button).set_pressed_no_signal(true)
+					break
+
+
+func _press_by_value(mapping: Dictionary, value: int, container: Node) -> void:
+	for name: String in mapping:
+		if mapping[name] == value:
+			(container.get_node(name) as Button).set_pressed_no_signal(true)
+			return
 
 
 ## 把 container 下与 mapping 键同名的按钮统一连到 handler，
@@ -149,10 +236,10 @@ func _connect_group(container: Node, mapping: Dictionary, handler: Callable) -> 
 func _on_land_button(id: int) -> void:
 	select_land(id)
 
-## 山体笔刷：独立字段，不覆盖陆地/道路；左键画、右键擦
+## 山体笔刷：独立字段，不覆盖陆地/道路；左键画、Shift+左键擦
 func _on_mountain_button() -> void:
 	_set_brush(&"mountain", 1)
-	print("[笔刷] 山体（左键绘制，右键擦除）")
+	print("[笔刷] 山体（左键绘制，Shift+左键擦除）")
 
 func _on_road_button(id: int) -> void:
 	select_road(id)
@@ -166,7 +253,7 @@ func _on_water_button(id: int) -> void:
 func _on_direction_button(dir: Vector2i) -> void:
 	select_direction(dir)
 
-## 高程等级：点数字即切到高程笔刷，左键设成这一级、右键恢复 1 级
+## 高程等级：点数字即切到高程笔刷，左键设成这一级、Shift+左键恢复 1 级
 func _on_elevation_selected(level: int) -> void:
 	elevation_value = level
 	_set_brush(&"elevation", level)
@@ -191,7 +278,7 @@ func _on_brush_plus() -> void:
 
 func _on_rect_toggled(pressed: bool) -> void:
 	rect_mode_changed.emit(pressed)
-	print("[笔刷] %s" % ("矩形填充模式（拖选区域，右键=擦除填充）" if pressed else "涂画模式"))
+	print("[笔刷] %s" % ("矩形填充模式（拖选区域，Shift+左键=擦除填充）" if pressed else "涂画模式"))
 
 
 ## 资源库：选中即切到资源笔刷；真正的放置/擦除由 GridView 上报、main 写数据
@@ -199,6 +286,7 @@ func _on_asset_selected(asset_id: StringName) -> void:
 	prop_asset_id = asset_id
 	brush_layer = &"prop"
 	brush_changed.emit(&"prop", -1)
+	_refresh_brush_buttons()   # prop 不对应任何工具按钮：清掉全部选中态
 	print("[笔刷] 资源 -> %s" % asset_name(asset_id))
 
 
@@ -255,12 +343,6 @@ func asset_name(asset_id: StringName) -> String:
 func set_prop_count(n: int) -> void:
 	propstool.set_count(n)
 
-func _on_save_pressed() -> void:
-	save_map()
-
-func _on_load_pressed() -> void:
-	open_map_dialog()
-
 func _on_file_selected(path: String) -> void:
 	if _saving_via_dialog:
 		_saving_via_dialog = false
@@ -299,7 +381,7 @@ func exit_prop_mode() -> void:
 		_set_brush(_last_edit_layer, _last_edit_value)
 
 
-## 高程是整级设定（不再抬升/压低/平滑）：1/2/3/+ 选级别，左键写入、右键恢复 1 级。
+## 高程是整级设定（不再抬升/压低/平滑）：1/2/3/+ 选级别，左键写入、Shift+左键恢复 1 级。
 ## 初始化 1/2/3 按钮为互斥 toggle 组，默认选中 1（不自动激活高程笔刷）。
 func _setup_elevation_buttons() -> void:
 	for i in range(1, elevation_max + 1):
@@ -367,6 +449,7 @@ func _set_brush(layer: StringName, value: int) -> void:
 		_last_edit_layer = layer
 		_last_edit_value = value
 	brush_changed.emit(layer, value)
+	_refresh_brush_buttons()
 	print("[笔刷] %s -> %s" % [GridDefs.LAYER_NAMES.get(layer, layer), value_name(layer, value)])
 
 
@@ -405,6 +488,13 @@ func mark_dirty() -> void:
 		_update_save_button()
 
 
+## 清脏标记但保留当前路径（载入 look 边车等"非用户改动"场景用）
+func clear_dirty() -> void:
+	if dirty:
+		dirty = false
+		_update_save_button()
+
+
 ## 有已保存路径就直接覆盖保存，否则弹出保存对话框
 ## 地图数据约定：每张地图一个同名子文件夹（maps/<地图名>/<地图名>.tres），
 ## 边车自动写到同一目录；新地图可在对话框里新建子文件夹。
@@ -414,11 +504,30 @@ func save_map() -> void:
 	if current_path != "" and FileAccess.file_exists(current_path):
 		_do_save(current_path)
 		return
+	_popup_save_dialog()
+
+
+## 另存为：永远弹保存对话框，整套文件（主图+边车+着色器副本）落到新位置，旧文件不动
+func save_as_map() -> void:
+	if map == null:
+		return
+	_popup_save_dialog()
+
+
+func _popup_save_dialog() -> void:
 	DirAccess.make_dir_recursive_absolute("res://maps")
 	filedialog.file_mode = FileDialog.FILE_MODE_SAVE_FILE
 	filedialog.current_dir = _default_map_dir()
 	_saving_via_dialog = true
 	filedialog.popup_centered(Vector2i(800, 600))
+
+
+## 新地图：清空路径与脏状态（数据本体由 main 重建后 set_map 注入）
+func reset_file_state() -> void:
+	current_path = ""
+	dirty = false
+	_update_save_button()
+	_update_file_label()
 
 
 ## 弹出打开对话框，选择已有的 .tres 地图
@@ -469,6 +578,8 @@ func _do_save(path: String) -> void:
 	var err: Error = ResourceSaver.save(map, path)
 	if err == OK:
 		current_path = path
+		# 显式落 resource_path：MapRuntime 靠它推导同目录的着色器副本等边车路径
+		map.resource_path = path
 		dirty = false
 		_update_save_button()
 		_update_file_label()
@@ -485,12 +596,10 @@ func _sync_size_boxes() -> void:
 	heightbox.set_value_no_signal(map.grid_size.y)
 
 
+## 脏状态/地图名广播给文件条（原按钮/标签已随文件操作移交 FileBar 移除）
 func _update_save_button() -> void:
-	savebutton.text = "保存*" if dirty else "保存"
+	dirty_state_changed.emit(dirty)
 
 
 func _update_file_label() -> void:
-	if current_path == "":
-		filenamelabel.text = "未命名"
-	else:
-		filenamelabel.text = current_path.get_file()
+	map_path_changed.emit(current_path)

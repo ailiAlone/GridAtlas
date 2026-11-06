@@ -1,0 +1,26 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://editor/ui/fold_section.gd" id="1_foldsec"]
+
+[node name="FoldSection" type="PanelContainer"]
+theme_type_variation = "SectionCard"
+script = ExtResource("1_foldsec")
+
+[node name="VBox" type="VBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="Header" type="Button" parent="VBox"]
+layout_mode = 2
+theme_type_variation = "FoldHeader"
+alignment = 0
+text = "分节"
+
+[node name="Content" type="MarginContainer" parent="VBox"]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 2
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="Body" type="VBoxContainer" parent="VBox/Content"]
+layout_mode = 2

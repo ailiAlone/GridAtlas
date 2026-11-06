@@ -17,6 +17,12 @@
 !/Assets/static_assets/*.uid
 /maps/*
 !/maps/.gitkeep
+# 例外：地图专属地表着色器（maps/<图>/<图>.terrain.gdshader）是手工维护的代码，
+# 与 Assets/static_assets 同理进版本库；地图数据等其余产物仍然排除。
+# gitignore 语义：目录被排除后不会下钻，所以要先放行地图子目录、再收掉内容、最后放行 .gdshader
+!/maps/*/
+/maps/*/*
+!/maps/*/*.gdshader
 
 __pycache__/
 *.pyc

@@ -1,7 +1,8 @@
-extends PanelContainer
+extends VBoxContainer
 ## 物件面板：资源库（StaticAssetDef）/ 待放方向 / 清空。
 ## 内置 Tiny Swords 物件已彻底移除；旧边车里的实例载入时丢弃。
 ## 放置与删除由 GridView 上报区域、main.gd 写 PropsData —— 本面板不碰地图数据。
+## 结构：静态控制区在一个 FoldSection（"物件"）里，各分类是独立的可折叠卡片。
 
 signal asset_selected(asset_id: StringName)
 signal rotation_selected(rot: int)
@@ -10,16 +11,18 @@ signal clear_requested
 signal assets_refresh_requested
 signal asset_edit_requested
 
-@onready var assetscontainer: VBoxContainer = $"VBox/Assets"
-@onready var assetempty: Label = $"VBox/AssetEmpty"
-@onready var assetsrefresh: Button = $"VBox/AssetTitleRow/AssetRefresh"
-@onready var assetedit: Button = $"VBox/AssetTitleRow/AssetEdit"
-@onready var selectedlabel: Label = $"VBox/Selected"
-@onready var rotationrow: HBoxContainer = $"VBox/RotationRow"
-@onready var rot0: Button = $"VBox/RotationRow/Rot0"
-@onready var rot90: Button = $"VBox/RotationRow/Rot90"
-@onready var countlabel: Label = $"VBox/Count"
-@onready var clearbutton: Button = $"VBox/Clear"
+const FoldSectionScene = preload("res://editor/ui/fold_section.tscn")
+
+@onready var assetscontainer: VBoxContainer = $"Assets"
+@onready var assetempty: Label = $"AssetEmpty"
+@onready var assetsrefresh: Button = $"SectionMain/VBox/Content/Body/AssetTitleRow/AssetRefresh"
+@onready var assetedit: Button = $"SectionMain/VBox/Content/Body/AssetTitleRow/AssetEdit"
+@onready var selectedlabel: Label = $"SectionMain/VBox/Content/Body/Selected"
+@onready var rotationrow: HBoxContainer = $"SectionMain/VBox/Content/Body/RotationRow"
+@onready var rot0: Button = $"SectionMain/VBox/Content/Body/RotationRow/Rot0"
+@onready var rot90: Button = $"SectionMain/VBox/Content/Body/RotationRow/Rot90"
+@onready var countlabel: Label = $"SectionMain/VBox/Content/Body/Count"
+@onready var clearbutton: Button = $"SectionMain/VBox/Content/Body/Clear"
 
 var scalerow: HBoxContainer = null   # 放在“树木”分类小节里
 var scalespin: SpinBox = null
@@ -95,7 +98,6 @@ func set_asset_defs(defs: Dictionary) -> void:
 			_update_scale_row(null)
 		else:
 			abtn.set_pressed_no_signal(true)
-			abtn.modulate = Color(1.0, 0.94, 0.62, 1.0)
 			_update_scale_row(asset_defs.get(selected_asset) as StaticAssetDef)
 	else:
 		_update_scale_row(null)
@@ -111,23 +113,20 @@ func _def_before(a: StaticAssetDef, b: StaticAssetDef) -> bool:
 	return a.display_name.naturalnocasecmp_to(b.display_name) < 0
 
 
+## 分类小节 = 可折叠卡片，默认全部收起（标题带计数可扫读，展开按需）；
+## 建筑 24 个按钮全展开会把左栏顶得老长。
 func _add_category_section(cat_id: StringName, items: Array) -> void:
-	var section: VBoxContainer = VBoxContainer.new()
-	section.add_theme_constant_override("separation", 2)
-	var header: Label = Label.new()
-	header.text = "%s  ·  %d" % [StaticAssetDef.category_label(cat_id), items.size()]
-	header.add_theme_font_size_override("font_size", 12)
-	header.add_theme_color_override("font_color", Color(0.96, 0.87, 0.58, 1.0))
-	section.add_child(header)
+	var section = FoldSectionScene.instantiate()
+	assetscontainer.add_child(section)   # 先入树（body 等 @onready 才可用）再填内容
+	section.setup("%s · %d" % [StaticAssetDef.category_label(cat_id), items.size()], true)
 	if cat_id == &"tree":
-		_add_scale_row(section)
+		_add_scale_row(section.body)
 	var flow: HFlowContainer = HFlowContainer.new()
 	flow.add_theme_constant_override("h_separation", 6)
 	flow.add_theme_constant_override("v_separation", 6)
-	section.add_child(flow)
+	section.body.add_child(flow)
 	for def: StaticAssetDef in items:
 		_add_asset_button(def, flow)
-	assetscontainer.add_child(section)
 
 
 func _add_scale_row(parent: VBoxContainer) -> void:
@@ -177,10 +176,7 @@ func _on_asset_pressed(id: StringName) -> void:
 	selected_asset = id
 	_set_rotation_enabled(true)
 	for key: StringName in asset_buttons:
-		var abtn: Button = _asset_button(key)
-		var on: bool = key == id
-		abtn.set_pressed_no_signal(on)
-		abtn.modulate = Color(1.0, 0.94, 0.62, 1.0) if on else Color.WHITE
+		_asset_button(key).set_pressed_no_signal(key == id)
 	var def: StaticAssetDef = asset_defs.get(id) as StaticAssetDef
 	var showname: String = String(id)
 	if def != null:
@@ -204,9 +200,7 @@ func set_pending_rotation(rot: int, notify: bool = false) -> void:
 	pending_rotation = posmod(rot, 2)
 	var rotbuttons: Array[Button] = [rot0, rot90]
 	for i in 2:
-		var button: Button = rotbuttons[i]
-		button.set_pressed_no_signal(i == pending_rotation)
-		button.modulate = Color(1.0, 0.94, 0.62, 1.0) if i == pending_rotation else Color.WHITE
+		rotbuttons[i].set_pressed_no_signal(i == pending_rotation)
 	if notify:
 		rotation_selected.emit(pending_rotation)
 
@@ -257,9 +251,7 @@ func clear_selection() -> void:
 	selectedlabel.text = "当前：无"
 	_update_scale_row(null)
 	for key: StringName in asset_buttons:
-		var abtn: Button = _asset_button(key)
-		abtn.set_pressed_no_signal(false)
-		abtn.modulate = Color.WHITE
+		_asset_button(key).set_pressed_no_signal(false)
 
 
 func set_count(n: int) -> void:

@@ -201,6 +201,14 @@ func apply_look(settings: RenderSettings) -> void:
 			fit_overview.call_deferred()
 
 
+## 地表着色器文件在外部被改过（或刚物化出地图副本）：原地换 shader 引用，
+## 材质上的纹理、u_time、相机 uniform 都保留，视图与动画不动。
+func reload_shader() -> void:
+	if runtime == null:
+		return
+	runtime.reload_shader()
+
+
 ## 地形垂直比例变了：立牌脚底跟着重新落到新地表，遮挡用的 u_height_scale 同步。
 func _rebase_props() -> void:
 	for child: Node in atlas.actors.get_children():
