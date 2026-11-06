@@ -17,6 +17,13 @@
 `example.tscn` 和 `grid_atlas_demo.tscn` 都读取 `res://maps/first/first.tres` 及其边车。
 换句话说：**`first` 是内容，`demos/` 是消费这份内容的代码和场景。**
 
+## 准备示例素材
+
+截图与 demo 中的建筑、树木、角色来自 Pixel Frog 的
+[Tiny Swords (Free Pack)](https://pixelfrog-assets.itch.io/tiny-swords)。
+本仓库**不包含**这些原始 PNG；请从 itch.io 免费下载，并把 `Buildings/`、`Nature/`、
+`Units/` 放到 `Assets/TinySwords/`。缺少时 demo 会退回程序化占位立牌。
+
 ## 效果预览
 
 以下截图都来自编辑器里的 `first` 地图：
@@ -68,10 +75,10 @@ G 显示格线（确认地面与实体同一套投影）｜R 回到角色。
 | `../data/static_asset_*.gd` | 静态资源定义/目录/读写：footprint、阻挡掩码、PNG、立牌参数 |
 | `../editor/props_tool.*` | 编辑器物件面板（资源库 / 横竖方向 / 植物倍率 / 清空） |
 | `../editor/game_preview.*` | 编辑器 45° 视图：渲染模式大画面 + 编辑模式左上角整图概览（复用这里的运行时与立牌） |
-| `../Assets/TinySwords/` | 示例素材（Pixel Frog 免费包）：Demo 玩家立牌、建筑/树木/单位；仅随私有仓库提供，不再分发（见 `SOURCE.md`） |
+| `../Assets/TinySwords/` | 不随仓库分发；从 [itch.io](https://pixelfrog-assets.itch.io/tiny-swords) 下载免费包到该目录，demo 玩家立牌使用 `Units/Warrior_Idle.png` |
 
 > 示例素材：[Tiny Swords (Free Pack)](https://pixelfrog-assets.itch.io/tiny-swords) by Pixel Frog。
-> 授权允许个人/商业使用与修改，但**禁止再分发**；本仓库为私有，若转为公开请先移除 `Assets/TinySwords/`。
+> 本仓库不包含原始素材；运行 demo 前请从 itch.io 免费下载并放到 `Assets/TinySwords/`。
 
 ## 固定 45° 视角
 
@@ -165,7 +172,7 @@ screen = 视口中心 + ppm · ( (P-C)·rt , (P-C)·(-fd)·sin(pitch) - z·cos(p
 
 编辑器已移除内置物件按钮和立牌缩放滑条：新物件全部来自资源库。内置物件的运行路径也已
 完全移除——旧边车（`kinds/cells/scales` 格式）里的实例在载入时丢弃，不再渲染/阻挡。示例场景的
-玩家立牌仍使用 `Assets/TinySwords/` 的战士贴图（`demos/demo_unit.gd`），它不是可放置的地图资源。
+玩家立牌仍使用 `Assets/TinySwords/` 的战士贴图（`demos/demo_unit.gd`），它不是可放置的地图资源；该目录需要自行从 itch.io 下载。
 
 
 ## 接进自己的游戏
@@ -214,7 +221,8 @@ props.multiplier_at(i) / props.visual_offset_at(i) / props.size_bias_at(i)`。
 **地图和物件是两个文件**，拷贝地图时记得带上 `.props.tres`。
 
 示例场景的玩家立牌仍使用 `Assets/TinySwords/Units/Warrior_Idle.png`，由
-`demos/demo_unit.gd` 在内存里裁切；素材的再分发限制见 `Assets/TinySwords/SOURCE.md`。
+`demos/demo_unit.gd` 在内存里裁切；该素材不随仓库分发，请从
+[Tiny Swords (Free Pack)](https://pixelfrog-assets.itch.io/tiny-swords) 下载到 `Assets/TinySwords/`。
 
 新的静态资源来自 `Assets/static_assets/defs/*.tres` + `Assets/ChineseVillage/
 Processed/delivery/<族>/`（最终交付件按分类分中文文件夹、中文命名）；导入与占地范围
@@ -254,7 +262,7 @@ Processed/delivery/<族>/`（最终交付件按分类分中文文件夹、中文
 - 物件与地图分文件保存：拷贝/移动地图时把同名的 `.props.tres` 一起带上。
 - 静态资源立牌目前固定第 0 帧；示例玩家也只取 `Warrior_Idle` 的第 0 帧，动画还没接。
 - 只接入了示例所需的蓝队战士；其他队伍色、UI、特效、资源点和 terrain tileset 未使用。
-  素材来源与再分发限制见 `Assets/TinySwords/SOURCE.md`。
+  素材来自 [Tiny Swords (Free Pack)](https://pixelfrog-assets.itch.io/tiny-swords)，不随仓库分发。
 - 编辑模式左上角是 45° 整图概览（有立牌、只读）；渲染模式左上角是俯视网格镜像。
   45° 立牌和遮挡看这个概览、渲染模式大画面或 `grid_atlas_demo.tscn`。
 - 立牌按占地中心格取一个地表高度：跨坡的房子/树可能有一侧悬空，后续可做

@@ -15,9 +15,6 @@
 /Assets/static_assets/*
 !/Assets/static_assets/*.gd
 !/Assets/static_assets/*.uid
-# TinySwords 免费示例包：只随私有仓库用于示例；不得公开转载（见 SOURCE.md）
-!/Assets/TinySwords/
-/Assets/TinySwords/Generated/
 /maps/*
 !/maps/.gitkeep
 # 例外：地图专属地表着色器（maps/<图>/<图>.terrain.gdshader）是手工维护的代码，
