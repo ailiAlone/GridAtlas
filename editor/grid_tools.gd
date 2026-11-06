@@ -518,6 +518,8 @@ func resize_map(size: Vector2i) -> void:
 func _do_save(path: String) -> void:
 	if not path.ends_with(".tres"):
 		path += ".tres"
+	# 另存到新文件夹时目录可能还不存在：先建目录，边车随后才能落到同一目录
+	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
 	var err: Error = ResourceSaver.save(map, path)
 	if err == OK:
 		current_path = path
