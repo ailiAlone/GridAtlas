@@ -1,6 +1,6 @@
 extends Window
 ## MapBrowser —— 地图列表弹窗：枚举 maps/<图>/<图>.tres，双击打开。
-## 每行显示：地图名 · 尺寸 · 物件数 · 四件边车齐全度（外观/物件/桥/着色器）· 修改时间。
+## 每行显示：地图名 · 尺寸 · 物件数 · 修改时间。
 ## 只发信号不做业务：map_chosen(path) / new_requested / browse_requested 由 main 编排。
 
 signal map_chosen(path: String)
@@ -76,11 +76,7 @@ func _describe(tres: String, map_dir: String) -> String:
 		var side = load(props_side)
 		if side != null and side.has_method("count"):
 			prop_count = side.count()
-	var dots: String = ""
-	for path: String in [MapSidecars.look_path(tres), MapSidecars.props_path(tres),
-			MapSidecars.bridges_path(tres), MapSidecars.terrain_shader_path(tres)]:
-		dots += "●" if FileAccess.file_exists(path) else "○"
 	var mtime: int = FileAccess.get_modified_time(tres)
 	var time_text: String = Time.get_datetime_string_from_unix_time(mtime) if mtime > 0 else ""
 	var count_text: String = ("物件 %d" % prop_count) if prop_count >= 0 else "无物件层"
-	return "%s  ·  %s  ·  %s  ·  边车 %s  ·  %s" % [map_dir, size_text, count_text, dots, time_text]
+	return "%s  ·  %s  ·  %s  ·  %s" % [map_dir, size_text, count_text, time_text]

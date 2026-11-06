@@ -24,7 +24,7 @@ grow_vertical = 2
 [node name="Hint" type="Label" parent="VBox"]
 layout_mode = 2
 theme_type_variation = "Dim"
-text = "双击打开地图（● 齐全 / ○ 缺失：外观 物件 桥 着色器）"
+text = "双击打开地图"
 
 [node name="List" type="ItemList" parent="VBox"]
 layout_mode = 2
