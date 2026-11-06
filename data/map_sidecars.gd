@@ -7,6 +7,7 @@ extends RefCounted
 ##   maps/<图>/<图>.look.tres          RenderSettings（外观参数）
 ##   maps/<图>/<图>.props.tres         物件层
 ##   maps/<图>/<图>.bridges.tres       桥层
+##   maps/<图>/<图>.assets.tres        本图使用库（用过的静态资源 id）
 ##   maps/<图>/<图>.terrain.gdshader   地表着色器专属副本（本文件负责）
 ##
 ## 着色器副本规则（首存拷贝、永不自动覆盖）：
@@ -20,10 +21,11 @@ extends RefCounted
 
 const MASTER_TERRAIN_SHADER: String = "res://runtime/terrain.gdshader"
 
-# 边车后缀：路径一律由"主图路径去 .tres + 后缀"派生，四类边车共用一套规则
+# 边车后缀：路径一律由"主图路径去 .tres + 后缀"派生，五类边车共用一套规则
 const LOOK_SUFFIX: String = ".look.tres"
 const PROPS_SUFFIX: String = ".props.tres"
 const BRIDGES_SUFFIX: String = ".bridges.tres"
+const LIBRARY_SUFFIX: String = ".assets.tres"
 const TERRAIN_SUFFIX: String = ".terrain.gdshader"
 
 
@@ -40,6 +42,11 @@ static func props_path(map_path: String) -> String:
 ## 桥层边车
 static func bridges_path(map_path: String) -> String:
 	return _with_suffix(map_path, BRIDGES_SUFFIX)
+
+
+## 本图使用库：只记录用过的静态资源 id，定义仍在全局
+static func library_path(map_path: String) -> String:
+	return _with_suffix(map_path, LIBRARY_SUFFIX)
 
 
 ## 地图专属着色器路径

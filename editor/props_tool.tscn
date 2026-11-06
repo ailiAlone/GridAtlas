@@ -79,6 +79,16 @@ text = "静态 0 个"
 layout_mode = 2
 text = "清除全部"
 
+[node name="SectionLocal" parent="." instance=ExtResource("2_fold")]
+layout_mode = 2
+visible = false
+section_title = "本图使用"
+
+[node name="Flow" type="HFlowContainer" parent="SectionLocal/VBox/Content/Body"]
+layout_mode = 2
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
+
 [node name="AssetEmpty" type="Label" parent="."]
 layout_mode = 2
 theme_type_variation = "Dim"

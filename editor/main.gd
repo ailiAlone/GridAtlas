@@ -32,12 +32,14 @@ extends Control
 const PropsData = preload("res://data/props_data.gd")
 const BridgesData = preload("res://data/bridges_data.gd")
 const MapSidecars = preload("res://data/map_sidecars.gd")
+const MapAssetLibrary = preload("res://data/map_asset_library.gd")
 const GamePreviewScript = preload("res://editor/game_preview.gd")
 const Toast = preload("res://editor/ui/toast.gd")
 
 var map: MapData  # 唯一持有者：所有使用方从这里拿引用
 var props   # 物件层（PropsData，地图边车）：同样由本脚本持有、注入视图
 var bridges # 桥层（BridgesData，地图边车）：独立于静态资源，只由道路面板的桥工具写入
+var asset_library: MapAssetLibrary = MapAssetLibrary.new()  # 本图使用库（静态资源 id 记录）
 var asset_defs: Dictionary = {}  # StringName -> StaticAssetDef（资源库，运行时载入）
 var render_mode: bool = false  # false=编辑模式，true=渲染模式
 var grids: Array = []      # 两个编辑视图（大可编辑、小只读镜像）
@@ -482,6 +484,9 @@ func _reload_asset_defs(announce: bool = false) -> void:
 			push_warning("有 %d 个资源实例找不到定义（已删除/改名），会显示占位或不渲染" % missing)
 	if tools != null:
 		tools.set_asset_defs(asset_defs)
+		if asset_library != null:
+			asset_library.sanitize(asset_defs)
+			tools.set_local_assets(asset_library.asset_ids)
 	for view: GridView in grids:
 		view.queue_redraw()
 	if preview_mini != null and preview_mini.visible:
@@ -538,6 +543,10 @@ func _paint_asset(center: Vector2i) -> void:
 	# 只校验地图边界与实例重叠；水面/山体等任何地形都允许摆放
 	if props.add_asset(tools.prop_asset_id, anchor, map.grid_size, rot, scale):
 		tools.mark_dirty()
+		# 本图使用库：新资源重建快捷区；已有资源只把按钮移到最前（超出显示上限时重建）
+		if asset_library.touch(tools.prop_asset_id) \
+				or not tools.touch_local_asset(tools.prop_asset_id):
+			tools.set_local_assets(asset_library.asset_ids)
 		# 拖动放置：只追加这一张立牌 + 增量草垫，不重建全部物件。
 		_refresh_prop_views()
 		var idx: int = props.count() - 1
@@ -816,6 +825,7 @@ func _on_map_loaded(data: MapData) -> void:
 		print("[地图] %d 个水下格子已迁移为沙地河床" % flooded)
 	props = _load_props(tools.current_path)
 	bridges = _load_bridges(tools.current_path)
+	_load_asset_library(tools.current_path)
 	last_edit_cell = Vector2i(-1, -1)
 	undo_stack.clear()
 	redo_stack.clear()
@@ -877,6 +887,14 @@ func _on_map_saved(path: String) -> void:
 			print("[渲染] 配置已保存: %s" % look_path)
 		else:
 			push_warning("渲染配置保存失败(%s): %s" % [error_string(err), look_path])
+	var library_path: String = MapSidecars.library_path(path)
+	if not library_path.is_empty():
+		asset_library.sanitize(asset_defs)
+		var lerr: Error = ResourceSaver.save(asset_library, library_path)
+		if lerr == OK:
+			print("[静态] 本图使用库已保存 %d 个: %s" % [asset_library.asset_ids.size(), library_path])
+		else:
+			push_warning("本图使用库保存失败(%s): %s" % [error_string(lerr), library_path])
 	# 地表着色器边车：首存拷一份母版给这张图（已存在则不动），面板状态随之刷新
 	var shader_copy: String = MapSidecars.ensure_terrain_copy(path)
 	if not shader_copy.is_empty():
@@ -992,6 +1010,39 @@ func _load_bridges(map_path: String):
 		push_warning("桥边车有 %d 条越界桥已丢弃: %s" % [dropped, side])
 	print("[桥] 已载入 %d 条: %s" % [loaded.count(), side])
 	return loaded
+
+
+## 本图使用库：优先读 <map>.assets.tres；缺失时从 props 实例 id 推导并补写。
+## 每次打开都合并当前 props 的 id，保证使用记录不会漏。
+func _load_asset_library(map_path: String) -> void:
+	var side: String = MapSidecars.library_path(map_path)
+	var lib: MapAssetLibrary = null
+	if not side.is_empty() and ResourceLoader.exists(side):
+		var loaded = load(side)
+		if loaded != null and loaded.get_script() == MapAssetLibrary:
+			lib = loaded as MapAssetLibrary
+		else:
+			push_warning("本图使用库不是有效资源: " + side)
+	var existed: bool = lib != null
+	if lib == null:
+		lib = MapAssetLibrary.new()
+	var before: PackedStringArray = lib.asset_ids.duplicate()
+	if props != null:
+		for i: int in props.count():
+			lib.touch(props.asset_id_at(i))
+	lib.sanitize(asset_defs)
+	asset_library = lib
+	tools.set_local_assets(lib.asset_ids)
+	# 旧地图第一次打开就补齐这一层；边车与实例不一致时也顺手同步
+	if not side.is_empty() and (not existed or lib.asset_ids != before):
+		DirAccess.make_dir_recursive_absolute(side.get_base_dir())
+		var err: Error = ResourceSaver.save(lib, side)
+		if err == OK:
+			print("[静态] 本图使用库已%s %d 个: %s" % [
+				"补写" if not existed else "同步", lib.asset_ids.size(), side])
+		else:
+			push_warning("本图使用库保存失败(%s): %s" % [error_string(err), side])
+	print("[静态] 本图使用 %d 个: %s" % [lib.asset_ids.size(), side.get_file()])
 
 
 # ---------- 撤销 / 重做 ----------
@@ -1182,6 +1233,8 @@ func _apply_new_map(size: Vector2i) -> void:
 	props = PropsData.new()
 	props.set_asset_defs(asset_defs)
 	bridges = BridgesData.new()
+	asset_library = MapAssetLibrary.new()
+	tools.set_local_assets(asset_library.asset_ids)
 	last_edit_cell = Vector2i(-1, -1)
 	undo_stack.clear()
 	redo_stack.clear()

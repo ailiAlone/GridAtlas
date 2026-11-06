@@ -15,9 +15,14 @@ const AssetButtonScene = preload("res://editor/ui/asset_button.tscn")
 const ScaleRowScene = preload("res://editor/ui/scale_row.tscn")
 const CategorySectionScene = preload("res://editor/ui/category_section.tscn")
 
+## 本图使用区最多显示最近 N 个；完整记录仍在 .assets.tres，全局库也始终可查。
+const LOCAL_VISIBLE_MAX: int = 8
+
 @onready var assetscontainer: VBoxContainer = $"Assets"
 @onready var assetempty: Label = $"AssetEmpty"
 @onready var sectionmain: FoldSection = $"SectionMain"
+@onready var sectionlocal: FoldSection = $"SectionLocal"
+@onready var localflow: HFlowContainer = $"SectionLocal/VBox/Content/Body/Flow"
 @onready var assetsrefresh: Button = $"SectionMain/VBox/Content/Body/AssetTitleRow/AssetRefresh"
 @onready var assetedit: Button = $"SectionMain/VBox/Content/Body/AssetTitleRow/AssetEdit"
 @onready var selectedlabel: Label = $"SectionMain/VBox/Content/Body/Selected"
@@ -37,6 +42,8 @@ var pending_scale: int = 1            # 植物倍率：1=原大小，2=占地 2�
 var asset_defs: Dictionary = {}
 
 var asset_buttons: Dictionary = {}   # id -> Button
+var local_buttons: Dictionary = {}   # id -> Button（本图使用快捷区）
+var local_ids: PackedStringArray = PackedStringArray()  # 当前本图使用库（全局刷新后重建用）
 
 ## 资源库展示顺序：建筑之后先放树木，常用植物不用滚到最后。
 const SECTION_ORDER: Array[StringName] = [
@@ -87,6 +94,9 @@ func set_asset_defs(defs: Dictionary) -> void:
 		if groups.has(cat_id):
 			_add_category_section(cat_id, groups[cat_id])
 	assetempty.visible = list.is_empty()
+	# 全局定义刷新后，本图使用区也要用新定义重建，避免按钮缓存指向旧 def
+	if not local_ids.is_empty():
+		set_local_assets(local_ids)
 	if selected_asset != &"":
 		var abtn: Button = _asset_button(selected_asset)
 		if abtn == null:
@@ -135,7 +145,7 @@ func _add_scale_row(parent: VBoxContainer) -> void:
 
 
 ## 资源按钮：静态模板（editor/ui/asset_button.tscn）实例化，只填文案与信号
-func _add_asset_button(def: StaticAssetDef, flow: HFlowContainer) -> void:
+func _add_asset_button(def: StaticAssetDef, flow: HFlowContainer, local: bool = false) -> void:
 	var button: Button = AssetButtonScene.instantiate() as Button
 	button.text = def.short_name()
 	button.tooltip_text = "%s\n%s · 占地范围 %d×%d · 阻挡 %d 格" % [
@@ -144,7 +154,52 @@ func _add_asset_button(def: StaticAssetDef, flow: HFlowContainer) -> void:
 	button.button_group = asset_group
 	button.pressed.connect(_on_asset_pressed.bind(StringName(def.id)))
 	flow.add_child(button)
-	asset_buttons[StringName(def.id)] = button
+	var target: Dictionary = local_buttons if local else asset_buttons
+	target[StringName(def.id)] = button
+
+
+## 重建「本图使用」快捷区：按 id 顺序（最近使用在前），空列表隐藏整节。
+## 只铺最近 LOCAL_VISIBLE_MAX 个，避免 40+ 资源把左栏顶得老长。
+func set_local_assets(ids: PackedStringArray) -> void:
+	local_ids = ids
+	for child: Node in localflow.get_children():
+		child.free()
+	local_buttons.clear()
+	var shown: int = 0
+	var visible_count: int = mini(ids.size(), LOCAL_VISIBLE_MAX)
+	for i: int in visible_count:
+		var id: StringName = StringName(ids[i])
+		var def: StaticAssetDef = asset_defs.get(id) as StaticAssetDef
+		if def == null:
+			continue
+		_add_asset_button(def, localflow, true)
+		shown += 1
+	if ids.size() > LOCAL_VISIBLE_MAX:
+		var more: Label = Label.new()
+		more.theme_type_variation = &"Dim"
+		more.text = "仅显示最近 %d / %d 个" % [LOCAL_VISIBLE_MAX, ids.size()]
+		localflow.add_child(more)
+	sectionlocal.visible = shown > 0
+	_sync_selection_buttons()
+
+
+## 已在本图使用区里的资源再次被放置：按钮移到最前，不重建整节。
+## 返回 false 表示该 id 当前不在可见区（超过上限），调用方应改为整节重建。
+func touch_local_asset(id: StringName) -> bool:
+	var button: Button = local_buttons.get(id) as Button
+	if button == null:
+		return false
+	localflow.move_child(button, 0)
+	sectionlocal.visible = true
+	_sync_selection_buttons()
+	return true
+
+
+## 同一个 id 可能同时出现在全局分类和本图使用区：两套按钮一起同步选中态。
+func _sync_selection_buttons() -> void:
+	for buttons: Dictionary in [asset_buttons, local_buttons]:
+		for key: StringName in buttons:
+			(buttons[key] as Button).set_pressed_no_signal(key == selected_asset)
 
 
 func _asset_button(id: StringName) -> Button:
@@ -155,8 +210,7 @@ func _on_asset_pressed(id: StringName) -> void:
 	sectionmain.set_folded(false)   # 选中静态资源时自动展开方向/计数/清空控制区
 	selected_asset = id
 	_set_rotation_enabled(true)
-	for key: StringName in asset_buttons:
-		_asset_button(key).set_pressed_no_signal(key == id)
+	_sync_selection_buttons()
 	var def: StaticAssetDef = asset_defs.get(id) as StaticAssetDef
 	var showname: String = String(id)
 	if def != null:
@@ -224,14 +278,13 @@ func _on_asset_edit() -> void:
 	asset_edit_requested.emit()
 
 
-## 切回地形/道路笔刷时清掉资源按钮的高亮
+## 切回地形/道路笔刷时清掉资源按钮的高亮（全局库与本图使用区一起清）
 func clear_selection() -> void:
 	selected_asset = &""
 	_set_rotation_enabled(false)
 	selectedlabel.text = "当前：无"
 	_update_scale_row(null)
-	for key: StringName in asset_buttons:
-		_asset_button(key).set_pressed_no_signal(false)
+	_sync_selection_buttons()
 
 
 func set_count(n: int) -> void:
