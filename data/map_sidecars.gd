@@ -7,7 +7,7 @@ extends RefCounted
 ##   maps/<图>/<图>.look.tres          RenderSettings（外观参数）
 ##   maps/<图>/<图>.props.tres         物件层
 ##   maps/<图>/<图>.bridges.tres       桥层
-##   maps/<图>/<图>.assets.tres        本图使用库（用过的静态资源 id）
+##   maps/<图>/<图>.assets.tres        本图热点库（用过的/导入的静态资源 id）
 ##   maps/<图>/<图>.terrain.gdshader   地表着色器专属副本（本文件负责）
 ##
 ## 着色器副本规则（首存拷贝、永不自动覆盖）：
@@ -44,7 +44,7 @@ static func bridges_path(map_path: String) -> String:
 	return _with_suffix(map_path, BRIDGES_SUFFIX)
 
 
-## 本图使用库：只记录用过的静态资源 id，定义仍在全局
+## 本图热点库：记录用过的/导入的静态资源 id，定义仍在全局
 static func library_path(map_path: String) -> String:
 	return _with_suffix(map_path, LIBRARY_SUFFIX)
 

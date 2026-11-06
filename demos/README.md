@@ -140,7 +140,7 @@ screen = 视口中心 + ppm · ( (P-C)·rt , (P-C)·(-fd)·sin(pitch) - z·cos(p
 ## 接进自己的游戏
 
 地图数据按地图分文件夹：`maps/<地图名>/<地图名>.tres`，同目录放
-`<地图名>.props.tres` / `.look.tres` / `.bridges.tres` / `.assets.tres` 边车；边车路径由 `get_basename()` 推导，移动地图时整套一起移动即可。`.assets.tres` 只服务编辑器的「本图使用」快捷区，运行时不读。
+`<地图名>.props.tres` / `.look.tres` / `.bridges.tres` / `.assets.tres` 边车；边车路径由 `get_basename()` 推导，移动地图时整套一起移动即可。`.assets.tres` 只服务编辑器的「本图热点」快捷区，运行时不读。
 
 ```gdscript
 const RUNTIME_SCRIPT = preload("res://runtime/map_runtime.gd")

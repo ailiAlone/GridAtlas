@@ -39,7 +39,7 @@ const Toast = preload("res://editor/ui/toast.gd")
 var map: MapData  # 唯一持有者：所有使用方从这里拿引用
 var props   # 物件层（PropsData，地图边车）：同样由本脚本持有、注入视图
 var bridges # 桥层（BridgesData，地图边车）：独立于静态资源，只由道路面板的桥工具写入
-var asset_library: MapAssetLibrary = MapAssetLibrary.new()  # 本图使用库（静态资源 id 记录）
+var asset_library: MapAssetLibrary = MapAssetLibrary.new()  # 本图热点库（静态资源 id 记录）
 var asset_defs: Dictionary = {}  # StringName -> StaticAssetDef（资源库，运行时载入）
 var render_mode: bool = false  # false=编辑模式，true=渲染模式
 var grids: Array = []      # 两个编辑视图（大可编辑、小只读镜像）
@@ -88,6 +88,7 @@ func _ready() -> void:
 	tools.propstool.assets_refresh_requested.connect(_reload_asset_defs.bind(true))
 	tools.propstool.asset_edit_requested.connect(_on_asset_edit_requested)
 	import_view.closed.connect(_on_import_view_closed)
+	import_view.asset_saved.connect(_on_import_asset_saved)
 	# 高程视图是显示模式，大小编辑视图一起切
 	tools.elevation_view_changed.connect(grid_view.set_elevation_mode)
 	tools.elevation_view_changed.connect(grid_mini.set_elevation_mode)
@@ -486,7 +487,7 @@ func _reload_asset_defs(announce: bool = false) -> void:
 		tools.set_asset_defs(asset_defs)
 		if asset_library != null:
 			asset_library.sanitize(asset_defs)
-			tools.set_local_assets(asset_library.asset_ids)
+			tools.set_hot_assets(asset_library.hot_ids)
 	for view: GridView in grids:
 		view.queue_redraw()
 	if preview_mini != null and preview_mini.visible:
@@ -543,10 +544,10 @@ func _paint_asset(center: Vector2i) -> void:
 	# 只校验地图边界与实例重叠；水面/山体等任何地形都允许摆放
 	if props.add_asset(tools.prop_asset_id, anchor, map.grid_size, rot, scale):
 		tools.mark_dirty()
-		# 本图使用库：新资源重建快捷区；已有资源只把按钮移到最前（超出显示上限时重建）
+		# 本图热点库：新资源重建快捷区；已有资源只把按钮移到最前（超出显示上限时重建）
 		if asset_library.touch(tools.prop_asset_id) \
-				or not tools.touch_local_asset(tools.prop_asset_id):
-			tools.set_local_assets(asset_library.asset_ids)
+				or not tools.touch_hot_asset(tools.prop_asset_id):
+			tools.set_hot_assets(asset_library.hot_ids)
 		# 拖动放置：只追加这一张立牌 + 增量草垫，不重建全部物件。
 		_refresh_prop_views()
 		var idx: int = props.count() - 1
@@ -712,6 +713,16 @@ func _on_import_view_closed() -> void:
 	game_preview.set_process_unhandled_key_input(true)
 	import_overlay.visible = false
 	_reload_asset_defs(true)
+
+
+## 在编辑器里导入/保存资源：当前地图立即记为热点（关闭导入页后资源库刷新即可见）
+func _on_import_asset_saved(asset_id: StringName) -> void:
+	if asset_id == &"":
+		return
+	asset_library.touch(asset_id)
+	tools.set_hot_assets(asset_library.hot_ids)
+	tools.mark_dirty()
+	print("[静态] 已加入本图热点: %s" % String(asset_id))
 	print("[资源] 导入页已关闭，资源库已刷新")
 
 
@@ -892,9 +903,9 @@ func _on_map_saved(path: String) -> void:
 		asset_library.sanitize(asset_defs)
 		var lerr: Error = ResourceSaver.save(asset_library, library_path)
 		if lerr == OK:
-			print("[静态] 本图使用库已保存 %d 个: %s" % [asset_library.asset_ids.size(), library_path])
+			print("[静态] 本图热点库已保存 %d 个: %s" % [asset_library.hot_ids.size(), library_path])
 		else:
-			push_warning("本图使用库保存失败(%s): %s" % [error_string(lerr), library_path])
+			push_warning("本图热点库保存失败(%s): %s" % [error_string(lerr), library_path])
 	# 地表着色器边车：首存拷一份母版给这张图（已存在则不动），面板状态随之刷新
 	var shader_copy: String = MapSidecars.ensure_terrain_copy(path)
 	if not shader_copy.is_empty():
@@ -1012,7 +1023,7 @@ func _load_bridges(map_path: String):
 	return loaded
 
 
-## 本图使用库：优先读 <map>.assets.tres；缺失时从 props 实例 id 推导并补写。
+## 本图热点库：优先读 <map>.assets.tres；缺失时从 props 实例 id 推导并补写。
 ## 每次打开都合并当前 props 的 id，保证使用记录不会漏。
 func _load_asset_library(map_path: String) -> void:
 	var side: String = MapSidecars.library_path(map_path)
@@ -1022,27 +1033,27 @@ func _load_asset_library(map_path: String) -> void:
 		if loaded != null and loaded.get_script() == MapAssetLibrary:
 			lib = loaded as MapAssetLibrary
 		else:
-			push_warning("本图使用库不是有效资源: " + side)
+			push_warning("本图热点库不是有效资源: " + side)
 	var existed: bool = lib != null
 	if lib == null:
 		lib = MapAssetLibrary.new()
-	var before: PackedStringArray = lib.asset_ids.duplicate()
+	var before: PackedStringArray = lib.hot_ids.duplicate()
 	if props != null:
 		for i: int in props.count():
 			lib.touch(props.asset_id_at(i))
 	lib.sanitize(asset_defs)
 	asset_library = lib
-	tools.set_local_assets(lib.asset_ids)
+	tools.set_hot_assets(lib.hot_ids)
 	# 旧地图第一次打开就补齐这一层；边车与实例不一致时也顺手同步
-	if not side.is_empty() and (not existed or lib.asset_ids != before):
+	if not side.is_empty() and (not existed or lib.hot_ids != before):
 		DirAccess.make_dir_recursive_absolute(side.get_base_dir())
 		var err: Error = ResourceSaver.save(lib, side)
 		if err == OK:
-			print("[静态] 本图使用库已%s %d 个: %s" % [
-				"补写" if not existed else "同步", lib.asset_ids.size(), side])
+			print("[静态] 本图热点库已%s %d 个: %s" % [
+				"补写" if not existed else "同步", lib.hot_ids.size(), side])
 		else:
-			push_warning("本图使用库保存失败(%s): %s" % [error_string(err), side])
-	print("[静态] 本图使用 %d 个: %s" % [lib.asset_ids.size(), side.get_file()])
+			push_warning("本图热点库保存失败(%s): %s" % [error_string(err), side])
+	print("[静态] 本图热点 %d 个: %s" % [lib.hot_ids.size(), side.get_file()])
 
 
 # ---------- 撤销 / 重做 ----------
@@ -1234,7 +1245,7 @@ func _apply_new_map(size: Vector2i) -> void:
 	props.set_asset_defs(asset_defs)
 	bridges = BridgesData.new()
 	asset_library = MapAssetLibrary.new()
-	tools.set_local_assets(asset_library.asset_ids)
+	tools.set_hot_assets(asset_library.hot_ids)
 	last_edit_cell = Vector2i(-1, -1)
 	undo_stack.clear()
 	redo_stack.clear()

@@ -7,6 +7,7 @@ extends PanelContainer
 ## 数据位置：res://Assets/static_assets/defs/*.tres + catalog.tres
 
 signal closed
+signal asset_saved(asset_id: StringName)   # 保存成功后通知编辑器的"本图热点"
 
 const AssetDef = preload("res://Assets/static_assets/static_asset_def.gd")
 const AssetCatalog = preload("res://Assets/static_assets/static_asset_catalog.gd")
@@ -496,6 +497,7 @@ func _on_save() -> void:
 	save_button.text = "保存修改"
 	_refresh_list(String(def.id))
 	_set_status("已保存：%s" % saved_path, false)
+	asset_saved.emit(def.id)
 
 
 func _on_delete() -> void:

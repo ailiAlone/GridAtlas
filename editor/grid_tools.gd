@@ -287,13 +287,13 @@ func set_asset_defs(defs: Dictionary) -> void:
 			brush_changed.emit(&"land", brush_value)
 
 
-## 本图使用库由 main 维护，这里只转发给静态面板
-func set_local_assets(ids: PackedStringArray) -> void:
-	propstool.set_local_assets(ids)
+## 本图热点库由 main 维护，这里只转发给静态面板
+func set_hot_assets(ids: PackedStringArray) -> void:
+	propstool.set_hot_assets(ids)
 
 
-func touch_local_asset(id: StringName) -> bool:
-	return propstool.touch_local_asset(id)
+func touch_hot_asset(id: StringName) -> bool:
+	return propstool.touch_hot_asset(id)
 
 
 func asset_name(asset_id: StringName) -> String:
