@@ -80,7 +80,7 @@ maps/<地图名>/
 | `demos/` | 游戏端示例：俯视 A*、固定 45° 视角、遮挡验证 |
 | `Assets/` | 静态资源（美术文件与导入定义） |
 | `maps/` | 地图数据 |
-| `Docs/` | 美术风格管线、ID 映射等文档与参考截图 |
+| `Docs/` | 资源导入、山体字段等当前实现说明 |
 
 ## 在游戏里使用
 
@@ -139,8 +139,8 @@ godot --path . res://demos/occlusion_test.tscn    # 山体遮挡验证
 
 - [`AGENTS.md`](AGENTS.md)：给代码 Agent 的工作指南（参数/代码修改边界、验证流程、项目约定）
 - [`demos/README.md`](demos/README.md)：游戏端接入、45° 投影公式、遮挡规则、性能取舍
-- [`Docs/2D资产风格管线/全流程方案.md`](Docs/2D资产风格管线/全流程方案.md)：美术资源从概念到导入的完整流程
-- [`Docs/2D资产风格管线/ArtBible.md`](Docs/2D资产风格管线/ArtBible.md)：美术风格规范
+- [`Docs/三期-资源导入.md`](Docs/三期-资源导入.md)：静态资源定义、导入页、占地/阻挡与放置流程
+- [`Docs/地形-山体字段.md`](Docs/地形-山体字段.md)：山体字段、程序化高度与 A* 不可通行
 
 ## License
 

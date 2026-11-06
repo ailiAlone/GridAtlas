@@ -62,7 +62,7 @@ godot --path . -- --shot --shot-map=res://maps/first/first.tres --shot-render
 | `data/*` | MapData / PropsData / BridgesData / MapAssetLibrary / GridProjection / MapSidecars |
 | `runtime/*` | 游戏端运行时：材质、45° 视图、立牌、桥、地表 shader |
 | `demos/*` | 游戏端接入示例；读取 `maps/first/` |
-| `Docs/*` | 开发期美术管线归档；部分路径指向本地资源，不在仓库里 |
+| `Docs/*` | 当前实现说明：资源导入、山体字段 |
 
 ## 4. 数据与文件约定
 
@@ -95,7 +95,7 @@ maps/<name>/
 - `PropsData` 是并行紧凑数组，读取用 `asset_id_at / rotation_at / cell_at / multiplier_at / visual_offset_at / size_bias_at`。
 - 当前仓库**不包含**个人美术资源和 TinySwords 原图。TinySwords 需从
   https://pixelfrog-assets.itch.io/tiny-swords 下载到 `Assets/TinySwords/`；授权允许使用/修改，但**禁止再分发**。
-- **不要**把 `Assets/`、`maps/`、`Docs/截图`、`Docs/参考`、`Assets/TinySwords` 强加进 Git。`.gitignore` 已排除；`git add -f` 前先问人。
+- **不要**把 `Assets/`、`maps/`、个人美术截图、`Assets/TinySwords` 强加进 Git。`.gitignore` 已排除；`git add -f` 前先问人。
 
 ### 4.3 每图 shader 副本
 
@@ -173,8 +173,8 @@ maps/<name>/
 - 边车路径统一走 `MapSidecars`；不要新增第 N 套命名规则。
 - 地图数据、资源定义、个人美术、TinySwords 原图都不在仓库；clone 后资源库为空、demo 需要本地地图 + 下载素材。
 - 代码/文档注释用中文；提交信息用中文；文件保持 LF（`.gitattributes`）。
-- 不要提交 `Assets/`、`maps/`、`Docs/截图`、`Docs/参考`；不要 `git add -f` 被忽略的文件。
-- 不要删除 `demos/` 的示例或 `Docs/` 的归档文档，除非人类明确要求。
+- 不要提交 `Assets/`、`maps/` 或个人美术截图；不要 `git add -f` 被忽略的文件。
+- 不要删除 `demos/` 的示例或 `Docs/` 的当前说明，除非人类明确要求。
 
 ## 9. 验证清单
 
@@ -216,4 +216,4 @@ maps/<name>/
 | 45° 运行时/立牌/遮挡 | `runtime/map_runtime.gd`、`grid_atlas.gd`、`actor_card.gd`、`actor_sprite.gdshader` |
 | 投影/坐标 | `data/grid_projection.gd` + `runtime/terrain.gdshader` |
 | 示例接入 | `demos/README.md`、`demos/*.gd` |
-| 世界观/美术管线归档 | `Docs/`（部分路径指向本地资源） |
+| 资源导入 / 山体字段 | `Docs/三期-资源导入.md`、`Docs/地形-山体字段.md` |

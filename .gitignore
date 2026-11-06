@@ -23,8 +23,3 @@
 
 __pycache__/
 *.pyc
-
-# 个人美术资料：仅本地保留（备份在 ../GridAtlas_private_backup），不进入仓库
-/Docs/2D资产风格管线/截图/
-/Docs/2D资产风格管线/参考/
-/GridData/
