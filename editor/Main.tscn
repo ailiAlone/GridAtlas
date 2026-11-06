@@ -11,10 +11,6 @@
 [ext_resource type="PackedScene" path="res://editor/ui/map_browser.tscn" id="12_browser"]
 [ext_resource type="Theme" uid="uid://d2rp2auepyccs" path="res://editor/theme/editor_theme.tres" id="13_theme"]
 
-[sub_resource type="ButtonGroup" id="ButtonGroup_222jo"]
-
-[sub_resource type="ButtonGroup" id="ButtonGroup_qvxfr"]
-
 [node name="Main" type="Control" unique_id=1225227347]
 layout_mode = 3
 anchors_preset = 15
@@ -89,8 +85,6 @@ metadata/_edit_lock_ = true
 
 [node name="GridTools" parent="HBoxContainer/VBoxContainer/Panel2/ScrollContainer" unique_id=493391614 instance=ExtResource("2_uu6xs")]
 layout_mode = 2
-sizegroup = SubResource("ButtonGroup_222jo")
-elevation_group = SubResource("ButtonGroup_qvxfr")
 
 [node name="RenderTool" parent="HBoxContainer/VBoxContainer/Panel2/ScrollContainer" unique_id=1551521367 instance=ExtResource("7_rtool")]
 visible = false
