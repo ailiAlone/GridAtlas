@@ -2,7 +2,7 @@ extends VBoxContainer
 ## 物件面板：资源库（StaticAssetDef）/ 待放方向 / 清空。
 ## 内置 Tiny Swords 物件已彻底移除；旧边车里的实例载入时丢弃。
 ## 放置与删除由 GridView 上报区域、main.gd 写 PropsData —— 本面板不碰地图数据。
-## 结构：静态控制区在一个 FoldSection（"静态"）里，各分类是独立的可折叠卡片。
+## 结构：一级「静态」包含控制区与全部分类；每个分类下再分「本图热点 / 全局库」两级。
 
 signal asset_selected(asset_id: StringName)
 signal rotation_selected(rot: int)
@@ -15,14 +15,12 @@ const AssetButtonScene = preload("res://editor/ui/asset_button.tscn")
 const ScaleRowScene = preload("res://editor/ui/scale_row.tscn")
 const CategorySectionScene = preload("res://editor/ui/category_section.tscn")
 
-## 本图热点区最多显示最近 N 个；完整记录仍在 .assets.tres，全局库也始终可查。
+## 每个分类的「本图热点」最多显示最近 N 个；完整记录仍在 .assets.tres，全局库也始终可查。
 const LOCAL_VISIBLE_MAX: int = 8
 
-@onready var assetscontainer: VBoxContainer = $"SectionGlobal/VBox/Content/Body/Assets"
-@onready var assetempty: Label = $"SectionGlobal/VBox/Content/Body/AssetEmpty"
+@onready var assetscontainer: VBoxContainer = $"SectionMain/VBox/Content/Body/Assets"
+@onready var assetempty: Label = $"SectionMain/VBox/Content/Body/AssetEmpty"
 @onready var sectionmain: FoldSection = $"SectionMain"
-@onready var sectionlocal: FoldSection = $"SectionLocal"
-@onready var localflow: HFlowContainer = $"SectionLocal/VBox/Content/Body/Flow"
 @onready var assetsrefresh: Button = $"SectionMain/VBox/Content/Body/AssetTitleRow/AssetRefresh"
 @onready var assetedit: Button = $"SectionMain/VBox/Content/Body/AssetTitleRow/AssetEdit"
 @onready var selectedlabel: Label = $"SectionMain/VBox/Content/Body/Selected"
@@ -41,9 +39,12 @@ var pending_rotation: int = 0         # 待放置方向：0=横向 / 1=竖向
 var pending_scale: int = 1            # 植物倍率：1=原大小，2=占地 2×2/图片 1.5×
 var asset_defs: Dictionary = {}
 
-var asset_buttons: Dictionary = {}   # id -> Button
-var hot_buttons: Dictionary = {}   # id -> Button（本图热点快捷区）
-var hot_ids: PackedStringArray = PackedStringArray()  # 当前本图热点库（全局刷新后重建用）
+var asset_buttons: Dictionary = {}   # id -> Button（各分类的全局库）
+var hot_buttons: Dictionary = {}     # id -> Button（各分类的本图热点）
+var hot_ids: PackedStringArray = PackedStringArray()  # 当前本图热点库（刷新时重建用）
+var category_sections: Dictionary = {}  # cat_id -> CategorySection（二级分节）
+var category_counts: Dictionary = {}    # cat_id -> 全局资源数量（标题用）
+var variant_primaries: Dictionary = {}  # variant_group -> primary def（热点折叠用）
 
 ## 资源库展示顺序：建筑之后先放树木，常用植物不用滚到最后。
 const SECTION_ORDER: Array[StringName] = [
@@ -73,6 +74,14 @@ func set_asset_defs(defs: Dictionary) -> void:
 	for child: Node in assetscontainer.get_children():
 		child.free()
 	asset_buttons.clear()
+	hot_buttons.clear()
+	category_sections.clear()
+	category_counts.clear()
+	variant_primaries.clear()
+	for key: StringName in defs:
+		var def: StaticAssetDef = defs[key] as StaticAssetDef
+		if def != null and def.variant_group != &"" and def.variant_primary:
+			variant_primaries[def.variant_group] = def
 	var list: Array[StaticAssetDef] = []
 	for key: StringName in defs:
 		var def: StaticAssetDef = defs[key] as StaticAssetDef
@@ -94,9 +103,7 @@ func set_asset_defs(defs: Dictionary) -> void:
 		if groups.has(cat_id):
 			_add_category_section(cat_id, groups[cat_id])
 	assetempty.visible = list.is_empty()
-	# 全局定义刷新后，本图热点区也要用新定义重建，避免按钮缓存指向旧 def
-	if not hot_ids.is_empty():
-		set_hot_assets(hot_ids)
+	_sync_selection_buttons()
 	if selected_asset != &"":
 		var abtn: Button = _asset_button(selected_asset)
 		if abtn == null:
@@ -104,8 +111,8 @@ func set_asset_defs(defs: Dictionary) -> void:
 			selectedlabel.text = "当前：无"
 			_set_rotation_enabled(false)
 			_update_scale_row(null)
+			_sync_selection_buttons()
 		else:
-			abtn.set_pressed_no_signal(true)
 			_update_scale_row(asset_defs.get(selected_asset) as StaticAssetDef)
 	else:
 		_update_scale_row(null)
@@ -121,17 +128,75 @@ func _def_before(a: StaticAssetDef, b: StaticAssetDef) -> bool:
 	return a.display_name.naturalnocasecmp_to(b.display_name) < 0
 
 
-## 分类小节 = 可折叠卡片，默认全部收起（标题带计数可扫读，展开按需）；
-## 建筑 24 个按钮全展开会把左栏顶得老长。
+## 分类小节 = 二级可折叠卡片；内部再分三级「本图热点 / 全局库」。
+## 分类默认收起，标题带全局数量与热点数量，展开后先看到热点。
 func _add_category_section(cat_id: StringName, items: Array) -> void:
 	var section = CategorySectionScene.instantiate()
 	assetscontainer.add_child(section)   # 先入树（body 等 @onready 才可用）再填内容
-	section.setup("%s · %d" % [StaticAssetDef.category_label(cat_id), items.size()], true)
-	var flow: HFlowContainer = section.body.get_node("Flow") as HFlowContainer
+	var hot_section: FoldSection = section.body.get_node("HotSection") as FoldSection
+	var global_section: FoldSection = section.body.get_node("GlobalSection") as FoldSection
+	var hot_flow: HFlowContainer = hot_section.body.get_node("Flow") as HFlowContainer
+	var global_flow: HFlowContainer = global_section.body.get_node("Flow") as HFlowContainer
 	if cat_id == &"tree":
 		_add_scale_row(section.body)
+	var hot_items: Array[StaticAssetDef] = _hot_items_for(cat_id)
+	section.setup(_category_title(cat_id, items.size(), hot_items.size()), true)
+	hot_section.set_title("本图热点 · %d" % hot_items.size())
+	global_section.set_title("全局库 · %d" % items.size())
+	_fill_hot_flow(hot_flow, hot_items)
 	for def: StaticAssetDef in items:
-		_add_asset_button(def, flow)
+		_add_asset_button(def, global_flow)
+	hot_section.visible = not hot_items.is_empty()
+	hot_section.set_folded(hot_items.is_empty())
+	global_section.set_folded(not hot_items.is_empty())
+	category_sections[cat_id] = section
+	category_counts[cat_id] = items.size()
+
+
+## 本图热点里属于这个分类的资源；保持最近使用顺序，随机款式折回 primary
+func _hot_items_for(cat_id: StringName) -> Array[StaticAssetDef]:
+	var out: Array[StaticAssetDef] = []
+	var seen: Dictionary = {}
+	for raw: String in hot_ids:
+		var def: StaticAssetDef = _hot_display_def(raw)
+		if def == null or seen.has(def.id):
+			continue
+		var def_cat: StringName = StaticAssetDef.CATEGORY_IDS[
+			StaticAssetDef.category_index(def.category)]
+		if def_cat != cat_id:
+			continue
+		seen[def.id] = true
+		out.append(def)
+	return out
+
+
+## 热点里的随机款式成员统一折回 primary：与全局库的展示/点击行为保持一致
+func _hot_display_def(raw: String) -> StaticAssetDef:
+	var def: StaticAssetDef = asset_defs.get(StringName(raw)) as StaticAssetDef
+	if def == null or def.variant_group == &"" or def.variant_primary:
+		return def
+	var primary: StaticAssetDef = variant_primaries.get(def.variant_group) as StaticAssetDef
+	return primary if primary != null else def
+
+
+## 分类标题：建筑 · 24 · 热点 5（没有热点时省略后半段）
+func _category_title(cat_id: StringName, total: int, hot_count: int) -> String:
+	var text: String = "%s · %d" % [StaticAssetDef.category_label(cat_id), total]
+	if hot_count > 0:
+		text += " · 热点 %d" % hot_count
+	return text
+
+
+## 只铺每个分类最近 LOCAL_VISIBLE_MAX 个热点；超出部分仍在全局库
+func _fill_hot_flow(flow: HFlowContainer, hot_items: Array) -> void:
+	var shown: int = mini(hot_items.size(), LOCAL_VISIBLE_MAX)
+	for i: int in shown:
+		_add_asset_button(hot_items[i], flow, true)
+	if hot_items.size() > LOCAL_VISIBLE_MAX:
+		var more: Label = Label.new()
+		more.theme_type_variation = &"Dim"
+		more.text = "仅显示最近 %d / %d 个" % [LOCAL_VISIBLE_MAX, hot_items.size()]
+		flow.add_child(more)
 
 
 ## 倍率行：静态模板（editor/ui/scale_row.tscn）实例化，只填当前值
@@ -145,7 +210,7 @@ func _add_scale_row(parent: VBoxContainer) -> void:
 
 
 ## 资源按钮：静态模板（editor/ui/asset_button.tscn）实例化，只填文案与信号
-func _add_asset_button(def: StaticAssetDef, flow: HFlowContainer, local: bool = false) -> void:
+func _add_asset_button(def: StaticAssetDef, flow: HFlowContainer, hot: bool = false) -> void:
 	var button: Button = AssetButtonScene.instantiate() as Button
 	button.text = def.short_name()
 	button.tooltip_text = "%s\n%s · 占地范围 %d×%d · 阻挡 %d 格" % [
@@ -154,43 +219,59 @@ func _add_asset_button(def: StaticAssetDef, flow: HFlowContainer, local: bool = 
 	button.button_group = asset_group
 	button.pressed.connect(_on_asset_pressed.bind(StringName(def.id)))
 	flow.add_child(button)
-	var target: Dictionary = hot_buttons if local else asset_buttons
+	var target: Dictionary = hot_buttons if hot else asset_buttons
 	target[StringName(def.id)] = button
 
 
-## 重建「本图热点」快捷区：按 id 顺序（最近使用在前），空列表隐藏整节。
-## 只铺最近 LOCAL_VISIBLE_MAX 个，避免 40+ 资源把左栏顶得老长。
+## 打开地图 / 放置 / 导入后更新：按分类重建各自的热点 Flow，不动全局库。
 func set_hot_assets(ids: PackedStringArray) -> void:
 	hot_ids = ids
-	for child: Node in localflow.get_children():
-		child.free()
 	hot_buttons.clear()
-	var shown: int = 0
-	var visible_count: int = mini(ids.size(), LOCAL_VISIBLE_MAX)
-	for i: int in visible_count:
-		var id: StringName = StringName(ids[i])
-		var def: StaticAssetDef = asset_defs.get(id) as StaticAssetDef
-		if def == null:
+	var by_cat: Dictionary = {}
+	var seen: Dictionary = {}
+	for raw: String in ids:
+		var def: StaticAssetDef = _hot_display_def(raw)
+		if def == null or seen.has(def.id):
 			continue
-		_add_asset_button(def, localflow, true)
-		shown += 1
-	if ids.size() > LOCAL_VISIBLE_MAX:
-		var more: Label = Label.new()
-		more.theme_type_variation = &"Dim"
-		more.text = "仅显示最近 %d / %d 个" % [LOCAL_VISIBLE_MAX, ids.size()]
-		localflow.add_child(more)
-	sectionlocal.visible = shown > 0
+		seen[def.id] = true
+		var cat_id: StringName = StaticAssetDef.CATEGORY_IDS[
+			StaticAssetDef.category_index(def.category)]
+		if not by_cat.has(cat_id):
+			by_cat[cat_id] = []
+		by_cat[cat_id].append(def)
+	for cat_id: StringName in category_sections:
+		var section: FoldSection = category_sections[cat_id] as FoldSection
+		var hot_section: FoldSection = section.body.get_node("HotSection") as FoldSection
+		var global_section: FoldSection = section.body.get_node("GlobalSection") as FoldSection
+		var hot_flow: HFlowContainer = hot_section.body.get_node("Flow") as HFlowContainer
+		for child: Node in hot_flow.get_children():
+			child.free()
+		var hot_items: Array = by_cat.get(cat_id, [])
+		var was_hot: bool = hot_section.visible
+		_fill_hot_flow(hot_flow, hot_items)
+		hot_section.set_title("本图热点 · %d" % hot_items.size())
+		hot_section.visible = not hot_items.is_empty()
+		if hot_items.is_empty():
+			global_section.set_folded(false)
+		else:
+			# 分类第一次出现热点时收起全局库给热点让位；之后保留用户的折叠选择
+			if not was_hot:
+				global_section.set_folded(true)
+			hot_section.set_folded(false)
+		var total: int = int(category_counts.get(cat_id, 0))
+		section.set_title(_category_title(cat_id, total, hot_items.size()))
 	_sync_selection_buttons()
 
 
-## 已在本图热点区里的资源再次被放置：按钮移到最前，不重建整节。
-## 返回 false 表示该 id 当前不在可见区（超过上限），调用方应改为整节重建。
+## 已在本图热点区里的资源再次被放置：按钮移到所属分类的最前，不重建整节。
+## 返回 false 表示该 id 当前不在可见区（超过每类上限），调用方应改为整节刷新。
 func touch_hot_asset(id: StringName) -> bool:
 	var button: Button = hot_buttons.get(id) as Button
 	if button == null:
 		return false
-	localflow.move_child(button, 0)
-	sectionlocal.visible = true
+	var flow: Node = button.get_parent()
+	if flow is HFlowContainer:
+		(flow as HFlowContainer).move_child(button, 0)
 	_sync_selection_buttons()
 	return true
 

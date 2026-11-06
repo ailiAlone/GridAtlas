@@ -52,6 +52,13 @@ func set_folded(fold: bool) -> void:
 		_apply_fold()
 
 
+## 动态改标题（保留当前折叠态）；用于分类标题里的热点计数等
+func set_title(text: String) -> void:
+	title = text
+	if is_inside_tree():
+		_apply_fold()
+
+
 func _apply_fold() -> void:
 	content.visible = not folded
 	header.text = (ARROW_FOLDED if folded else ARROW_UNFOLDED) + title

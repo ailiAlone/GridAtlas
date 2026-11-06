@@ -15,7 +15,6 @@ asset_group = SubResource("ButtonGroup_asset")
 [node name="SectionMain" parent="." instance=ExtResource("2_fold")]
 layout_mode = 2
 section_title = "静态"
-start_folded = true
 
 [node name="AssetTitleRow" type="HBoxContainer" parent="SectionMain/VBox/Content/Body"]
 layout_mode = 2
@@ -79,25 +78,11 @@ text = "静态 0 个"
 layout_mode = 2
 text = "清除全部"
 
-[node name="SectionLocal" parent="." instance=ExtResource("2_fold")]
-layout_mode = 2
-visible = false
-section_title = "本图热点"
-
-[node name="Flow" type="HFlowContainer" parent="SectionLocal/VBox/Content/Body"]
-layout_mode = 2
-theme_override_constants/h_separation = 6
-theme_override_constants/v_separation = 6
-
-[node name="SectionGlobal" parent="." instance=ExtResource("2_fold")]
-layout_mode = 2
-section_title = "全局库"
-
-[node name="AssetEmpty" type="Label" parent="SectionGlobal/VBox/Content/Body"]
+[node name="AssetEmpty" type="Label" parent="SectionMain/VBox/Content/Body"]
 layout_mode = 2
 theme_type_variation = "Dim"
 text = "暂无资源：在资源导入页保存定义"
 
-[node name="Assets" type="VBoxContainer" parent="SectionGlobal/VBox/Content/Body"]
+[node name="Assets" type="VBoxContainer" parent="SectionMain/VBox/Content/Body"]
 layout_mode = 2
 theme_override_constants/separation = 8

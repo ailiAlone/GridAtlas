@@ -4,7 +4,21 @@
 
 [node name="CategorySection" instance=ExtResource("1_fold")]
 
-[node name="Flow" type="HFlowContainer" parent="VBox/Content/Body"]
+[node name="HotSection" parent="VBox/Content/Body" instance=ExtResource("1_fold")]
+layout_mode = 2
+section_title = "本图热点"
+
+[node name="Flow" type="HFlowContainer" parent="VBox/Content/Body/HotSection/VBox/Content/Body"]
+layout_mode = 2
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
+
+[node name="GlobalSection" parent="VBox/Content/Body" instance=ExtResource("1_fold")]
+layout_mode = 2
+section_title = "全局库"
+start_folded = true
+
+[node name="Flow" type="HFlowContainer" parent="VBox/Content/Body/GlobalSection/VBox/Content/Body"]
 layout_mode = 2
 theme_override_constants/h_separation = 6
 theme_override_constants/v_separation = 6
