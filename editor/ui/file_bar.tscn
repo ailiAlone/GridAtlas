@@ -20,11 +20,6 @@ layout_mode = 2
 theme_type_variation = &"Accent"
 text = "○"
 
-[node name="OpenButton" type="Button" parent="HBox" unique_id=660135779]
-layout_mode = 2
-tooltip_text = "打开已有地图—— Ctrl+O"
-text = "打开"
-
 [node name="SaveButton" type="Button" parent="HBox" unique_id=660135778]
 layout_mode = 2
 tooltip_text = "保存地图与全部边车（外观/物件/桥/着色器副本）—— Ctrl+S"

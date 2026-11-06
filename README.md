@@ -22,7 +22,7 @@ GridAtlas 把「编辑地图」和「在游戏里渲染地图」做成同一套�
 2. 用 Godot 打开本目录的 `project.godot`。
 3. 按 <kbd>F5</kbd> 运行，主场景是 `editor/Main.tscn`。
 
-启动后是一张 64×64 的空地图，可以直接开画。左栏顶部文件条提供「打开 / 保存」按钮和「▼」文件菜单（新建 / 另存为）；快捷键为 <kbd>Ctrl</kbd>+<kbd>N</kbd> 新建、<kbd>Ctrl</kbd>+<kbd>O</kbd> 打开、<kbd>Ctrl</kbd>+<kbd>S</kbd> 保存。
+启动后是一张 64×64 的空地图，可以直接开画。左栏顶部文件条提供「保存」按钮和「▼」文件菜单（新建 / 打开 / 另存为）；快捷键为 <kbd>Ctrl</kbd>+<kbd>N</kbd> 新建、<kbd>Ctrl</kbd>+<kbd>O</kbd> 打开、<kbd>Ctrl</kbd>+<kbd>S</kbd> 保存。
 
 > **注意**：美术资源和地图数据没有入库（见「仓库内容」），所以 clone 后资源库是空的，示例地图也不在仓库里。编辑器本身可以正常启动并绘制地形、道路、水域。
 
