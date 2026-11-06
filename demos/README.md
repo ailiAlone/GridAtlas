@@ -90,7 +90,7 @@ G 显示格线（确认地面与实体同一套投影）｜R 回到角色。
 - **只画可见视口**：地面着色器按屏幕像素步进（开销 ∝ 屏幕大小，与地图大小无关）；
   立牌超出视口由 CanvasItem 自动剔除
 - **相机跟随**：中心限制在地图范围内、视口允许伸出图外，角色走到地图边缘也不会离开画面。
-  代价是图边之外会露出天空；海面或雾化边界后续再补
+  代价是图边之外会露出天空。
 - **陡壁不画纹理**：斜角视图里坡度约 >0.12 级/格的坡面不再画俯视结构图案/微凹凸/
   草叶/岩石颗粒，只保留材质底色和光照，避免纹理沿坡拉长；工具小面板的 45° 整图概览同样适用。
   陡面本身是地图的高度台阶（h4→h3→h2）；不想看到陡面就降低 look.height_scale 或把高度改缓
@@ -203,7 +203,7 @@ for def in StaticAssetStore.load_all(StaticAssetStore.load_catalog()):
 	asset_defs[def.id] = def
 
 # 物件（可选）：与地图同名的 <map>.props.tres，保存过物件后才会生成
-var props = load("res://maps/level_1_content/level_1_content.props.tres")
+var props = load("res://maps/first/first.props.tres")
 props.set_asset_defs(asset_defs)         # 定义里查 footprint/阻挡格
 rt.apply_props(props)                    # 按资源定义只写实际 blocking_cells
 ```
@@ -265,5 +265,4 @@ Processed/delivery/<族>/`（最终交付件按分类分中文文件夹、中文
   素材来自 [Tiny Swords (Free Pack)](https://pixelfrog-assets.itch.io/tiny-swords)，不随仓库分发。
 - 编辑模式左上角是 45° 整图概览（有立牌、只读）；渲染模式左上角是俯视网格镜像。
   45° 立牌和遮挡看这个概览、渲染模式大画面或 `grid_atlas_demo.tscn`。
-- 立牌按占地中心格取一个地表高度：跨坡的房子/树可能有一侧悬空，后续可做
-  多脚采样或“占地压平”。
+- 立牌按占地中心格取一个地表高度：跨坡的房子/树可能有一侧悬空（已知限制）。

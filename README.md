@@ -132,7 +132,7 @@ godot --path . res://demos/occlusion_test.tscn    # 山体遮挡验证
 
 - 截图中的建筑、树木、角色素材来自 Pixel Frog 的 [Tiny Swords (Free Pack)](https://pixelfrog-assets.itch.io/tiny-swords)；本仓库不包含原始资源，请自行下载到 `Assets/TinySwords/`。
 - `Assets/` 下其余美术文件（`ChineseVillage`、`Generated` 等）体积较大，且属于个人资源，未入库；仅保留 `.gd` 脚本与 `.uid`。
-- `maps/` 下的地图数据未入库，仅保留 `*.terrain.gdshader` 示例副本。
+- `maps/` 下的地图数据（含每图着色器副本）未入库，全部只在本地保留。
 - 因此 clone 后可以运行编辑器，但资源库（`Assets/static_assets/defs`）为空、示例地图和 demo 数据需要自备，TinySwords 素材需自行下载。
 
 ## 文档

@@ -17,12 +17,9 @@
 !/Assets/static_assets/*.uid
 /maps/*
 !/maps/.gitkeep
-# 例外：地图专属地表着色器（maps/<图>/<图>.terrain.gdshader）是手工维护的代码，
-# 与 Assets/static_assets 同理进版本库；地图数据等其余产物仍然排除。
-# gitignore 语义：目录被排除后不会下钻，所以要先放行地图子目录、再收掉内容、最后放行 .gdshader
-!/maps/*/
-/maps/*/*
-!/maps/*/*.gdshader
+
+# 预览图仅供 README 引用，Godot 的导入缓存不入库
+/demos/preview/*.import
 
 __pycache__/
 *.pyc
@@ -31,6 +28,3 @@ __pycache__/
 /Docs/2D资产风格管线/截图/
 /Docs/2D资产风格管线/参考/
 /GridData/
-# Level_1 等个人地图即使着色器副本也不入库（覆盖上面的 *.gdshader 例外）
-/maps/Level_1_new/
-/maps/all_buildings_preview/

@@ -54,7 +54,6 @@ extends Resource
 @export var texture_strength: float = 0.68    # 分材质结构图案的强度（1=原样）
 @export var texture_frequency: float = 0.9   # 结构图案的频率倍率
 @export var grain: float = 0.015             # 逐像素细颗粒（只做抖动，别大）
-@export var biome: float = 0.07              # 全图低频色差（避免大片纯色）
 @export var bump: float = 0.55               # 材质微凹凸光度（无高程数据也有立体感）
 
 # ---------- 过渡 ----------
@@ -62,9 +61,6 @@ extends Resource
 @export var band_hard: float = 0.18     # 亲和度 0 的混合带宽（占格比例）
 @export var band_soft: float = 0.85     # 亲和度 1 的混合带宽
 @export var edge_jitter: float = 1.6    # 小尺度边界抖动
-@export var coast_warp: float = 0.8     # 大尺度边界扭曲（把格子阶梯变成自然曲线）
-@export var crease_width: float = 0.14  # 材质交界的折痕宽度
-@export var crease_dark: float = 0.14   # 折痕压暗强度
 
 # ---------- 潮汐（深浅交界与"沙地↔浅水"岸线的来回摆动） ----------
 # 沙地↔浅水 与 浅↔深水 共用下面两个参数；按需再拆成两组独立参数。
