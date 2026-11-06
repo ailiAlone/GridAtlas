@@ -30,11 +30,11 @@ layout_mode = 2
 tooltip_text = "保存地图与全部边车（外观/物件/桥/着色器副本）—— Ctrl+S"
 text = "保存"
 
-[node name="MenuButton" type="MenuButton" parent="HBox" unique_id=2037673136]
+[node name="MenuButton" type="Button" parent="HBox" unique_id=2037673136]
 layout_mode = 2
 tooltip_text = "更多文件操作：新建 / 另存为"
-text = "▼"
 theme_override_font_sizes/font_size = 10
+text = "▼"
 
 [node name="PopupMenu" type="PopupMenu" parent="HBox/MenuButton" unique_id=632906689]
 oversampling_override = 1.0

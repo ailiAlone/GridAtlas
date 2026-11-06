@@ -13,13 +13,22 @@ signal menu_save_as_requested
 @onready var dirtydot: Label = $"HBox/DirtyDot"
 @onready var openbutton: Button = $"HBox/OpenButton"
 @onready var savebutton: Button = $"HBox/SaveButton"
-@onready var menubutton: MenuButton = $"HBox/MenuButton"
+@onready var menubutton: Button = $"HBox/MenuButton"
+@onready var menu: PopupMenu = $"HBox/MenuButton/PopupMenu"
 
 
 func _ready() -> void:
 	openbutton.pressed.connect(func(): open_requested.emit())
 	savebutton.pressed.connect(func(): save_requested.emit())
-	menubutton.get_popup().index_pressed.connect(_on_menu_index)
+	menubutton.pressed.connect(_show_menu)
+	menu.index_pressed.connect(_on_menu_index)
+
+
+## MenuButton 会自建一个内部空菜单，场景里的静态 PopupMenu 不会被它使用，
+## 所以这里改用普通 Button 手动弹出静态菜单，并把它定位到按钮正下方。
+func _show_menu() -> void:
+	menu.position = Vector2i(menubutton.global_position) + Vector2i(0, int(menubutton.size.y))
+	menu.popup()
 
 
 func _on_menu_index(index: int) -> void:
