@@ -1,15 +1,19 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene format=3 uid="uid://cyyp03ih7aafy"]
 
-[ext_resource type="PackedScene" path="res://editor/grid_tools.tscn" id="2_uu6xs"]
+[ext_resource type="PackedScene" uid="uid://duqxx0801a83k" path="res://editor/grid_tools.tscn" id="2_uu6xs"]
 [ext_resource type="Script" uid="uid://bg63e3d0c11ss" path="res://editor/main.gd" id="3_main"]
 [ext_resource type="PackedScene" uid="uid://bt54rkajpdso1" path="res://editor/grid_view.tscn" id="4_gview"]
 [ext_resource type="PackedScene" uid="uid://dxiuobwm7qm4b" path="res://editor/render_tool.tscn" id="7_rtool"]
 [ext_resource type="PackedScene" path="res://editor/game_preview.tscn" id="8_gpreview"]
 [ext_resource type="PackedScene" uid="uid://1y80if473x7a" path="res://editor/material_parameters.tscn" id="9_mparams"]
 [ext_resource type="PackedScene" uid="uid://b6u1u60pthv1q" path="res://editor/StaticAssetImportView.tscn" id="10_import"]
-[ext_resource type="PackedScene" path="res://editor/ui/file_bar.tscn" id="11_filebar"]
+[ext_resource type="PackedScene" uid="uid://2v73mrwodvtl" path="res://editor/ui/file_bar.tscn" id="11_filebar"]
 [ext_resource type="PackedScene" path="res://editor/ui/map_browser.tscn" id="12_browser"]
-[ext_resource type="Theme" path="res://editor/theme/editor_theme.tres" id="13_theme"]
+[ext_resource type="Theme" uid="uid://d2rp2auepyccs" path="res://editor/theme/editor_theme.tres" id="13_theme"]
+
+[sub_resource type="ButtonGroup" id="ButtonGroup_222jo"]
+
+[sub_resource type="ButtonGroup" id="ButtonGroup_qvxfr"]
 
 [node name="Main" type="Control" unique_id=1225227347]
 layout_mode = 3
@@ -40,7 +44,7 @@ size_flags_horizontal = 3
 theme_override_constants/separation = 8
 metadata/_edit_lock_ = true
 
-[node name="FileBar" parent="HBoxContainer/VBoxContainer" instance=ExtResource("11_filebar")]
+[node name="FileBar" parent="HBoxContainer/VBoxContainer" unique_id=612172844 instance=ExtResource("11_filebar")]
 layout_mode = 2
 
 [node name="Panel" type="Panel" parent="HBoxContainer/VBoxContainer" unique_id=447031656]
@@ -85,6 +89,8 @@ metadata/_edit_lock_ = true
 
 [node name="GridTools" parent="HBoxContainer/VBoxContainer/Panel2/ScrollContainer" unique_id=493391614 instance=ExtResource("2_uu6xs")]
 layout_mode = 2
+sizegroup = SubResource("ButtonGroup_222jo")
+elevation_group = SubResource("ButtonGroup_qvxfr")
 
 [node name="RenderTool" parent="HBoxContainer/VBoxContainer/Panel2/ScrollContainer" unique_id=1551521367 instance=ExtResource("7_rtool")]
 visible = false
@@ -141,28 +147,28 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 16
 
-[node name="StatusHint" type="Label" parent="HBoxContainer/VBoxContainer2/Panel2/HBoxContainer"]
+[node name="StatusHint" type="Label" parent="HBoxContainer/VBoxContainer2/Panel2/HBoxContainer" unique_id=94644123]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_type_variation = "Dim"
-clip_text = true
+theme_type_variation = &"Dim"
 text = "左键绘制 · Shift+左键擦除 · 右键拖动平移 · 滚轮缩放"
 vertical_alignment = 1
-
-[node name="StatusHover" type="Label" parent="HBoxContainer/VBoxContainer2/Panel2/HBoxContainer"]
-layout_mode = 2
-custom_minimum_size = Vector2(280, 0)
 clip_text = true
-text = "(-,-)"
-vertical_alignment = 1
-horizontal_alignment = 1
 
-[node name="StatusZoom" type="Label" parent="HBoxContainer/VBoxContainer2/Panel2/HBoxContainer"]
+[node name="StatusHover" type="Label" parent="HBoxContainer/VBoxContainer2/Panel2/HBoxContainer" unique_id=91579963]
+custom_minimum_size = Vector2(280, 0)
 layout_mode = 2
-theme_type_variation = "Dim"
-text = "100%"
+text = "(-,-)"
+horizontal_alignment = 1
 vertical_alignment = 1
+clip_text = true
+
+[node name="StatusZoom" type="Label" parent="HBoxContainer/VBoxContainer2/Panel2/HBoxContainer" unique_id=474134430]
+layout_mode = 2
+theme_type_variation = &"Dim"
+text = "100%"
 horizontal_alignment = 2
+vertical_alignment = 1
 
 [node name="ImportOverlay" type="Control" parent="." unique_id=1226961433]
 visible = false
@@ -188,88 +194,95 @@ layout_mode = 0
 anchors_preset = 0
 anchor_left = 0.0
 anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+offset_left = 0.0
+offset_top = 0.0
 offset_right = 1160.0
 offset_bottom = 780.0
 grow_horizontal = 1
 grow_vertical = 1
 
-[node name="ShaderResetConfirm" type="ConfirmationDialog" parent="."]
+[node name="ShaderResetConfirm" type="ConfirmationDialog" parent="." unique_id=1285888112]
 ok_button_text = "覆盖"
 
-[node name="UnsavedConfirm" type="ConfirmationDialog" parent="."]
-dialog_text = "当前地图有未保存的修改。"
+[node name="UnsavedConfirm" type="ConfirmationDialog" parent="." unique_id=1498374222]
 ok_button_text = "保存"
+dialog_text = "当前地图有未保存的修改。"
 
-[node name="MapBrowser" parent="." instance=ExtResource("12_browser")]
+[node name="MapBrowser" parent="." unique_id=192114489 instance=ExtResource("12_browser")]
 
-[node name="NewMapDialog" type="AcceptDialog" parent="."]
+[node name="NewMapDialog" type="AcceptDialog" parent="." unique_id=1577480524]
+oversampling_override = 1.0
 title = "新建地图"
+size = Vector2i(269, 141)
 ok_button_text = "创建"
 
-[node name="VBox" type="VBoxContainer" parent="NewMapDialog"]
+[node name="VBox" type="VBoxContainer" parent="NewMapDialog" unique_id=1229418623]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 4.0
-offset_top = 4.0
-offset_right = -4.0
-offset_bottom = -4.0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = -46.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 8
 
-[node name="Hint" type="Label" parent="NewMapDialog/VBox"]
+[node name="Hint" type="Label" parent="NewMapDialog/VBox" unique_id=518351281]
 layout_mode = 2
-theme_type_variation = "Dim"
+theme_type_variation = &"Dim"
 text = "预设或自定义尺寸（格），全图草地 / 高程 1 级"
 
-[node name="Presets" type="HBoxContainer" parent="NewMapDialog/VBox"]
+[node name="Presets" type="HBoxContainer" parent="NewMapDialog/VBox" unique_id=2111162014]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="Preset64" type="Button" parent="NewMapDialog/VBox/Presets"]
+[node name="Preset64" type="Button" parent="NewMapDialog/VBox/Presets" unique_id=2065901003]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "64"
 
-[node name="Preset96" type="Button" parent="NewMapDialog/VBox/Presets"]
+[node name="Preset96" type="Button" parent="NewMapDialog/VBox/Presets" unique_id=643568972]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "96"
 
-[node name="Preset128" type="Button" parent="NewMapDialog/VBox/Presets"]
+[node name="Preset128" type="Button" parent="NewMapDialog/VBox/Presets" unique_id=1372672108]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "128"
 
-[node name="HBoxSize" type="HBoxContainer" parent="NewMapDialog/VBox"]
+[node name="HBoxSize" type="HBoxContainer" parent="NewMapDialog/VBox" unique_id=484320707]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="LabelW" type="Label" parent="NewMapDialog/VBox/HBoxSize"]
+[node name="LabelW" type="Label" parent="NewMapDialog/VBox/HBoxSize" unique_id=740564620]
 layout_mode = 2
 text = "宽"
 
-[node name="SpinBoxW" type="SpinBox" parent="NewMapDialog/VBox/HBoxSize"]
+[node name="SpinBoxW" type="SpinBox" parent="NewMapDialog/VBox/HBoxSize" unique_id=463977078]
 layout_mode = 2
 size_flags_horizontal = 3
 min_value = 8.0
 max_value = 1024.0
 value = 64.0
 
-[node name="LabelH" type="Label" parent="NewMapDialog/VBox/HBoxSize"]
+[node name="LabelH" type="Label" parent="NewMapDialog/VBox/HBoxSize" unique_id=766679513]
 layout_mode = 2
 text = "高"
 
-[node name="SpinBoxH" type="SpinBox" parent="NewMapDialog/VBox/HBoxSize"]
+[node name="SpinBoxH" type="SpinBox" parent="NewMapDialog/VBox/HBoxSize" unique_id=1938156798]
 layout_mode = 2
 size_flags_horizontal = 3
 min_value = 8.0
 max_value = 1024.0
 value = 64.0
 
-[node name="ToastLayer" type="VBoxContainer" parent="."]
-anchors_preset = 1
+[node name="ToastLayer" type="VBoxContainer" parent="." unique_id=710996777]
+z_index = 4095
+layout_mode = 0
 anchor_left = 1.0
 anchor_right = 1.0
 offset_left = -336.0
@@ -277,14 +290,13 @@ offset_top = 54.0
 offset_right = -16.0
 grow_horizontal = 0
 mouse_filter = 2
-z_index = 4095
 theme_override_constants/separation = 8
 
-[node name="ToastTemplate" type="PanelContainer" parent="ToastLayer"]
+[node name="ToastTemplate" type="PanelContainer" parent="ToastLayer" unique_id=1423632414]
 visible = false
 layout_mode = 2
 
-[node name="Label" type="Label" parent="ToastLayer/ToastTemplate"]
+[node name="Label" type="Label" parent="ToastLayer/ToastTemplate" unique_id=1361254160]
 custom_minimum_size = Vector2(300, 0)
 layout_mode = 2
 autowrap_mode = 3

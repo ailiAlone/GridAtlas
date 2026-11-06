@@ -16,6 +16,8 @@ var _paths: PackedStringArray = PackedStringArray()
 
 func _ready() -> void:
 	list.item_activated.connect(_on_item_activated)
+	# Window 的关闭按钮只发 close_requested，不会自动隐藏，必须显式接住
+	close_requested.connect(hide)
 	$VBox/Buttons/NewMap.pressed.connect(func(): new_requested.emit(); hide)
 	$VBox/Buttons/Browse.pressed.connect(func(): browse_requested.emit(); hide)
 	$VBox/Buttons/Refresh.pressed.connect(rebuild)
