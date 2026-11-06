@@ -137,6 +137,7 @@ godot --path . res://demos/occlusion_test.tscn    # 山体遮挡验证
 
 ## 文档
 
+- [`AGENTS.md`](AGENTS.md)：给代码 Agent 的工作指南（参数/代码修改边界、验证流程、项目约定）
 - [`demos/README.md`](demos/README.md)：游戏端接入、45° 投影公式、遮挡规则、性能取舍
 - [`Docs/2D资产风格管线/全流程方案.md`](Docs/2D资产风格管线/全流程方案.md)：美术资源从概念到导入的完整流程
 - [`Docs/2D资产风格管线/ArtBible.md`](Docs/2D资产风格管线/ArtBible.md)：美术风格规范
