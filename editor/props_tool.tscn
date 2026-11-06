@@ -14,7 +14,7 @@ asset_group = SubResource("ButtonGroup_asset")
 
 [node name="SectionMain" parent="." instance=ExtResource("2_fold")]
 layout_mode = 2
-section_title = "物件"
+section_title = "静态"
 start_folded = true
 
 [node name="AssetTitleRow" type="HBoxContainer" parent="SectionMain/VBox/Content/Body"]
@@ -73,7 +73,7 @@ text = "当前：无"
 [node name="Count" type="Label" parent="SectionMain/VBox/Content/Body"]
 layout_mode = 2
 theme_type_variation = "Dim"
-text = "物件 0 个"
+text = "静态 0 个"
 
 [node name="Clear" type="Button" parent="SectionMain/VBox/Content/Body"]
 layout_mode = 2

@@ -2,7 +2,7 @@ extends VBoxContainer
 ## 物件面板：资源库（StaticAssetDef）/ 待放方向 / 清空。
 ## 内置 Tiny Swords 物件已彻底移除；旧边车里的实例载入时丢弃。
 ## 放置与删除由 GridView 上报区域、main.gd 写 PropsData —— 本面板不碰地图数据。
-## 结构：静态控制区在一个 FoldSection（"物件"）里，各分类是独立的可折叠卡片。
+## 结构：静态控制区在一个 FoldSection（"静态"）里，各分类是独立的可折叠卡片。
 
 signal asset_selected(asset_id: StringName)
 signal rotation_selected(rot: int)
@@ -17,6 +17,7 @@ const CategorySectionScene = preload("res://editor/ui/category_section.tscn")
 
 @onready var assetscontainer: VBoxContainer = $"Assets"
 @onready var assetempty: Label = $"AssetEmpty"
+@onready var sectionmain: FoldSection = $"SectionMain"
 @onready var assetsrefresh: Button = $"SectionMain/VBox/Content/Body/AssetTitleRow/AssetRefresh"
 @onready var assetedit: Button = $"SectionMain/VBox/Content/Body/AssetTitleRow/AssetEdit"
 @onready var selectedlabel: Label = $"SectionMain/VBox/Content/Body/Selected"
@@ -44,7 +45,7 @@ const SECTION_ORDER: Array[StringName] = [
 
 
 func _ready() -> void:
-	countlabel.text = "物件 0 个"
+	countlabel.text = "静态 0 个"
 	selectedlabel.text = "当前：无"
 	assetscontainer.add_theme_constant_override("separation", 6)
 	clearbutton.pressed.connect(_on_clear)
@@ -151,6 +152,7 @@ func _asset_button(id: StringName) -> Button:
 
 
 func _on_asset_pressed(id: StringName) -> void:
+	sectionmain.set_folded(false)   # 选中静态资源时自动展开方向/计数/清空控制区
 	selected_asset = id
 	_set_rotation_enabled(true)
 	for key: StringName in asset_buttons:
@@ -233,4 +235,4 @@ func clear_selection() -> void:
 
 
 func set_count(n: int) -> void:
-	countlabel.text = "物件 %d 个" % n
+	countlabel.text = "静态 %d 个" % n
