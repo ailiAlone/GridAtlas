@@ -8,6 +8,7 @@ extends Control
 ## 操作：WASD 走格（按屏幕方向）｜滚轮缩放｜右键拖动平移｜G 网格｜R 回到角色
 ## 截图：--shot [--shot-yaw=0] [--shot-debug] [--shot-ppm=42] [--map=res://...]
 
+const MapSidecars = preload("res://data/map_sidecars.gd")
 const MAP_PATH: String = "res://maps/first/first.tres"
 const RUNTIME_SCRIPT: GDScript = preload("res://runtime/map_runtime.gd")
 const CARD_SCRIPT: GDScript = preload("res://runtime/actor_card.gd")
@@ -94,7 +95,7 @@ func _load_map(path: String) -> void:
 		return
 	_load_asset_defs()
 	var look: RenderSettings = RenderSettings.new()
-	var look_path: String = path.get_basename() + ".look.tres"
+	var look_path: String = MapSidecars.look_path(path)
 	if ResourceLoader.exists(look_path):
 		var loaded: RenderSettings = load(look_path) as RenderSettings
 		if loaded != null:

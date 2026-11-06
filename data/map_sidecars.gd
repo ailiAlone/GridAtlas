@@ -20,11 +20,37 @@ extends RefCounted
 
 const MASTER_TERRAIN_SHADER: String = "res://runtime/terrain.gdshader"
 
-## 地图专属着色器路径；map_path 为空（未保存的新图）返回空串
+# 边车后缀：路径一律由"主图路径去 .tres + 后缀"派生，四类边车共用一套规则
+const LOOK_SUFFIX: String = ".look.tres"
+const PROPS_SUFFIX: String = ".props.tres"
+const BRIDGES_SUFFIX: String = ".bridges.tres"
+const TERRAIN_SUFFIX: String = ".terrain.gdshader"
+
+
+## 外观参数边车；map_path 为空返回空串
+static func look_path(map_path: String) -> String:
+	return _with_suffix(map_path, LOOK_SUFFIX)
+
+
+## 物件层边车
+static func props_path(map_path: String) -> String:
+	return _with_suffix(map_path, PROPS_SUFFIX)
+
+
+## 桥层边车
+static func bridges_path(map_path: String) -> String:
+	return _with_suffix(map_path, BRIDGES_SUFFIX)
+
+
+## 地图专属着色器路径
 static func terrain_shader_path(map_path: String) -> String:
+	return _with_suffix(map_path, TERRAIN_SUFFIX)
+
+
+static func _with_suffix(map_path: String, suffix: String) -> String:
 	if map_path.is_empty():
 		return ""
-	return map_path.get_basename() + ".terrain.gdshader"
+	return map_path.get_basename() + suffix
 
 
 ## 确保副本存在：没有就拷一份母版，已存在原样返回（永不覆盖）。

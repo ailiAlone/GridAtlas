@@ -10,6 +10,8 @@ enum Flow { NONE, NW, N, NE, W, CENTER, E, SW, S, SE }
 
 
 # 与 grid_tools.tscn 中按钮 StyleBoxFlat 的颜色保持一致
+# 与 grid_tools.tscn 中按钮 StyleBoxFlat 的颜色保持一致
+# （按钮样式是静态场景资源，不能引用常量；改色时两边同步）
 const LAND_COLORS: Dictionary = {
 	Land.GRASS: Color(0.42, 0.745, 0.348, 1),
 	Land.SAND: Color(0.91, 0.82, 0.54, 1),

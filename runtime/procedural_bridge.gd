@@ -36,9 +36,7 @@ var _a: Vector2 = Vector2.ZERO
 var _b: Vector2 = Vector2.ZERO
 var _perp: Vector2 = Vector2(0, 1)
 var _axis: Vector2 = Vector2(1, 0)
-var _span: float = 1.0
 var _deck_z: float = 0.0
-var _ground_z: float = 0.0
 var _bank_za: float = 0.0
 var _bank_zb: float = 0.0
 var _half: float = 0.58
@@ -56,7 +54,6 @@ func setup(atlas, runtime, kind: int, start_cell: Vector2i, end_cell: Vector2i) 
 	_a = Vector2(start_cell) + Vector2(0.5, 0.5)
 	_b = Vector2(end_cell) + Vector2(0.5, 0.5)
 	_axis = (_b - _a).normalized()
-	_span = _a.distance_to(_b)
 	_perp = Vector2(0.0, 1.0) if absf(_axis.x) > 0.5 else Vector2(1.0, 0.0)
 	_bank_za = _bank_z(_a)
 	_bank_zb = _bank_z(_b)

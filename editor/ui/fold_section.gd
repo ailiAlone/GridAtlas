@@ -7,9 +7,7 @@ extends PanelContainer
 ## 用法（tscn 实例后把内容挂在 Content/Body 下，或在代码里 add_child 到 body()）：
 ##   var sec: FoldSection = FoldSectionScene.instantiate()
 ##   sec.setup("陆地", false)      # 标题 + 默认收起
-##   sec.body().add_child(...)
-
-signal folded_changed(folded: bool)
+##   sec.body.add_child(...)      # body 是属性（Content/Body 容器）
 
 const ARROW_FOLDED := "▶  "
 const ARROW_UNFOLDED := "▼  "
@@ -52,7 +50,6 @@ func set_folded(fold: bool) -> void:
 	folded = fold
 	if is_inside_tree():
 		_apply_fold()
-	folded_changed.emit(folded)
 
 
 func _apply_fold() -> void:

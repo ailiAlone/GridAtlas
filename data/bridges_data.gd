@@ -1,5 +1,7 @@
 class_name BridgesData
 extends Resource
+
+const MapSidecars = preload("res://data/map_sidecars.gd")
 ## 独立于静态资源的桥层：一条桥 = 两个 1×1 桥座（陆地） + 桥身（水面）。
 ## starts/ends 存两个桥座格；桥身是两座之间的水面格，至少 1 格、长度不限。
 ## 只允许水平/垂直的整条直线，不允许 L 形或斜线；桥体视觉全部由 procedural_bridge 生成。
@@ -18,9 +20,7 @@ const SURFACE_COST: float = 0.6
 
 
 static func sidecar_path(map_path: String) -> String:
-	if map_path.is_empty():
-		return ""
-	return map_path.get_basename() + ".bridges.tres"
+	return MapSidecars.bridges_path(map_path)
 
 
 static func kind_name(kind: int) -> String:

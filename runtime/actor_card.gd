@@ -18,7 +18,6 @@ var art_flip_x: bool = false             # 竖向资源：贴图水平镜像
 var art_offset: Vector2 = Vector2.ZERO   # 屏幕格偏移（不参与脚底/遮挡判定）
 var fade_occluded: float = 0.38
 var base_cell: Vector2 = Vector2.ZERO   # 脚底格坐标（0..map_size）
-var base_z: float = 0.0                 # 脚底地表高度（世界格）
 
 var _mat: ShaderMaterial
 var _box: Vector2 = Vector2.ONE         # 立牌矩形（格，含左右抬升跨度）
@@ -102,7 +101,6 @@ func _draw() -> void:
 ## 立牌矩形由 GridProjection.art_rect 统一给出，和导入页的预览共用同一套锚点。
 func place(pos: Vector2, z: float) -> void:
 	base_cell = pos
-	base_z = z
 	var foot: Vector2 = atlas.projected_point(pos, z)
 	var art: Rect2 = GridProj.art_rect(foot, art_size, art_offset, art_lift)
 	position = art.position

@@ -24,8 +24,6 @@ var settings: RenderSettings
 @onready var shaderreload:Button = $"PanelShader/VBox/Content/Body/HBoxContainer/ButtonReloadShader"
 @onready var shaderreset:Button = $"PanelShader/VBox/Content/Body/HBoxContainer/ButtonResetShader"
 
-var _map_path: String = ""   # 当前地图路径（空 = 未保存的新图），驱动着色器一节的状态
-
 
 func _ready() -> void:
 	settings = RenderSettings.new()
@@ -66,7 +64,6 @@ func set_settings(value: RenderSettings) -> void:
 ## 着色器一节的状态（打开/加载地图、保存地图后由 main 推入当前地图路径）：
 ##   未保存的新图 → 用母版，按钮禁用；已保存无副本 → 母版兜底；有副本 → 显示副本文件名
 func set_shader_context(map_path: String) -> void:
-	_map_path = map_path
 	var path: String = MapSidecars.terrain_shader_path(map_path)
 	if path.is_empty():
 		shaderstatus.text = "未保存的新图 · 用母版"

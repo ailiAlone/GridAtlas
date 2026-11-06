@@ -854,14 +854,6 @@ func _apply_look_to_views() -> void:
 
 # ---------- 渲染配置持久化（与地图同名的 .look.tres 边车） ----------
 
-## 边车路径：与地图同目录同名，后缀换成 .look.tres
-## （maps/first/first.tres -> maps/first/first.look.tres）
-func _look_path(map_path: String) -> String:
-	if map_path.is_empty():
-		return ""
-	return map_path.get_basename() + ".look.tres"
-
-
 ## 保存地图后顺手保存物件层与当前渲染配置
 func _on_map_saved(path: String) -> void:
 	var side: String = PropsData.sidecar_path(path)
@@ -878,7 +870,7 @@ func _on_map_saved(path: String) -> void:
 			print("[桥] 已保存 %d 条: %s" % [bridges.count(), bridge_side])
 		else:
 			push_warning("桥保存失败(%s): %s" % [error_string(berr), bridge_side])
-	var look_path: String = _look_path(path)
+	var look_path: String = MapSidecars.look_path(path)
 	if not look_path.is_empty():
 		var err: Error = ResourceSaver.save(rtool.settings, look_path)
 		if err == OK:
@@ -898,7 +890,7 @@ func _on_map_saved(path: String) -> void:
 
 ## 打开地图时，若存在同名边车就载入；没有则保持当前外观
 func _load_look(map_path: String) -> void:
-	var look_path: String = _look_path(map_path)
+	var look_path: String = MapSidecars.look_path(map_path)
 	if look_path.is_empty() or not ResourceLoader.exists(look_path):
 		return
 	var loaded: RenderSettings = load(look_path) as RenderSettings

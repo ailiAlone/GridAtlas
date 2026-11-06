@@ -6,6 +6,7 @@ extends Control
 ## 运行：godot res://demos/example.tscn
 ## 截图：加 --shot（自动选一段路做演示，存到 %TEMP%/gridatlas_shots/example.png）
 
+const MapSidecars = preload("res://data/map_sidecars.gd")
 const MAP_PATH: String = "res://maps/first/first.tres"
 const RUNTIME_SCRIPT: GDScript = preload("res://runtime/map_runtime.gd")
 const MIN_ZOOM: float = 0.35
@@ -63,7 +64,7 @@ func _load_map() -> void:
 		push_error("找不到地图：" + MAP_PATH)
 		return
 	var look: RenderSettings = RenderSettings.new()
-	var look_path: String = MAP_PATH.get_basename() + ".look.tres"
+	var look_path: String = MapSidecars.look_path(MAP_PATH)
 	if ResourceLoader.exists(look_path):
 		var loaded: RenderSettings = load(look_path) as RenderSettings
 		if loaded != null:

@@ -64,10 +64,10 @@ uniform float u_road_bend = 0.28;    // 直路蛇行幅度（格，峰-峰的一
 uniform float u_road_blend = 1.6;   // 土路/石子路/石砖路交界处的交叉过渡半宽（格）
 uniform float u_road_grass = 0.7;   // 路缘草的浓度（0=干净的路边，1=草漫上来）
 // ---- 高程 ----
-uniform float u_elev_bright = 0.045;
-uniform float u_elev_shadow = 0.16;
-uniform float u_elev_rim = 0.05;
-uniform float u_elev_shadow_width = 0.30;
+uniform float u_elevation_bright = 0.045;
+uniform float u_elevation_shadow = 0.16;
+uniform float u_elevation_rim = 0.05;
+uniform float u_elevation_shadow_width = 0.30;
 // ---- 山体与光照 ----
 uniform float u_rock_slope_low = 0.52;    // 坡度（级/格）开始露岩
 uniform float u_rock_slope_high = 1.05;   // 完全成为岩石的坡度
@@ -779,7 +779,7 @@ vec3 shade_surface(vec2 cf) {
 	// ---- 1.5) 高程梯度 + 陡壁参数（图案/光照共用） ----
 	// 俯视纹理落在近垂直的坡面上会沿坡拉长；这里先算出坡度，
 	// 后面把俯视图案压平、换成立面岩层。梯度同时给光照段复用，不重复采样高度场。
-	float d = max(u_elev_shadow_width, 0.10) * 1.6;
+	float d = max(u_elevation_shadow_width, 0.10) * 1.6;
 	float h0 = elev_relief(cf);
 	float hx = elev_relief(cf + vec2(d, 0.0));
 	float hy = elev_relief(cf + vec2(0.0, d));
@@ -996,15 +996,15 @@ vec3 shade_surface(vec2 cf) {
 	// 以平地（ndl = lgt.z）为零点做对称的明暗：迎光 +，背光 −，
 	// 不用 (ndl-1) 那种写法 —— 背光侧会一直压到黑，坡面就变成一条深沟。
 	float shade = clamp(ndl - lgt.z, -0.45, 0.55);
-	float lit = 1.0 + shade * (u_elev_shadow * 2.4);
-	lit += max(shade, 0.0) * u_elev_rim * 1.5;   // 迎光坡的窄高光
+	float lit = 1.0 + shade * (u_elevation_shadow * 2.4);
+	lit += max(shade, 0.0) * u_elevation_rim * 1.5;   // 迎光坡的窄高光
 	float lit_c = clamp(lit, 0.62, 1.32);
 	col *= mix(1.0, lit_c, land_mask);
 	// 暗部略偏冷、亮部略偏暖：比单纯压暗更像受光，也不容易读成脏污
 	col *= mix(vec3(0.97, 0.995, 1.03), vec3(1.02, 1.0, 0.97), clamp(shade * 2.0 + 0.5, 0.0, 1.0));
 	// 高度提亮按全图最高点归一，否则高山会一路加到过曝
 	float hrel = clamp((h0 - 1.0) / max(u_elev_max - 1.0, 1.0), 0.0, 1.0);
-	col *= 1.0 + hrel * u_elev_bright * 2.0;
+	col *= 1.0 + hrel * u_elevation_bright * 2.0;
 	// 山体覆盖放在打光之后：岩石/雪帽用同一个 lit 明暗，但不再叠加高度提亮。
 	// 陡壁不再压成平色：用高度层理 + 竖向裂缝给岩壁一个可读的立面材质。
 	if (rock > 0.002 || snow > 0.002) {

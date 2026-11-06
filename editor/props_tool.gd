@@ -11,7 +11,6 @@ signal clear_requested
 signal assets_refresh_requested
 signal asset_edit_requested
 
-const FoldSectionScene = preload("res://editor/ui/fold_section.tscn")
 const AssetButtonScene = preload("res://editor/ui/asset_button.tscn")
 const ScaleRowScene = preload("res://editor/ui/scale_row.tscn")
 const CategorySectionScene = preload("res://editor/ui/category_section.tscn")

@@ -1,4 +1,6 @@
 extends Resource
+
+const MapSidecars = preload("res://data/map_sidecars.gd")
 ## 静态资源实例层：每张地图一份，和地图同目录同名边车保存
 ## （maps/first/first.tres → maps/first/first.props.tres）。
 ## 平行紧凑数组，风格与 MapData 一致：
@@ -35,9 +37,7 @@ var variant_groups: Dictionary = {}
 
 ## 边车路径：与地图同目录同名，后缀换成 .props.tres
 static func sidecar_path(map_path: String) -> String:
-	if map_path.is_empty():
-		return ""
-	return map_path.get_basename() + ".props.tres"
+	return MapSidecars.props_path(map_path)
 
 
 func set_asset_defs(defs: Dictionary) -> void:

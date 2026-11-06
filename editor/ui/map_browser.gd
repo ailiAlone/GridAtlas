@@ -69,14 +69,15 @@ func _describe(tres: String, map_dir: String) -> String:
 	var data: MapData = load(tres) as MapData
 	var size_text: String = ("%d×%d" % [data.grid_size.x, data.grid_size.y]) if data != null else "?"
 	var prop_count: int = -1
-	var props_side: String = tres.get_basename() + ".props.tres"
+	var props_side: String = MapSidecars.props_path(tres)
 	if ResourceLoader.exists(props_side):
 		var side = load(props_side)
 		if side != null and side.has_method("count"):
 			prop_count = side.count()
 	var dots: String = ""
-	for suffix: String in [".look.tres", ".props.tres", ".bridges.tres", ".terrain.gdshader"]:
-		dots += "●" if FileAccess.file_exists(tres.get_basename() + suffix) else "○"
+	for path: String in [MapSidecars.look_path(tres), MapSidecars.props_path(tres),
+			MapSidecars.bridges_path(tres), MapSidecars.terrain_shader_path(tres)]:
+		dots += "●" if FileAccess.file_exists(path) else "○"
 	var mtime: int = FileAccess.get_modified_time(tres)
 	var time_text: String = Time.get_datetime_string_from_unix_time(mtime) if mtime > 0 else ""
 	var count_text: String = ("物件 %d" % prop_count) if prop_count >= 0 else "无物件层"

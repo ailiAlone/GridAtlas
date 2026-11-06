@@ -14,8 +14,6 @@ extends RefCounted
 
 const YAW: float = 2.356194490192345      # 135°
 const PITCH: float = 0.7853981633974483   # 45°
-const SIN_PITCH: float = 0.7071067811865476
-const COS_PITCH: float = 0.7071067811865476
 
 
 static func forward_axis(yaw: float = YAW) -> Vector2:
