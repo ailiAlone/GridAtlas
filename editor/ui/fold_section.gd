@@ -1,8 +1,8 @@
 class_name FoldSection
 extends PanelContainer
 ## FoldSection —— 可折叠分节：标题栏点击展开/收起内容。
-## 视觉层级的原子组件：常用节展开、军用节收起，样式全部由全局 Theme
-## （editor/theme/editor_theme.gd）通过 SectionCard / FoldHeader 类型变体控制。
+## 视觉层级的原子组件：常用节展开、军用节收起，样式全部由全局主题
+## （editor/theme/editor_theme.tres）通过 SectionCard / FoldHeader 类型变体控制。
 ##
 ## 用法（tscn 实例后把内容挂在 Content/Body 下，或在代码里 add_child 到 body()）：
 ##   var sec: FoldSection = FoldSectionScene.instantiate()

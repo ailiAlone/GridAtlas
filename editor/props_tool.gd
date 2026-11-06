@@ -12,6 +12,9 @@ signal assets_refresh_requested
 signal asset_edit_requested
 
 const FoldSectionScene = preload("res://editor/ui/fold_section.tscn")
+const AssetButtonScene = preload("res://editor/ui/asset_button.tscn")
+const ScaleRowScene = preload("res://editor/ui/scale_row.tscn")
+const CategorySectionScene = preload("res://editor/ui/category_section.tscn")
 
 @onready var assetscontainer: VBoxContainer = $"Assets"
 @onready var assetempty: Label = $"AssetEmpty"
@@ -27,8 +30,7 @@ const FoldSectionScene = preload("res://editor/ui/fold_section.tscn")
 var scalerow: HBoxContainer = null   # 放在“树木”分类小节里
 var scalespin: SpinBox = null
 
-var asset_group: ButtonGroup = ButtonGroup.new()
-var rotationgroup: ButtonGroup = ButtonGroup.new()
+@export var asset_group: ButtonGroup   # 静态定义在 props_tool.tscn
 var selected_asset: StringName = &""
 var pending_rotation: int = 0         # 待放置方向：0=横向 / 1=竖向
 var pending_scale: int = 1            # 植物倍率：1=原大小，2=占地 2×2/图片 1.5×
@@ -49,12 +51,8 @@ func _ready() -> void:
 	clearbutton.pressed.connect(_on_clear)
 	assetsrefresh.pressed.connect(_on_assets_refresh)
 	assetedit.pressed.connect(_on_asset_edit)
-	var rotbuttons: Array[Button] = [rot0, rot90]
-	for i in 2:
-		var rotbutton: Button = rotbuttons[i]
-		rotbutton.toggle_mode = true
-		rotbutton.button_group = rotationgroup
-		rotbutton.pressed.connect(_on_rotation_pressed.bind(i))
+	rot0.pressed.connect(_on_rotation_pressed.bind(0))
+	rot90.pressed.connect(_on_rotation_pressed.bind(1))
 	set_pending_rotation(0)
 	_set_rotation_enabled(false)
 	pending_scale = 1
@@ -116,52 +114,33 @@ func _def_before(a: StaticAssetDef, b: StaticAssetDef) -> bool:
 ## 分类小节 = 可折叠卡片，默认全部收起（标题带计数可扫读，展开按需）；
 ## 建筑 24 个按钮全展开会把左栏顶得老长。
 func _add_category_section(cat_id: StringName, items: Array) -> void:
-	var section = FoldSectionScene.instantiate()
+	var section = CategorySectionScene.instantiate()
 	assetscontainer.add_child(section)   # 先入树（body 等 @onready 才可用）再填内容
 	section.setup("%s · %d" % [StaticAssetDef.category_label(cat_id), items.size()], true)
+	var flow: HFlowContainer = section.body.get_node("Flow") as HFlowContainer
 	if cat_id == &"tree":
 		_add_scale_row(section.body)
-	var flow: HFlowContainer = HFlowContainer.new()
-	flow.add_theme_constant_override("h_separation", 6)
-	flow.add_theme_constant_override("v_separation", 6)
-	section.body.add_child(flow)
 	for def: StaticAssetDef in items:
 		_add_asset_button(def, flow)
 
 
+## 倍率行：静态模板（editor/ui/scale_row.tscn）实例化，只填当前值
 func _add_scale_row(parent: VBoxContainer) -> void:
-	scalerow = HBoxContainer.new()
-	scalerow.add_theme_constant_override("separation", 6)
-	var title: Label = Label.new()
-	title.text = "植物倍率"
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title.tooltip_text = "仅植物：倍率 2 = 占地 2×2、图片 1.5×；倍率 3 = 图片 2×"
-	title.add_theme_font_size_override("font_size", 12)
-	title.add_theme_color_override("font_color", Color(0.96, 0.87, 0.58, 1.0))
-	scalerow.add_child(title)
-	scalespin = SpinBox.new()
-	scalespin.custom_minimum_size = Vector2(86, 26)
-	scalespin.min_value = 1.0
-	scalespin.max_value = 4.0
-	scalespin.step = 1.0
-	scalespin.value = pending_scale
-	scalespin.suffix = "×"
-	scalespin.tooltip_text = "仅植物：倍率 2 = 占地 2×2、图片 1.5×"
+	scalerow = ScaleRowScene.instantiate() as HBoxContainer
+	scalespin = scalerow.get_node("Spin") as SpinBox
+	scalespin.set_value_no_signal(pending_scale)
 	scalespin.value_changed.connect(_on_scale_value_changed)
-	scalerow.add_child(scalespin)
 	parent.add_child(scalerow)
+	parent.move_child(scalerow, 0)   # 倍率行放在资源按钮流之前
 
 
+## 资源按钮：静态模板（editor/ui/asset_button.tscn）实例化，只填文案与信号
 func _add_asset_button(def: StaticAssetDef, flow: HFlowContainer) -> void:
-	var button: Button = Button.new()
+	var button: Button = AssetButtonScene.instantiate() as Button
 	button.text = def.short_name()
 	button.tooltip_text = "%s\n%s · 占地范围 %d×%d · 阻挡 %d 格" % [
 		String(def.id), StaticAssetDef.category_label(def.category),
 		def.footprint.x, def.footprint.y, def.blocking_count()]
-	button.custom_minimum_size = Vector2(104, 30)
-	button.clip_text = true
-	button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	button.toggle_mode = true
 	button.button_group = asset_group
 	button.pressed.connect(_on_asset_pressed.bind(StringName(def.id)))
 	flow.add_child(button)

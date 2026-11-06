@@ -9,6 +9,7 @@
 [ext_resource type="PackedScene" uid="uid://b6u1u60pthv1q" path="res://editor/StaticAssetImportView.tscn" id="10_import"]
 [ext_resource type="PackedScene" path="res://editor/ui/file_bar.tscn" id="11_filebar"]
 [ext_resource type="PackedScene" path="res://editor/ui/map_browser.tscn" id="12_browser"]
+[ext_resource type="Theme" path="res://editor/theme/editor_theme.tres" id="13_theme"]
 
 [node name="Main" type="Control" unique_id=1225227347]
 layout_mode = 3
@@ -18,6 +19,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+theme = ExtResource("13_theme")
 script = ExtResource("3_main")
 metadata/_edit_lock_ = true
 
@@ -265,3 +267,24 @@ size_flags_horizontal = 3
 min_value = 8.0
 max_value = 1024.0
 value = 64.0
+
+[node name="ToastLayer" type="VBoxContainer" parent="."]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -336.0
+offset_top = 54.0
+offset_right = -16.0
+grow_horizontal = 0
+mouse_filter = 2
+z_index = 4095
+theme_override_constants/separation = 8
+
+[node name="ToastTemplate" type="PanelContainer" parent="ToastLayer"]
+visible = false
+layout_mode = 2
+
+[node name="Label" type="Label" parent="ToastLayer/ToastTemplate"]
+custom_minimum_size = Vector2(300, 0)
+layout_mode = 2
+autowrap_mode = 3

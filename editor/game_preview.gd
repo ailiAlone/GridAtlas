@@ -33,23 +33,9 @@ func _ready() -> void:
 	atlas.yaw = deg_to_rad(135.0)
 	atlas.pitch = deg_to_rad(45.0)
 	atlas.set_zoom(DEFAULT_PPM)
-	_install_style_overlay()
 	visibility_changed.connect(_on_visibility_changed)
 	resized.connect(refresh_view)
 	set_process(visible)
-
-
-## 共享后处理层：只覆盖 45° 画面，Hint 在其上面。
-func _install_style_overlay() -> void:
-	var overlay: ColorRect = ColorRect.new()
-	overlay.name = "StyleOverlay"
-	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var mat: ShaderMaterial = ShaderMaterial.new()
-	mat.shader = load("res://editor/style_overlay.gdshader") as Shader
-	overlay.material = mat
-	add_child(overlay)
-	move_child(overlay, hint.get_index())
 
 
 func _on_visibility_changed() -> void:

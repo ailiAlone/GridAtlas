@@ -33,7 +33,6 @@ const PropsData = preload("res://data/props_data.gd")
 const BridgesData = preload("res://data/bridges_data.gd")
 const MapSidecars = preload("res://data/map_sidecars.gd")
 const GamePreviewScript = preload("res://editor/game_preview.gd")
-const EditorTheme = preload("res://editor/theme/editor_theme.gd")
 const Toast = preload("res://editor/ui/toast.gd")
 
 var map: MapData  # 唯一持有者：所有使用方从这里拿引用
@@ -61,7 +60,6 @@ var _erase_miss_toasted: bool = false # 本次落笔是否已提示过"没删到
 
 
 func _ready() -> void:
-	theme = EditorTheme.build()   # 全编辑器统一深色主题（子场景自动继承）
 	grids = [grid_view, grid_mini]
 	map = MapData.create(Vector2i(64, 64))
 	props = PropsData.new()

@@ -1,0 +1,10 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://editor/ui/fold_section.tscn" id="1_fold"]
+
+[node name="CategorySection" instance=ExtResource("1_fold")]
+
+[node name="Flow" type="HFlowContainer" parent="VBox/Content/Body"]
+layout_mode = 2
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6

@@ -1,11 +1,16 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" uid="uid://ckqta3jiubuv4" path="res://editor/props_tool.gd" id="1_props"]
 [ext_resource type="PackedScene" path="res://editor/ui/fold_section.tscn" id="2_fold"]
 
+[sub_resource type="ButtonGroup" id="ButtonGroup_asset"]
+
+[sub_resource type="ButtonGroup" id="ButtonGroup_rotation"]
+
 [node name="PropsTool" type="VBoxContainer"]
 theme_override_constants/separation = 8
 script = ExtResource("1_props")
+asset_group = SubResource("ButtonGroup_asset")
 
 [node name="SectionMain" parent="." instance=ExtResource("2_fold")]
 layout_mode = 2
@@ -47,12 +52,16 @@ text = "待放方向"
 [node name="Rot0" type="Button" parent="SectionMain/VBox/Content/Body/RotationRow"]
 custom_minimum_size = Vector2(64, 26)
 layout_mode = 2
+toggle_mode = true
+button_group = SubResource("ButtonGroup_rotation")
 tooltip_text = "横向：原始占地与图片（0°）"
 text = "横向"
 
 [node name="Rot90" type="Button" parent="SectionMain/VBox/Content/Body/RotationRow"]
 custom_minimum_size = Vector2(64, 26)
 layout_mode = 2
+toggle_mode = true
+button_group = SubResource("ButtonGroup_rotation")
 tooltip_text = "竖向：占地交换宽高，图片水平镜像（90°）"
 text = "竖向"
 

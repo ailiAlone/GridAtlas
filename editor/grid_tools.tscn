@@ -1,14 +1,607 @@
-[gd_scene load_steps=4 format=3 uid="uid://duqxx0801a83k"]
+[gd_scene load_steps=47 format=3 uid="uid://duqxx0801a83k"]
 
 [ext_resource type="Script" path="res://editor/grid_tools.gd" id="1_qcoyp"]
 [ext_resource type="PackedScene" path="res://editor/props_tool.tscn" id="2_props"]
 [ext_resource type="PackedScene" path="res://editor/ui/fold_section.tscn" id="3_fold"]
+
+
+[sub_resource type="StyleBoxFlat" id="sb_Grass_n"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.42, 0.745, 0.348, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="sb_Grass_h"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.478, 0.7705, 0.4132, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="sb_Grass_p"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.3276, 0.5811, 0.27144, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.690196, 0.607843, 0.368627, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="sb_Sand_n"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.91, 0.82, 0.54, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="sb_Sand_h"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.919, 0.838, 0.586, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="sb_Sand_p"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.7098, 0.6396, 0.4212, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.690196, 0.607843, 0.368627, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="sb_Wasteland_n"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.58, 0.5, 0.39, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="sb_Wasteland_h"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.622, 0.55, 0.451, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="sb_Wasteland_p"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.4524, 0.39, 0.3042, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.690196, 0.607843, 0.368627, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="sb_Snow_n"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.93, 0.95, 0.97, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="sb_Snow_h"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.937, 0.955, 0.973, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="sb_Snow_p"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.7254, 0.741, 0.7566, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.690196, 0.607843, 0.368627, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="sb_Swamp_n"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.33, 0.42, 0.25, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="sb_Swamp_h"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.397, 0.478, 0.325, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="sb_Swamp_p"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.2574, 0.3276, 0.195, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.690196, 0.607843, 0.368627, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="sb_Ice_n"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.66, 0.847, 0.91, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="sb_Ice_h"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.694, 0.8623, 0.919, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="sb_Ice_p"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.5148, 0.66066, 0.7098, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.690196, 0.607843, 0.368627, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="sb_Mountain_n"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.27, 0.27, 0.3, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="sb_Mountain_h"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.343, 0.343, 0.37, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="sb_Mountain_p"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.2106, 0.2106, 0.234, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.690196, 0.607843, 0.368627, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="sb_Dirt_n"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.65, 0.486, 0.32, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="sb_Dirt_h"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.685, 0.5374, 0.388, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="sb_Dirt_p"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.507, 0.37908, 0.2496, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.690196, 0.607843, 0.368627, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="sb_Gravel_n"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.65, 0.65, 0.65, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="sb_Gravel_h"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.685, 0.685, 0.685, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="sb_Gravel_p"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.507, 0.507, 0.507, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.690196, 0.607843, 0.368627, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="sb_StoneBrick_n"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.44, 0.486, 0.522, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="sb_StoneBrick_h"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.496, 0.5374, 0.5698, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="sb_StoneBrick_p"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.3432, 0.37908, 0.40716, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.690196, 0.607843, 0.368627, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="sb_ShallowWater_n"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.43, 0.776, 0.91, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="sb_ShallowWater_h"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.487, 0.7984, 0.919, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="sb_ShallowWater_p"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.3354, 0.60528, 0.7098, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.690196, 0.607843, 0.368627, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="sb_DeepWater_n"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.17, 0.38, 0.6, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="sb_DeepWater_h"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.253, 0.442, 0.64, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="sb_DeepWater_p"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.1326, 0.2964, 0.468, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.690196, 0.607843, 0.368627, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="ButtonGroup" id="GroupLand"]
+
+[sub_resource type="ButtonGroup" id="GroupRoad"]
+
+[sub_resource type="ButtonGroup" id="GroupBridge"]
+
+[sub_resource type="ButtonGroup" id="GroupWater"]
+
+[sub_resource type="ButtonGroup" id="GroupFlow"]
+
+[sub_resource type="ButtonGroup" id="ButtonGroup_elev"]
+
+[sub_resource type="ButtonGroup" id="ButtonGroup_size"]
 
 [node name="GridTools" type="VBoxContainer"]
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 8
 script = ExtResource("1_qcoyp")
+elevation_group = SubResource("ButtonGroup_elev")
+sizegroup = SubResource("ButtonGroup_size")
 
 [node name="SectionLand" parent="." instance=ExtResource("3_fold")]
 layout_mode = 2
@@ -21,36 +614,99 @@ theme_override_constants/separation = 4
 [node name="Grass" type="Button" parent="SectionLand/VBox/Content/Body/HFlowContainer"]
 custom_minimum_size = Vector2(40, 30)
 layout_mode = 2
+theme_override_colors/font_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_colors/font_hover_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_colors/font_pressed_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_colors/font_focus_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_styles/normal = SubResource("sb_Grass_n")
+theme_override_styles/hover = SubResource("sb_Grass_h")
+theme_override_styles/pressed = SubResource("sb_Grass_p")
+toggle_mode = true
+button_group = SubResource("GroupLand")
 text = "草地"
 
 [node name="Sand" type="Button" parent="SectionLand/VBox/Content/Body/HFlowContainer"]
 custom_minimum_size = Vector2(40, 30)
 layout_mode = 2
+theme_override_colors/font_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_colors/font_hover_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_colors/font_pressed_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_colors/font_focus_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_styles/normal = SubResource("sb_Sand_n")
+theme_override_styles/hover = SubResource("sb_Sand_h")
+theme_override_styles/pressed = SubResource("sb_Sand_p")
+toggle_mode = true
+button_group = SubResource("GroupLand")
 text = "沙地"
 
 [node name="Wasteland" type="Button" parent="SectionLand/VBox/Content/Body/HFlowContainer"]
 custom_minimum_size = Vector2(40, 30)
 layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
+theme_override_styles/normal = SubResource("sb_Wasteland_n")
+theme_override_styles/hover = SubResource("sb_Wasteland_h")
+theme_override_styles/pressed = SubResource("sb_Wasteland_p")
+toggle_mode = true
+button_group = SubResource("GroupLand")
 text = "荒地"
 
 [node name="Snow" type="Button" parent="SectionLand/VBox/Content/Body/HFlowContainer"]
 custom_minimum_size = Vector2(40, 30)
 layout_mode = 2
+theme_override_colors/font_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_colors/font_hover_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_colors/font_pressed_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_colors/font_focus_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_styles/normal = SubResource("sb_Snow_n")
+theme_override_styles/hover = SubResource("sb_Snow_h")
+theme_override_styles/pressed = SubResource("sb_Snow_p")
+toggle_mode = true
+button_group = SubResource("GroupLand")
 text = "雪地"
 
 [node name="Swamp" type="Button" parent="SectionLand/VBox/Content/Body/HFlowContainer"]
 custom_minimum_size = Vector2(40, 30)
 layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
+theme_override_styles/normal = SubResource("sb_Swamp_n")
+theme_override_styles/hover = SubResource("sb_Swamp_h")
+theme_override_styles/pressed = SubResource("sb_Swamp_p")
+toggle_mode = true
+button_group = SubResource("GroupLand")
 text = "沼泽"
 
 [node name="Ice" type="Button" parent="SectionLand/VBox/Content/Body/HFlowContainer"]
 custom_minimum_size = Vector2(40, 30)
 layout_mode = 2
+theme_override_colors/font_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_colors/font_hover_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_colors/font_pressed_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_colors/font_focus_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_styles/normal = SubResource("sb_Ice_n")
+theme_override_styles/hover = SubResource("sb_Ice_h")
+theme_override_styles/pressed = SubResource("sb_Ice_p")
+toggle_mode = true
+button_group = SubResource("GroupLand")
 text = "冰面"
 
 [node name="Mountain" type="Button" parent="SectionLand/VBox/Content/Body/HFlowContainer"]
 custom_minimum_size = Vector2(40, 30)
 layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
+theme_override_styles/normal = SubResource("sb_Mountain_n")
+theme_override_styles/hover = SubResource("sb_Mountain_h")
+theme_override_styles/pressed = SubResource("sb_Mountain_p")
+toggle_mode = true
+button_group = SubResource("GroupLand")
 tooltip_text = "山体：独立岩石材质，不可通行；Shift+左键擦除"
 text = "山体"
 
@@ -66,21 +722,50 @@ theme_override_constants/separation = 4
 [node name="None" type="Button" parent="SectionRoad/VBox/Content/Body/HFlowContainer"]
 custom_minimum_size = Vector2(40, 30)
 layout_mode = 2
+toggle_mode = true
+button_group = SubResource("GroupRoad")
 text = "无"
 
 [node name="Dirt" type="Button" parent="SectionRoad/VBox/Content/Body/HFlowContainer"]
 custom_minimum_size = Vector2(40, 30)
 layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
+theme_override_styles/normal = SubResource("sb_Dirt_n")
+theme_override_styles/hover = SubResource("sb_Dirt_h")
+theme_override_styles/pressed = SubResource("sb_Dirt_p")
+toggle_mode = true
+button_group = SubResource("GroupRoad")
 text = "土路"
 
 [node name="Gravel" type="Button" parent="SectionRoad/VBox/Content/Body/HFlowContainer"]
 custom_minimum_size = Vector2(40, 30)
 layout_mode = 2
+theme_override_colors/font_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_colors/font_hover_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_colors/font_pressed_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_colors/font_focus_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_styles/normal = SubResource("sb_Gravel_n")
+theme_override_styles/hover = SubResource("sb_Gravel_h")
+theme_override_styles/pressed = SubResource("sb_Gravel_p")
+toggle_mode = true
+button_group = SubResource("GroupRoad")
 text = "碎石路"
 
 [node name="StoneBrick" type="Button" parent="SectionRoad/VBox/Content/Body/HFlowContainer"]
 custom_minimum_size = Vector2(40, 30)
 layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
+theme_override_styles/normal = SubResource("sb_StoneBrick_n")
+theme_override_styles/hover = SubResource("sb_StoneBrick_h")
+theme_override_styles/pressed = SubResource("sb_StoneBrick_p")
+toggle_mode = true
+button_group = SubResource("GroupRoad")
 text = "石砖路"
 
 [node name="BridgeLabel" type="Label" parent="SectionRoad/VBox/Content/Body"]
@@ -96,18 +781,24 @@ theme_override_constants/separation = 4
 [node name="LogBridge" type="Button" parent="SectionRoad/VBox/Content/Body/BridgeFlow"]
 custom_minimum_size = Vector2(52, 30)
 layout_mode = 2
+toggle_mode = true
+button_group = SubResource("GroupBridge")
 tooltip_text = "独木桥：拖两个陆地格作桥座，中间水面自动成桥身；Shift+左键点桥身删除；Shift+左键点桥身删除"
 text = "独木桥"
 
 [node name="WoodBridge" type="Button" parent="SectionRoad/VBox/Content/Body/BridgeFlow"]
 custom_minimum_size = Vector2(52, 30)
 layout_mode = 2
+toggle_mode = true
+button_group = SubResource("GroupBridge")
 tooltip_text = "木桥：拖两个陆地格作桥座，中间水面自动成桥身；Shift+左键点桥身删除"
 text = "木桥"
 
 [node name="StoneBridge" type="Button" parent="SectionRoad/VBox/Content/Body/BridgeFlow"]
 custom_minimum_size = Vector2(52, 30)
 layout_mode = 2
+toggle_mode = true
+button_group = SubResource("GroupBridge")
 tooltip_text = "石桥：拖两个陆地格作桥座，中间水面自动成桥身；Shift+左键点桥身删除"
 text = "石桥"
 
@@ -123,12 +814,30 @@ theme_override_constants/separation = 4
 [node name="ShallowWater" type="Button" parent="SectionWater/VBox/Content/Body/HBoxWater"]
 custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
+theme_override_colors/font_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_colors/font_hover_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_colors/font_pressed_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_colors/font_focus_color = Color(0.12, 0.12, 0.12, 1)
+theme_override_styles/normal = SubResource("sb_ShallowWater_n")
+theme_override_styles/hover = SubResource("sb_ShallowWater_h")
+theme_override_styles/pressed = SubResource("sb_ShallowWater_p")
+toggle_mode = true
+button_group = SubResource("GroupWater")
 size_flags_horizontal = 3
 text = "浅水"
 
 [node name="DeepWater" type="Button" parent="SectionWater/VBox/Content/Body/HBoxWater"]
 custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
+theme_override_styles/normal = SubResource("sb_DeepWater_n")
+theme_override_styles/hover = SubResource("sb_DeepWater_h")
+theme_override_styles/pressed = SubResource("sb_DeepWater_p")
+toggle_mode = true
+button_group = SubResource("GroupWater")
 size_flags_horizontal = 3
 text = "深水"
 
@@ -150,46 +859,64 @@ columns = 3
 [node name="NW" type="Button" parent="SectionWater/VBox/Content/Body/HBoxFlow/GridContainer"]
 custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
+toggle_mode = true
+button_group = SubResource("GroupFlow")
 text = "↖"
 
 [node name="N" type="Button" parent="SectionWater/VBox/Content/Body/HBoxFlow/GridContainer"]
 custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
+toggle_mode = true
+button_group = SubResource("GroupFlow")
 text = "↑"
 
 [node name="NE" type="Button" parent="SectionWater/VBox/Content/Body/HBoxFlow/GridContainer"]
 custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
+toggle_mode = true
+button_group = SubResource("GroupFlow")
 text = "↗"
 
 [node name="W" type="Button" parent="SectionWater/VBox/Content/Body/HBoxFlow/GridContainer"]
 custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
+toggle_mode = true
+button_group = SubResource("GroupFlow")
 text = "←"
 
 [node name="Center" type="Button" parent="SectionWater/VBox/Content/Body/HBoxFlow/GridContainer"]
 custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
+toggle_mode = true
+button_group = SubResource("GroupFlow")
 text = "•"
 
 [node name="E" type="Button" parent="SectionWater/VBox/Content/Body/HBoxFlow/GridContainer"]
 custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
+toggle_mode = true
+button_group = SubResource("GroupFlow")
 text = "→"
 
 [node name="SW" type="Button" parent="SectionWater/VBox/Content/Body/HBoxFlow/GridContainer"]
 custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
+toggle_mode = true
+button_group = SubResource("GroupFlow")
 text = "↙"
 
 [node name="S" type="Button" parent="SectionWater/VBox/Content/Body/HBoxFlow/GridContainer"]
 custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
+toggle_mode = true
+button_group = SubResource("GroupFlow")
 text = "↓"
 
 [node name="SE" type="Button" parent="SectionWater/VBox/Content/Body/HBoxFlow/GridContainer"]
 custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
+toggle_mode = true
+button_group = SubResource("GroupFlow")
 text = "↘"
 
 [node name="SectionTerrain" parent="." instance=ExtResource("3_fold")]
@@ -219,18 +946,24 @@ theme_override_constants/separation = 4
 [node name="Button1" type="Button" parent="SectionTerrain/VBox/Content/Body/HFlowContainerElevation"]
 custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
+toggle_mode = true
+button_group = SubResource("ButtonGroup_elev")
 tooltip_text = "左键把笔刷区域设为 1 级高程，Shift+左键恢复 1 级"
 text = "1"
 
 [node name="Button2" type="Button" parent="SectionTerrain/VBox/Content/Body/HFlowContainerElevation"]
 custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
+toggle_mode = true
+button_group = SubResource("ButtonGroup_elev")
 tooltip_text = "左键把笔刷区域设为 2 级高程，Shift+左键恢复 1 级"
 text = "2"
 
 [node name="Button3" type="Button" parent="SectionTerrain/VBox/Content/Body/HFlowContainerElevation"]
 custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
+toggle_mode = true
+button_group = SubResource("ButtonGroup_elev")
 tooltip_text = "左键把笔刷区域设为 3 级高程，Shift+左键恢复 1 级"
 text = "3"
 
@@ -251,16 +984,22 @@ theme_override_constants/separation = 4
 [node name="Button1" type="Button" parent="SectionBrush/VBox/Content/Body/HFlowContainer"]
 custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
+toggle_mode = true
+button_group = SubResource("ButtonGroup_size")
 text = "1"
 
 [node name="Button2" type="Button" parent="SectionBrush/VBox/Content/Body/HFlowContainer"]
 custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
+toggle_mode = true
+button_group = SubResource("ButtonGroup_size")
 text = "2"
 
 [node name="Button3" type="Button" parent="SectionBrush/VBox/Content/Body/HFlowContainer"]
 custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
+toggle_mode = true
+button_group = SubResource("ButtonGroup_size")
 text = "3"
 
 [node name="ButtonPlus" type="Button" parent="SectionBrush/VBox/Content/Body/HFlowContainer"]

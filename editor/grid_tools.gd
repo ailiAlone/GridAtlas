@@ -1,7 +1,7 @@
 extends VBoxContainer
 
 const BridgesData = preload("res://data/bridges_data.gd")
-const EditorTheme = preload("res://editor/theme/editor_theme.gd")
+const LevelButtonScene = preload("res://editor/ui/level_button.tscn")
 ## GridTools —— 编辑器左侧工具面板。
 ## 负责：笔刷选择（陆地/山体/道路/水域/流向/高程）、地图尺寸、保存/打开。
 ## 状态变化通过信号通知外部，由 main.gd 负责把笔刷和地图接到 GridView 上。
@@ -95,10 +95,10 @@ var brush_layer: StringName = &"land"
 var brush_value: int = GridDefs.Land.GRASS
 var brush_size: int = 1
 var brush_size_max: int = 3  # 当前可选的最大笔刷边长（与数字按钮数一致）
-var sizegroup: ButtonGroup = ButtonGroup.new()  # 笔刷大小互斥选择
+@export var sizegroup: ButtonGroup   # 笔刷大小互斥组（静态定义在 tscn）
 var elevation_value: int = 1  # 高程笔刷的目标级数
 var elevation_max: int = 3    # 当前可选的最大高程级数（与数字按钮数一致）
-var elevation_group: ButtonGroup = ButtonGroup.new()  # 高程级别互斥选择
+@export var elevation_group: ButtonGroup   # 高程级别互斥组（静态定义在 tscn）
 var prop_asset_id: StringName = &""  # 当前选中的资源定义 id（空串=未选资源）
 var prop_rotation: int = 0           # 待放置方向：0=横向 / 1=竖向（图片水平镜像）
 var prop_scale: int = 1              # 植物倍率：1=原大小 / 2=占地 2×2、图片 1.5×
@@ -107,38 +107,9 @@ var _last_edit_value: int = GridDefs.Land.GRASS
 var current_path: String = ""
 var dirty: bool = false
 var _saving_via_dialog: bool = false
-# 每类笔刷一个互斥组：当前笔刷在面板上始终可见（选中 = 金描边）
-var land_group: ButtonGroup = ButtonGroup.new()
-var road_group: ButtonGroup = ButtonGroup.new()
-var water_group: ButtonGroup = ButtonGroup.new()
-var bridge_group: ButtonGroup = ButtonGroup.new()
-var flow_group: ButtonGroup = ButtonGroup.new()
 
 
 func _ready() -> void:
-	# 陆地/道路/水域按钮程序化配色：GridDefs 是唯一色源，不再在 tscn 里手写 StyleBox
-	for name: String in LAND_BUTTONS:
-		_tint_toggle(landscontainer.get_node(name) as Button,
-			GridDefs.LAND_COLORS[LAND_BUTTONS[name]], land_group)
-	_tint_toggle(mountainbutton, GridDefs.MOUNTAIN_COLOR, land_group)
-	for name: String in ROAD_BUTTONS:
-		var button: Button = roadscontainer.get_node(name) as Button
-		button.toggle_mode = true
-		button.button_group = road_group
-		if GridDefs.ROAD_COLORS.has(ROAD_BUTTONS[name]):
-			_tint_toggle(button, GridDefs.ROAD_COLORS[ROAD_BUTTONS[name]], road_group)
-	for name: String in WATER_BUTTONS:
-		_tint_toggle(waterscontainer.get_node(name) as Button,
-			GridDefs.WATER_COLORS[WATER_BUTTONS[name]], water_group)
-	for name: String in DIRECTION_BUTTONS:
-		var dirbutton: Button = directionscontainer.get_node(name) as Button
-		dirbutton.toggle_mode = true
-		dirbutton.button_group = flow_group
-	for name: String in BRIDGE_BUTTONS:
-		var bridgebutton: Button = bridgescontainer.get_node(name) as Button
-		bridgebutton.toggle_mode = true
-		bridgebutton.button_group = bridge_group
-
 	_connect_group(landscontainer, LAND_BUTTONS, _on_land_button)
 	mountainbutton.pressed.connect(_on_mountain_button)
 	_connect_group(roadscontainer, ROAD_BUTTONS, _on_road_button)
@@ -164,39 +135,14 @@ func _ready() -> void:
 	_update_file_label()
 
 
-## 颜色按钮：互斥 toggle + 按地形色生成的三态样式。
-## 选中态 = 原色加深 + 金描边，文字色按底色亮度自动黑白。
-func _tint_toggle(button: Button, color: Color, group: ButtonGroup) -> void:
-	button.toggle_mode = true
-	button.button_group = group
-	var text_color: Color = Color(0.12, 0.12, 0.12) if color.get_luminance() > 0.55 else Color(1, 1, 1)
-	for state: String in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
-		button.add_theme_color_override(state, text_color)
-	var normal := StyleBoxFlat.new()
-	normal.bg_color = color
-	var hover := StyleBoxFlat.new()
-	hover.bg_color = color.lightened(0.10)
-	var pressed := StyleBoxFlat.new()
-	pressed.bg_color = color.darkened(0.22)
-	pressed.border_color = EditorTheme.ACCENT_LINE
-	pressed.set_border_width_all(2)
-	for box: StyleBoxFlat in [normal, hover, pressed]:
-		box.set_corner_radius_all(4)
-		box.content_margin_left = 8.0
-		box.content_margin_right = 8.0
-		box.content_margin_top = 4.0
-		box.content_margin_bottom = 4.0
-	button.add_theme_stylebox_override("normal", normal)
-	button.add_theme_stylebox_override("hover", hover)
-	button.add_theme_stylebox_override("pressed", pressed)
-	button.add_theme_stylebox_override("hover_pressed", pressed)
-
-
-## 把面板按钮的选中态同步成当前笔刷（外部切笔刷/退出放置时也保持一致）
+## 把面板按钮的选中态同步成当前笔刷（外部切笔刷/退出放置时也保持一致）。
+## 按钮的互斥组与三态样式都在 grid_tools.tscn 里静态配置，这里只改选中态。
 func _refresh_brush_buttons() -> void:
-	for group: ButtonGroup in [land_group, road_group, water_group, bridge_group, flow_group]:
-		for b: BaseButton in group.get_buttons():
-			b.set_pressed_no_signal(false)
+	for container: Node in [landscontainer, roadscontainer, waterscontainer,
+			bridgescontainer, directionscontainer]:
+		for child: Node in container.get_children():
+			if child is BaseButton and child.toggle_mode:
+				(child as BaseButton).set_pressed_no_signal(false)
 	match brush_layer:
 		&"land":
 			_press_by_value(LAND_BUTTONS, brush_value, landscontainer)
@@ -392,8 +338,6 @@ func _setup_elevation_buttons() -> void:
 
 
 func _bind_elevation_button(button: Button, level: int) -> void:
-	button.toggle_mode = true
-	button.button_group = elevation_group
 	button.pressed.connect(_on_elevation_selected.bind(level))
 
 
@@ -402,10 +346,10 @@ func add_elevation_level() -> void:
 	if elevation_max >= ELEVATION_MAX:
 		return
 	elevation_max += 1
-	var button: Button = Button.new()
+	var button: Button = LevelButtonScene.instantiate() as Button
 	button.name = "Button%d" % elevation_max
 	button.text = str(elevation_max)
-	button.custom_minimum_size = Vector2(32, 32)
+	button.button_group = elevation_group
 	_bind_elevation_button(button, elevation_max)
 	elevationcontainer.add_child(button)
 	elevationcontainer.move_child(button, elevationplusbutton.get_index())
@@ -424,17 +368,16 @@ func _setup_size_buttons() -> void:
 	first.set_pressed_no_signal(true)
 
 func _bind_size_button(button: Button, size: int) -> void:
-	button.toggle_mode = true
-	button.button_group = sizegroup
 	button.toggled.connect(_on_size_toggled.bind(size))
 
 
 ## 点击 + ：新增下一个笔刷尺寸按钮（1,2,3,4...），插入到 + 之前
 func add_brush_size() -> void:
 	brush_size_max += 1
-	var button: Button = Button.new()
+	var button: Button = LevelButtonScene.instantiate() as Button
+	button.name = "Button%d" % brush_size_max
 	button.text = str(brush_size_max)
-	button.custom_minimum_size = Vector2(32, 32)
+	button.button_group = sizegroup
 	_bind_size_button(button, brush_size_max)
 	brushcontainer.add_child(button)
 	brushcontainer.move_child(button, brushplusbutton.get_index())

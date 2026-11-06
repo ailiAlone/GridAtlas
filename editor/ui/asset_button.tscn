@@ -1,0 +1,7 @@
+[gd_scene format=3]
+
+[node name="AssetButton" type="Button"]
+custom_minimum_size = Vector2(104, 30)
+clip_text = true
+text_overrun_behavior = 3
+toggle_mode = true
