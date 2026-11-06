@@ -25,7 +25,7 @@ GridAtlas 把「编辑地图」和「在游戏里渲染地图」做成同一套�
 
 启动后是一张 64×64 的空地图，可以直接开画。左栏顶部文件条提供「保存」按钮和「▼」文件菜单（新建 / 打开 / 另存为）；快捷键为 <kbd>Ctrl</kbd>+<kbd>N</kbd> 新建、<kbd>Ctrl</kbd>+<kbd>O</kbd> 打开、<kbd>Ctrl</kbd>+<kbd>S</kbd> 保存。
 
-> **注意**：美术资源和地图数据没有入库（见「仓库内容」），所以 clone 后资源库是空的，示例地图也不在仓库里。编辑器本身可以正常启动并绘制地形、道路、水域。
+> **注意**：除 `Assets/TinySwords/` 示例素材外，美术资源和地图数据没有入库（见「仓库内容」），所以 clone 后资源库是空的，示例地图也不在仓库里。编辑器本身可以正常启动并绘制地形、道路、水域。
 
 ## 编辑器操作
 
@@ -115,6 +115,9 @@ rt.find_path(from_cell, to_cell)  # A* 路径
 
 *更多预览与接入说明见 [`demos/README.md`](demos/README.md)。*
 
+> 示例素材：[Tiny Swords (Free Pack)](https://pixelfrog-assets.itch.io/tiny-swords) by Pixel Frog。
+> 授权允许个人/商业使用与修改，但**禁止再分发**；本仓库为私有，若转为公开请先移除 `Assets/TinySwords/`。
+
 运行示例（前两个场景都读取 `maps/first/first.tres`）：
 
 ```bash
@@ -127,9 +130,10 @@ godot --path . res://demos/occlusion_test.tscn    # 山体遮挡验证
 
 本仓库**只提交代码、文档与截图**：
 
-- `Assets/` 下的美术文件（PNG、导入后的 `.tres`）体积较大，且部分素材有再分发限制，未入库；仅保留 `.gd` 脚本与 `.uid`。
+- `Assets/TinySwords/` 是 Pixel Frog 的免费示例素材，随**私有仓库**提供用于 demo；其授权不允许再分发，仓库转为公开前必须移除（见 [`Assets/TinySwords/SOURCE.md`](Assets/TinySwords/SOURCE.md)）。
+- `Assets/` 下其余美术文件（`ChineseVillage`、`Generated` 等）体积较大，且属于个人资源，未入库；仅保留 `.gd` 脚本与 `.uid`。
 - `maps/` 下的地图数据未入库，仅保留 `*.terrain.gdshader` 示例副本。
-- 因此 clone 后可以运行编辑器，但资源库为空、示例地图和 demo 数据需要自备。
+- 因此 clone 后可以运行编辑器，但资源库（`Assets/static_assets/defs`）为空、示例地图和 demo 数据需要自备；TinySwords 示例素材已包含。
 
 ## 文档
 

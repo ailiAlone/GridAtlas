@@ -68,7 +68,10 @@ G 显示格线（确认地面与实体同一套投影）｜R 回到角色。
 | `../data/static_asset_*.gd` | 静态资源定义/目录/读写：footprint、阻挡掩码、PNG、立牌参数 |
 | `../editor/props_tool.*` | 编辑器物件面板（资源库 / 横竖方向 / 植物倍率 / 清空） |
 | `../editor/game_preview.*` | 编辑器 45° 视图：渲染模式大画面 + 编辑模式左上角整图概览（复用这里的运行时与立牌） |
-| `../Assets/TinySwords/` | 示例玩家立牌使用的 `Warrior_Idle.png`（由 `demo_unit.gd` 裁切）；不再作为可放置资源 |
+| `../Assets/TinySwords/` | 示例素材（Pixel Frog 免费包）：Demo 玩家立牌、建筑/树木/单位；仅随私有仓库提供，不再分发（见 `SOURCE.md`） |
+
+> 示例素材：[Tiny Swords (Free Pack)](https://pixelfrog-assets.itch.io/tiny-swords) by Pixel Frog。
+> 授权允许个人/商业使用与修改，但**禁止再分发**；本仓库为私有，若转为公开请先移除 `Assets/TinySwords/`。
 
 ## 固定 45° 视角
 
