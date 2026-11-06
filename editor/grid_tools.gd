@@ -61,7 +61,6 @@ const LAND_BUTTONS: Dictionary = {
 }
 
 const ROAD_BUTTONS: Dictionary = {
-	"None": GridDefs.Road.NONE,
 	"Dirt": GridDefs.Road.DIRT,
 	"Gravel": GridDefs.Road.GRAVEL,
 	"StoneBrick": GridDefs.Road.STONE_BRICK,

@@ -719,13 +719,6 @@ start_folded = true
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="None" type="Button" parent="SectionRoad/VBox/Content/Body/HFlowContainer"]
-custom_minimum_size = Vector2(40, 30)
-layout_mode = 2
-toggle_mode = true
-button_group = SubResource("GroupRoad")
-text = "无"
-
 [node name="Dirt" type="Button" parent="SectionRoad/VBox/Content/Body/HFlowContainer"]
 custom_minimum_size = Vector2(40, 30)
 layout_mode = 2
