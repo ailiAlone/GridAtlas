@@ -102,7 +102,20 @@ rt.find_path(from_cell, to_cell)  # A* 路径
 
 更完整的接入说明、遮挡规则、性能数据见 [`demos/README.md`](demos/README.md)。
 
-## 运行示例
+## 演示地图与示例工程
+
+这两个不是一回事：
+
+- `maps/first/` 是**演示地图数据**：`first.tres` 主图 + 边车（外观 / 物件 / 桥 / 本图热点 / 着色器）。
+- `demos/` 是**示例工程**：演示如何在自己的项目里加载和使用这张地图（A*、固定 45°、遮挡），不包含地图本身。
+
+![编辑模式](demos/preview/first_edit.png)
+
+![45° 渲染模式](demos/preview/first_render.png)
+
+*更多预览与接入说明见 [`demos/README.md`](demos/README.md)。*
+
+运行示例（前两个场景都读取 `maps/first/first.tres`）：
 
 ```bash
 godot --path . res://demos/example.tscn           # 俯视 A* 寻路

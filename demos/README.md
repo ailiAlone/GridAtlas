@@ -5,6 +5,34 @@
 固定 45° 的游戏视图。编辑器“切换渲染”的大画面也直接复用这里的 `GridAtlas`，
 所以工具里看到的 45° 画面就是游戏画面。
 
+## 演示地图 vs. 示例工程
+
+这两个不是一回事：
+
+| 位置 | 是什么 | 说明 |
+|---|---|---|
+| `maps/first/` | **演示地图数据** | `first.tres` 主图 + `.look / .props / .bridges / .assets / .terrain.gdshader` 边车；编辑器里打开、编辑的就是它 |
+| `demos/` | **示例工程** | 演示如何把 `first` 这张地图用在你自己的项目里：加载数据、跑 A*、固定 45° 渲染、遮挡；它不包含地图本身 |
+
+`example.tscn` 和 `grid_atlas_demo.tscn` 都读取 `res://maps/first/first.tres` 及其边车。
+换句话说：**`first` 是内容，`demos/` 是消费这份内容的代码和场景。**
+
+## 效果预览
+
+以下截图都来自编辑器里的 `first` 地图：
+
+![编辑模式](preview/first_edit.png)
+
+*编辑模式：网格、高程、静态资源放置（当前选中 Archery）。*
+
+![45° 渲染模式（近景）](preview/first_render.png)
+
+*渲染模式：固定 45° 游戏视角，和游戏端 `GridAtlas` 是同一套投影。*
+
+![45° 渲染模式（整图）](preview/first_render_overview.png)
+
+*渲染模式整图：同一张地图缩放后的全貌。*
+
 ## 三个场景
 
 | 场景 | 用途 |
