@@ -41,6 +41,7 @@ signal map_path_changed(path: String)  # 文件条据此显示地图名
 @onready var brushcontainer:HFlowContainer = $"SectionBrush/VBox/Content/Body/HFlowContainer"
 @onready var brushplusbutton:Button = $"SectionBrush/VBox/Content/Body/HFlowContainer/ButtonPlus"
 @onready var brushrectbutton:Button = $"SectionBrush/VBox/Content/Body/ButtonRect"
+@onready var brushsection:FoldSection = $"SectionBrush"
 @onready var filedialog:FileDialog = $"FileDialog"
 @onready var widthbox:SpinBox = $"SectionData/VBox/Content/Body/HBoxContainer2/SpinBox"
 @onready var heightbox:SpinBox = $"SectionData/VBox/Content/Body/HBoxContainer2/SpinBox2"
@@ -130,6 +131,7 @@ func _ready() -> void:
 	propstool.rotation_selected.connect(_on_rotation_selected)
 	propstool.scale_selected.connect(_on_scale_selected)
 	_refresh_brush_buttons()
+	_sync_brush_section()
 	_update_save_button()
 	_update_file_label()
 
@@ -159,6 +161,12 @@ func _refresh_brush_buttons() -> void:
 				if DIRECTION_BUTTONS[name] == dir:
 					(directionscontainer.get_node(name) as Button).set_pressed_no_signal(true)
 					break
+
+
+## 笔刷分节跟随工具：画地形/道路/水域等时展开，放置建筑、树等资源时收起。
+## 笔刷大小和矩形填充只对地形类笔刷有意义，放置资源时用不到。
+func _sync_brush_section() -> void:
+	brushsection.set_folded(brush_layer == &"prop")
 
 
 func _press_by_value(mapping: Dictionary, value: int, container: Node) -> void:
@@ -232,6 +240,7 @@ func _on_asset_selected(asset_id: StringName) -> void:
 	brush_layer = &"prop"
 	brush_changed.emit(&"prop", -1)
 	_refresh_brush_buttons()   # prop 不对应任何工具按钮：清掉全部选中态
+	_sync_brush_section()
 	print("[笔刷] 资源 -> %s" % asset_name(asset_id))
 
 
@@ -392,6 +401,7 @@ func _set_brush(layer: StringName, value: int) -> void:
 		_last_edit_value = value
 	brush_changed.emit(layer, value)
 	_refresh_brush_buttons()
+	_sync_brush_section()
 	print("[笔刷] %s -> %s" % [GridDefs.LAYER_NAMES.get(layer, layer), value_name(layer, value)])
 
 
